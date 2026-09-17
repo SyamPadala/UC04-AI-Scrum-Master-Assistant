@@ -17,7 +17,7 @@ GCP and the Gemini key are sorted. A Microsoft 365 tenant we fully control now
 exists. The next block of work is all inside that tenant: users, a team, a
 tracker, and the bot registration.
 
-**Progress: 2 of 20 done.**
+**Progress: 2 of 23 done.**
 
 ---
 
@@ -58,10 +58,51 @@ tracker, and the bot registration.
       Sign in to Teams as the admin, create a team, add the four users, add a
       channel for stakeholders.
       *Record:* team ID, channel ID -> `TEAMS_TEAM_ID`, `STAKEHOLDER_CHANNEL_ID`
+      Note: adding a user to the team is not the same as onboarding them — see
+      item 5a.
 
 - [ ] **5. Register the bot** — Teams Developer Portal (dev.teams.microsoft.com)
       Creates the identity Teams uses to deliver messages to our service.
       *Record:* `BOT_APP_ID`, `BOT_APP_PASSWORD`
+
+- [ ] **5a. Onboard the four members** — the step that makes them real
+
+      Creating an account is not enough. Until each of these is done the
+      assistant physically cannot message that person.
+
+      For each of the four users:
+      - **Sign in to Teams once as that user** (teams.microsoft.com, or the
+        desktop app in a separate browser profile / InPrivate window). An
+        account that has never opened Teams has no Teams presence.
+      - **Accept them into the team** created in item 4.
+      - **Install the bot app for them.** Either install the app into the team
+        so every member gets it, or have each user add it personally from the
+        Teams app catalogue.
+
+      **Why the install matters:** the bot can only send someone a direct
+      message if it already holds a *conversation reference* for them, and that
+      reference is only created when the app is installed for that person. No
+      install means no reminder, no follow-up, no blocker prompt — for that
+      person only. This is the single most common reason a demo half-works.
+
+      *Record:* for each member — object ID, display name, and which one is the
+      Scrum Master. These go into the **team config seeded into Firestore**
+      (`TeamConfig.members` and `scrumMasterId` in SPEC-001), not into `.env`.
+
+      *Verify:* after the service is running, each member should appear in the
+      stored conversation references. A member missing from that list will be
+      silently skipped at reminder time.
+
+- [ ] **5b. Keep identities consistent across systems**
+
+      The same four people must exist, with matching names, in:
+      - Microsoft 365 / Teams (items 3-5a)
+      - the tracker's Member column (items 6-7)
+      - Jira, as story assignees (item 9)
+      - Azure DevOps, as work item assignees (item 10)
+
+      If a Jira assignee does not match a roster member, their stories will not
+      be attributed to them in the summary and story lookup will come back empty.
 
 - [ ] **6. SharePoint site + "Daily Status Tracker" list**
       Columns: Date, Member, Completed, InProgress, Blockers, RawUpdate
