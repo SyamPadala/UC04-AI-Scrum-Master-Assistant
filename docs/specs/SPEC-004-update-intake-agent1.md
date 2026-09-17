@@ -56,8 +56,9 @@ interface ExtractionInput {
 }
 
 interface ExtractionOutput {
-  completed: string[];
-  inProgress: string[];
+  // each item carries the work item it refers to, when the member named one
+  completed: { storyRef: string | null; comment: string }[];
+  inProgress: { storyRef: string | null; comment: string }[];
   blockers: { description: string; storyRef: string | null }[];
   confidence: 'high' | 'low';
   // no `degraded` flag: output either came from the model or the call failed
@@ -65,6 +66,20 @@ interface ExtractionOutput {
 
 extractUpdate(input: ExtractionInput): Promise<ExtractionOutput>;
 ```
+
+**Mapping to tracker rows (code, not the agent).** SPEC-002 stores one row per
+work item, so code turns this output into `TrackerRow[]`:
+
+| From | Row |
+|---|---|
+| each `completed[i]` | `WIN` = `storyRef`, `Comment` = `comment`, `Status` = `Completed` |
+| each `inProgress[i]` | `WIN` = `storyRef`, `Comment` = `comment`, `Status` = `In Progress` |
+| a blocker whose `storyRef` matches a row above | that row's `AnyBlocker` |
+| a blocker with no match | its own row, `Status` = `Blocked`, `Comment` empty |
+
+`Description` is never produced by the agent. Code fills it from
+`lookup_story(storyRef)` against Jira/ADO, and leaves it empty when there is no
+`storyRef` (A8).
 
 Read-only tools in `src/agents/tools/`:
 

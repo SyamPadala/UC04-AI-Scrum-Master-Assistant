@@ -4,6 +4,7 @@
 *.key
 *-key.json
 service-account*.json
+teamdetails.txt
 
 # dependencies / build
 node_modules/

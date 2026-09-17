@@ -13,11 +13,11 @@ in chat.
 
 ## Where we are in one line
 
-GCP and the Gemini key are sorted. A Microsoft 365 tenant we fully control now
-exists. The next block of work is all inside that tenant: users, a team, a
-tracker, and the bot registration.
+Tenant, 3 test users, the Teams team + stakeholder channel, the registered bot
+and the SharePoint tracker list all exist. Next: the Excel workbook (item 7),
+then the Entra app and Graph consent (item 8).
 
-**Progress: 2 of 23 done.**
+**Progress: 8 of 23 done** (items 1, 2, 3, 4, 5, 6, 15, 16; item 19 partly).
 
 ---
 
@@ -34,7 +34,14 @@ tracker, and the bot registration.
       Teams admin centre -> Setup policies -> Global (Org-wide default).
       Without this the bot cannot be installed.
 
-- [ ] **3. Create 4 test users**  <-- IN PROGRESS, DO THIS NEXT
+- [x] **3. Create test users** — DONE 17 Sep 2026 (3 users; 4th deferred)
+      Created: Madhavi Andoju, Tiwari Satyam, Saikrishna Akula
+      (`@SyamPadala.onmicrosoft.com`), Business Basic licence, role User.
+      One sign-in verified. Trial has **25** licences, not 5.
+      Scrum Master for the demo: not yet decided (4th user or admin).
+      Demo roles live in bot config, not in M365 — M365 has no such role.
+
+      Original plan below, kept for reference:
       Where: **admin.microsoft.com** -> Users -> Active users -> Add a user.
       (NOT the Teams admin centre — that can only manage existing users. This
       was a wrong turn taken once already.)
@@ -54,16 +61,21 @@ tracker, and the bot registration.
       *Record after:* each user's Entra **object ID** (admin centre -> the user
       -> their profile). The config identifies people by object ID, not email.
 
-- [ ] **4. Teams team + stakeholder channel**
+- [x] **4. Teams team + stakeholder channel** — DONE 17 Sep 2026
+      Team "Scrum Team Alpha" (private), first channel "Stakeholder Updates".
+      IDs in `.env`. Ignore the auto-created org-wide team "SyamPadala".
+      New Teams: create team via the compose icon ˅ -> New team.
       Sign in to Teams as the admin, create a team, add the four users, add a
       channel for stakeholders.
       *Record:* team ID, channel ID -> `TEAMS_TEAM_ID`, `STAKEHOLDER_CHANNEL_ID`
       Note: adding a user to the team is not the same as onboarding them — see
       item 5a.
 
-- [ ] **5. Register the bot** — Teams Developer Portal (dev.teams.microsoft.com)
-      Creates the identity Teams uses to deliver messages to our service.
-      *Record:* `BOT_APP_ID`, `BOT_APP_PASSWORD`
+- [x] **5. Register the bot** — DONE 18 Sep 2026
+      Teams Developer Portal, bot "Scrum Assistant".
+      `BOT_APP_ID` and `BOT_APP_PASSWORD` are in `.env`.
+      Endpoint address deliberately left empty — set at item 17 to the Dev
+      Tunnel URL + `/api/messages`, later to the Cloud Run URL.
 
 - [ ] **5a. Onboard the four members** — the step that makes them real
 
@@ -104,11 +116,17 @@ tracker, and the bot registration.
       If a Jira assignee does not match a roster member, their stories will not
       be attributed to them in the summary and story lookup will come back empty.
 
-- [ ] **6. SharePoint site + "Daily Status Tracker" list**
-      Columns: Date, Member, Completed, InProgress, Blockers, RawUpdate
-      *Record:* `SHAREPOINT_SITE_ID`, `SHAREPOINT_LIST_ID`
+- [x] **6. SharePoint "Daily Status Tracker" list** — DONE 18 Sep 2026
+      On the team site `https://syampadala.sharepoint.com/sites/ScrumTeamAlpha`
+      (created with the team; no separate site needed).
+      Columns (user's format, 18 Sep — one row per work item; see SPEC-002):
+      Date, WIN, Description, AssignedTo, Comment, Status (Choice:
+      Completed / In Progress / Blocked), AnyBlocker.
+      *Still to record:* `SHAREPOINT_SITE_ID`, `SHAREPOINT_LIST_ID` — resolved
+      via Graph at item 8, the site path is enough until then.
 
 - [ ] **7. Excel Online workbook** (the second tracker destination)
+      Same seven headers as item 6, in the same order, on a sheet named `Status`.
       *Record:* `EXCEL_DRIVE_ID`, `EXCEL_ITEM_ID`, `EXCEL_WORKSHEET`
 
 - [ ] **8. Entra app + Graph permissions, admin consented**
@@ -153,7 +171,7 @@ Checked 17 Sep 2026 — these keys exist but are still **empty**:
 - [ ] **19. Three blank values in `.env`**
       - `GEMINI_API_KEY` — the key was obtained but never pasted in
       - `LLM_MODEL` — set to the Gemini model id we are using
-      - `M365_TENANT_ID` — the tenant GUID (admin centre -> Settings ->
+      - ~~`M365_TENANT_ID`~~ — DONE, taken from the team link. The tenant GUID (admin centre -> Settings ->
         Org settings, or Entra overview). `M365_TENANT_DOMAIN` is already set.
 
 ## F. Project decisions still open

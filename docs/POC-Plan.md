@@ -8,38 +8,53 @@
 
 ## 0. Session Status — Where We Left Off
 
-**Updated:** Thu 17 Sep 2026, afternoon
-**State:** SDD setup complete. Ready to implement.
+**Updated:** Fri 18 Sep 2026, evening
+**State:** Setup in progress, 8 of 23 checklist items done. Still no code.
 
-**Done:**
-- PRD reviewed; deliver per document, with deviations recorded not silent.
-- Shared understanding (Section 1); stack (Section 2); hybrid architecture (Section 3).
-- SDD setup: `CLAUDE.md`, `docs/rules/` (coding + process), `docs/specs/`
-  (template, index, SPEC-001..008). All 10 FRs claimed, one spec each.
-- LLM resolved: Vertex/Claude unaffordable (Marketplace, credits excluded);
-  Gemini approved as substitute; provider adapter so it stays swappable (A12).
-- GCP account live: project `api-project-631634995359`, ₹28,663 trial credit
-  (covers Cloud Run, Firestore, Scheduler, Secret Manager — not the LLM).
+**Done this session (17-18 Sep):**
+- M365 tenant users: 3 created (Madhavi Andoju, Tiwari Satyam, Saikrishna Akula),
+  Business Basic licences, role User. Trial has **25** licences, not 5.
+  One sign-in verified. 4th user / Scrum Master identity **still undecided**.
+- Teams team "Scrum Team Alpha" (private) with first channel
+  "Stakeholder Updates". Org-wide team "SyamPadala" was auto-created — ignore it.
+- Bot registered in Teams Developer Portal ("Scrum Assistant"). Endpoint address
+  deliberately empty until the Dev Tunnel exists.
+- SharePoint list "Daily Status Tracker" created on the team site
+  `syampadala.sharepoint.com:/sites/ScrumTeamAlpha`.
+- `.env` filled: `M365_TENANT_ID`, `TEAMS_TEAM_ID`, `STAKEHOLDER_CHANNEL_ID`,
+  `BOT_APP_ID`, `BOT_APP_PASSWORD`, `EXCEL_WORKSHEET=Status`.
 
-**Deadline:** lifted 17 Sep 2026. Build the best POC possible; Section 8's
-Friday schedule no longer binds. Scope unlocked by this: working-days calendar
-(no weekend reminders), Azure DevOps demonstrated live rather than mocked.
+**Tracker format changed by the user (18 Sep) — specs updated:**
+One row per work item, not one row per member per day. Columns:
+`Date`, `WIN`, `Description`, `AssignedTo`, `Comment`, `Status`
+(Choice: Completed / In Progress / Blocked), `AnyBlocker`.
+- `Description` = the work item's title, read from Jira/ADO by code.
+- `Comment` = the member's own words. Empty on a Blocked row (no duplication).
+- A blocker with no work item gets its own `Blocked` row.
+- A second message from the same member deletes and rewrites that member's rows
+  for the day (A11).
+SPEC-002 and SPEC-004 rewritten to match; SPEC-004 now carries the
+ExtractionOutput -> TrackerRow mapping. Both still **Draft**.
 
-**Setup progress** — full state in `docs/SETUP-CHECKLIST.md`:
-- Done: GCP project + ₹28,663 credit · Gemini API key · Node 24 · git repo,
-  `.gitignore`, `.env.example`, `.env` · M365 tenant
-  `SyamPadala.onmicrosoft.com` (Business Basic trial, **cancel by day 25**) ·
-  custom app upload enabled.
-- Next: create 4 test users with licences (item 4), Teams team + stakeholder
-  channel (5), SharePoint list (6), Excel workbook (7), bot registration (3),
-  Entra app + Graph consent (8), then Jira (9) and ADO (10).
+**Next (setup):** Entra app + Graph consent (item 8) -> Excel workbook (7) ->
+Firestore + service account (11, 13) -> Dev Tunnel (17) -> member onboarding (5a).
+Items 9, 10, 18 can wait until the code needs them.
 
-**Next (build):**
-1. User approves specs (`Draft` → `Approved`) — process rule 1. **Not yet given.**
-2. Build order per Section 7: SPEC-001 foundation → SPEC-004 + eval → SPEC-003
-   → SPEC-002 → SPEC-005 → SPEC-007 → SPEC-006 → SPEC-008.
-   SPEC-001..004 need nothing from Microsoft; only the Gemini key.
-3. Open from Section 10: AI Journal details still not provided.
+**Next (build):** blocked on two things only — paste `GEMINI_API_KEY` and
+`LLM_MODEL` into `.env` (item 19), and approve the specs (item 20).
+SPEC-001..004 need nothing from Microsoft.
+
+**Open design point, not yet decided:** Graph's `ChannelMessage.Send` is
+delegated-only, so a background service cannot post the summary to a Teams
+channel through Graph. The bot must post it itself using its own channel
+reference. This changes item 8's permission list and SPEC-006.
+
+**Still open:** 4th user / Scrum Master · AI Journal definition · POC-Plan
+Sections 2, 4, 6, 8, 9 still carry stale Node 22 / dev-program / Claude / Friday
+references.
+
+**Local file `teamdetails.txt` holds test-user passwords in plain text. It is
+now git-ignored. Do not commit it.**
 
 **No code has been written yet.**
 
