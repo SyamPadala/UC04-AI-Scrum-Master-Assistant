@@ -1,0 +1,21 @@
+# secrets — never commit
+.env
+.env.local
+*.key
+*-key.json
+service-account*.json
+
+# dependencies / build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# local data
+.data/
+*.log
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
