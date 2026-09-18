@@ -107,8 +107,18 @@ own prior comment for that member and date and editing it.
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `tracker` (per team) | TrackerConfig | `mock` | Destination for that team |
-| `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | string | — | Jira Cloud auth |
+| `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` | string | — | Jira Cloud auth (HTTP Basic, `email:token`) |
+| `JIRA_STORY_POINTS_FIELD` | string | — | Custom field ID holding story points |
 | `MOCK_TRACKER_PATH` | string | `./.data/tracker.json` | Mock file location |
+
+**Story points are not a fixed field.** Jira exposes story points as a site
+allocated custom field, so the ID differs between Jira sites and between
+team-managed and company-managed projects. It must never be hardcoded. Read it
+from `JIRA_STORY_POINTS_FIELD`; on the delivered site that value is
+`customfield_10016` ("Story point estimate"). If the key is unset or the field
+is absent on an issue, treat the points as unknown and exclude that issue from
+the velocity calculation rather than counting it as zero — counting it as zero
+silently understates completion (A6).
 
 ## Edge cases
 

@@ -121,6 +121,14 @@ Item 19 is **blocked** on funding an LLM — see item 19.
       If a Jira assignee does not match a roster member, their stories will not
       be attributed to them in the summary and story lookup will come back empty.
 
+      **Canonical names — decide before creating accounts anywhere else.**
+      M365 currently holds `Madhavi Andoju`, `Sai Krishna Akula`,
+      `TIWARI SATYAM` and `Syam Padala`. Note `Sai Krishna Akula` has a space
+      and `TIWARI SATYAM` is upper case; earlier notes in this file spell them
+      differently. Either adopt the M365 spelling everywhere, or fix M365 first
+      and use the corrected form in Jira, ADO and the tracker. As of 18 Sep
+      only `syam` exists in Jira, so nothing is locked in yet.
+
 - [x] **6. SharePoint "Daily Status Tracker" list** — DONE 18 Sep 2026
       On the team site `https://syampadala.sharepoint.com/sites/ScrumTeamAlpha`
       (created with the team; no separate site needed).
@@ -161,10 +169,33 @@ Item 19 is **blocked** on funding an LLM — see item 19.
 
 ## B. Project management tools
 
-- [ ] **9. Jira Cloud (free tier)**
-      Project, one active sprint, 5-6 stories **with story points**, assigned
-      across the four test users.
-      *Record:* `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY`
+- [ ] **9. Jira Cloud (free tier)** — connection DONE 18 Sep 2026, data NOT done
+      Site `https://demo-jira-validation.atlassian.net`, project `SCRUM`
+      (AIDemo), board 1. Auth verified (HTTP Basic, `email:token`).
+      `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` and
+      `JIRA_STORY_POINTS_FIELD` are all in `.env`.
+
+      Story points live in `customfield_10016` ("Story point estimate").
+      This ID is per-site, never hardcode it — see SPEC-002 Configuration.
+
+      **The sprint data does not yet support the features.** Audited 18 Sep:
+      - The active sprint "SCRUM Sprint 0" contains **0 issues**; all 9 sit in
+        the backlog. Agent 2 would find nothing, so FR-07 has no data.
+      - That sprint **ended 15 Sep**, three days before the audit. A5 (at-risk)
+        and A6 (velocity) both reason about progress against elapsed time.
+      - **Every issue is UNASSIGNED.** FR-07 cannot attribute work and FR-06
+        cannot resolve a blocker to a member's story (A8).
+      - Only 3 of 9 issues carry points, so completion and velocity are
+        meaningless.
+      - **Only one assignable Jira user exists (`syam`).** The three test users
+        have no Atlassian account, so they cannot be assigned anything. This is
+        the hard blocker — see item 5b.
+
+      *To finish:* invite the three members (free tier allows 10 users) with
+      display names matching M365 exactly; create a sprint spanning today;
+      put ~6 pointed issues in it, assigned across all four people, with mixed
+      statuses (some Done, some In Progress, one To Do) so the summary and
+      velocity output are visibly non-trivial.
 
 - [ ] **10. Azure DevOps (free tier)**
       Org, project, iteration, work items with points.
