@@ -121,13 +121,22 @@ Item 19 is **blocked** on funding an LLM — see item 19.
       If a Jira assignee does not match a roster member, their stories will not
       be attributed to them in the summary and story lookup will come back empty.
 
-      **Canonical names — decide before creating accounts anywhere else.**
-      M365 currently holds `Madhavi Andoju`, `Sai Krishna Akula`,
-      `TIWARI SATYAM` and `Syam Padala`. Note `Sai Krishna Akula` has a space
-      and `TIWARI SATYAM` is upper case; earlier notes in this file spell them
-      differently. Either adopt the M365 spelling everywhere, or fix M365 first
-      and use the corrected form in Jira, ADO and the tracker. As of 18 Sep
-      only `syam` exists in Jira, so nothing is locked in yet.
+      **Canonical names — DECIDED 18 Sep 2026.** The casing was fixed in M365
+      (`TIWARI SATYAM` -> `Tiwari Satyam`) and verified through Graph. These
+      exact strings are the roster, and must be reproduced letter for letter in
+      Jira, Azure DevOps and the tracker's AssignedTo column:
+
+      | Display name | Login |
+      |---|---|
+      | `Madhavi Andoju` | madhavi.andoju |
+      | `Sai Krishna Akula` | saikrishna.akula |
+      | `Tiwari Satyam` | tiwari.satyam |
+      | `Syam Padala` | syam.padala |
+
+      `Sai Krishna Akula` carries a space that his login does not. The login and
+      display name need not match each other; the display name must match
+      across systems. Re-verify through Graph before creating accounts
+      elsewhere — a rename in M365 silently breaks attribution.
 
 - [x] **6. SharePoint "Daily Status Tracker" list** — DONE 18 Sep 2026
       On the team site `https://syampadala.sharepoint.com/sites/ScrumTeamAlpha`
