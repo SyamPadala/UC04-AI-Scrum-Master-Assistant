@@ -2,7 +2,7 @@
 
 The single source of truth for setup state. Read this first in a new session.
 
-**Last updated:** 17 Sep 2026
+**Last updated:** 18 Sep 2026
 **Focus right now:** setup only. No coding until setup is further along and the
 specs are approved (item 20).
 
@@ -13,11 +13,12 @@ in chat.
 
 ## Where we are in one line
 
-Tenant, 3 test users, the Teams team + stakeholder channel, the registered bot
-and the SharePoint tracker list all exist. Next: the Excel workbook (item 7),
-then the Entra app and Graph consent (item 8).
+Tenant, 3 test users, the Teams team + stakeholder channel, the registered bot,
+the SharePoint tracker list and the Entra app all exist, and a Graph write to
+the tracker list has been proven end to end. Next: the Excel workbook (item 7),
+then Firestore + service account (11, 13).
 
-**Progress: 8 of 23 done** (items 1, 2, 3, 4, 5, 6, 15, 16; item 19 partly).
+**Progress: 9 of 23 done** (items 1, 2, 3, 4, 5, 6, 8, 15, 16; item 19 partly).
 
 ---
 
@@ -109,7 +110,7 @@ then the Entra app and Graph consent (item 8).
 
       The same four people must exist, with matching names, in:
       - Microsoft 365 / Teams (items 3-5a)
-      - the tracker's Member column (items 6-7)
+      - the tracker's AssignedTo column (items 6-7)
       - Jira, as story assignees (item 9)
       - Azure DevOps, as work item assignees (item 10)
 
@@ -121,18 +122,38 @@ then the Entra app and Graph consent (item 8).
       (created with the team; no separate site needed).
       Columns (user's format, 18 Sep — one row per work item; see SPEC-002):
       Date, WIN, Description, AssignedTo, Comment, Status (Choice:
-      Completed / In Progress / Blocked), AnyBlocker.
-      *Still to record:* `SHAREPOINT_SITE_ID`, `SHAREPOINT_LIST_ID` — resolved
-      via Graph at item 8, the site path is enough until then.
+      In Progress / Completed / Blocked), AnyBlocker.
+      `SHAREPOINT_SITE_ID` and `SHAREPOINT_LIST_ID` resolved via Graph and
+      recorded in `.env` — DONE 18 Sep 2026.
+
+      **Columns were recreated 18 Sep.** They had been renamed after creation,
+      which in SharePoint changes only the display name — the internal name
+      Graph reads and writes stays fixed at creation. The result was
+      AssignedTo→`Date`, WIN→`Member`, Description→`Completed`, Date→`Date0`.
+      The four were deleted and re-added with space-free names so internal and
+      display now match. Verified: all seven internal names correct, and a test
+      row written, read back and deleted through Graph.
+      If a column is ever renamed again, re-verify the internal names before
+      trusting a write.
 
 - [ ] **7. Excel Online workbook** (the second tracker destination)
       Same seven headers as item 6, in the same order, on a sheet named `Status`.
       *Record:* `EXCEL_DRIVE_ID`, `EXCEL_ITEM_ID`, `EXCEL_WORKSHEET`
 
-- [ ] **8. Entra app + Graph permissions, admin consented**
-      Sites.ReadWrite.All, Files.ReadWrite.All, Mail.Send, ChannelMessage.Send,
-      User.Read.All
-      *Record:* `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`
+- [x] **8. Entra app + Graph permissions, admin consented** — DONE 18 Sep 2026
+      Separate single-tenant app registration (not the bot's app). Application
+      permissions, admin consented: Sites.ReadWrite.All, Files.ReadWrite.All,
+      Mail.Send, User.Read.All.
+      `GRAPH_CLIENT_ID` and `GRAPH_CLIENT_SECRET` are in `.env` (secret expires
+      18 Sep 2028).
+
+      **`ChannelMessage.Send` was deliberately dropped.** It is delegated-only,
+      so a background service cannot use it to post the sprint summary to a
+      Teams channel. The bot posts to the channel itself using its own channel
+      reference — see the open design point in POC-Plan Section 0 and SPEC-006.
+
+      *Verified:* client-credentials token issued, site and list resolved, and
+      a row written, read back and deleted in the tracker list.
 
 ## B. Project management tools
 
@@ -168,9 +189,23 @@ credit. These items are the services inside it.
 
 Checked 17 Sep 2026 — these keys exist but are still **empty**:
 
-- [ ] **19. Three blank values in `.env`**
-      - `GEMINI_API_KEY` — the key was obtained but never pasted in
-      - `LLM_MODEL` — set to the Gemini model id we are using
+- [ ] **19. Blank values in `.env`** — BLOCKED 18 Sep 2026, needs a funded LLM
+      - `GEMINI_API_KEY` — pasted, valid, and **unusable**. Every call returns
+        `429 RESOURCE_EXHAUSTED / prepayment credits are depleted`.
+        Google issues free Gemini API access on this account as a prepaid
+        credit balance, not as an RPM/RPD quota. A balance does not refill on
+        a clock, so waiting does nothing.
+        Verified closed: a new key on the same project fails the same way
+        (keys are credentials, the balance is per project), and a key on a
+        **new project fails too** — the grant is per account, not per project.
+        The ₹28,663 GCP trial credit does not cover it either.
+        **The only ways forward are to activate billing on the Gemini project
+        or to fund `LLM_PROVIDER=anthropic`.** Do not re-try new keys.
+      - `LLM_MODEL` — currently `gemini-3.5-flash-lite`. Change before the eval:
+        lite tiers trade accuracy for cost, and FR-03 needs >=90% extraction
+        accuracy. Start at a full flash tier and only drop to lite if the eval
+        shows headroom. Latency has a 30 s budget and is not the tight
+        constraint; accuracy is.
       - ~~`M365_TENANT_ID`~~ — DONE, taken from the team link. The tenant GUID (admin centre -> Settings ->
         Org settings, or Entra overview). `M365_TENANT_DOMAIN` is already set.
 

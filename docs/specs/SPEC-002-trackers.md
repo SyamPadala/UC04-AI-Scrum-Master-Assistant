@@ -89,7 +89,7 @@ type TrackerConfig =
 | `Description` | Single line of text | The work item's title, from Jira/ADO |
 | `AssignedTo` | Single line of text | Member display name |
 | `Comment` | Multiple lines of text | The member's own words; empty on a Blocked row |
-| `Status` | Choice | `Completed` / `In Progress` / `Blocked` |
+| `Status` | Choice | `In Progress` / `Completed` / `Blocked` (list order) |
 | `AnyBlocker` | Multiple lines of text | The blocker, if any |
 
 Upsert: filter on AssignedTo+Date, delete those items, write the new set.
