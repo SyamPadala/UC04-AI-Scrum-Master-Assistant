@@ -15,11 +15,13 @@ in chat.
 
 Tenant, 3 test users, the Teams team + stakeholder channel, the registered bot,
 the SharePoint tracker list and the Entra app all exist, a Graph write to the
-tracker list has been proven end to end, and the code is on GitHub. Next:
-gcloud CLI (14) -> Firestore + APIs + service account (11, 12, 13), then the
-Excel workbook (7). Items 17 and 5a cannot be finished until code exists.
+tracker list has been proven end to end, the Google Cloud side is built and
+tested, and the code is on GitHub. Next: approve the specs (20), then the
+Excel workbook (7) and Jira/ADO (9, 10). Items 17 and 5a cannot be finished
+until code exists; item 19 is blocked on funding an LLM.
 
-**Progress: 10 of 23 done** (items 1, 2, 3, 4, 5, 6, 8, 15, 16, 18).
+**Progress: 13 of 23 done** (items 1, 2, 3, 4, 5, 6, 8, 11, 12, 13, 15, 16, 18).
+Item 14 deliberately skipped.
 Item 19 is **blocked** on funding an LLM — see item 19.
 
 ---
@@ -173,11 +175,45 @@ Item 19 is **blocked** on funding an LLM — see item 19.
 Account and project already exist: `api-project-631634995359`, Rs28,663 trial
 credit. These items are the services inside it.
 
-- [ ] **11. Create the Firestore database** — Native mode, choose a region
-- [ ] **12. Verify Cloud Run, Cloud Scheduler and Secret Manager are enabled**
-- [ ] **13. Service account + JSON key** for local development
-      *Record:* path -> `GOOGLE_APPLICATION_CREDENTIALS` (key file stays out of git)
-- [ ] **14. Install the `gcloud` CLI** locally
+- [x] **11. Firestore database** — DONE 18 Sep 2026
+      Native mode, Standard edition, single region `asia-south1` (Mumbai).
+      Cloud Run must be deployed to the same region. The location is permanent.
+
+      **The database ID is `default`, not `(default)`.** These are different
+      names: `(default)` is the special primary-database ID the SDKs assume
+      when none is given, and `default` is an ordinary named database.
+      `FIRESTORE_DATABASE=default` in `.env`, and **the code must pass
+      `databaseId` explicitly** when constructing the Firestore client or it
+      fails with `5 NOT_FOUND`. SPEC-001 already carries the config value.
+      Trade-off accepted knowingly: Firestore's free tier applies only to
+      `(default)`, so this database bills from the first read. At a few hundred
+      operations a day that is a rupee or two a month, and likely covered by
+      the GCP trial credit — not worth recreating the database over.
+
+      *Verified:* write, read, same-ID overwrite and delete against
+      `runs/{teamId}_{localDate}_{jobType}`. The overwrite left one document,
+      which is the idempotency mechanism SPEC-001 relies on.
+
+- [x] **12. Cloud APIs enabled** — DONE 18 Sep 2026
+      Cloud Firestore, Cloud Run Admin, Cloud Scheduler, Secret Manager,
+      Cloud Build and Artifact Registry. The last two are not in the original
+      list but are required — `gcloud run deploy` from source builds through
+      Cloud Build and stores the image in Artifact Registry.
+
+- [x] **13. Service account + JSON key** — DONE 18 Sep 2026
+      `scrum-assistant@api-project-631634995359.iam.gserviceaccount.com`.
+      Roles: **Cloud Datastore User** (the Firestore read/write role — its name
+      is historical, there is no "Firestore User" role) and **Secret Manager
+      Secret Accessor**. Deliberately not Owner or Editor.
+      Key at `C:/UC04-AI-Scrum-Master-Assistant/service-account-key.json`,
+      path in `GOOGLE_APPLICATION_CREDENTIALS`. Covered by `.gitignore`
+      (`service-account*.json`) — verified, and it is a live credential.
+      Delete it from the console once Cloud Run runs on its own identity.
+
+- [ ] **14. Install the `gcloud` CLI** locally — **not doing this**
+      Deliberate: this is an Accenture-managed machine. Items 11-13 were done
+      through the Cloud console instead. Cloud Run deploys and Cloud Scheduler
+      jobs will need either the CLI or the console when that point is reached.
 
 ## D. Local and repository
 
