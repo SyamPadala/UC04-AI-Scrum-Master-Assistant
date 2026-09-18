@@ -14,11 +14,13 @@ in chat.
 ## Where we are in one line
 
 Tenant, 3 test users, the Teams team + stakeholder channel, the registered bot,
-the SharePoint tracker list and the Entra app all exist, and a Graph write to
-the tracker list has been proven end to end. Next: the Excel workbook (item 7),
-then Firestore + service account (11, 13).
+the SharePoint tracker list and the Entra app all exist, a Graph write to the
+tracker list has been proven end to end, and the code is on GitHub. Next:
+gcloud CLI (14) -> Firestore + APIs + service account (11, 12, 13), then the
+Excel workbook (7). Items 17 and 5a cannot be finished until code exists.
 
-**Progress: 9 of 23 done** (items 1, 2, 3, 4, 5, 6, 8, 15, 16; item 19 partly).
+**Progress: 10 of 23 done** (items 1, 2, 3, 4, 5, 6, 8, 15, 16, 18).
+Item 19 is **blocked** on funding an LLM — see item 19.
 
 ---
 
@@ -183,7 +185,14 @@ credit. These items are the services inside it.
 - [x] **16. Repo initialised** — `.gitignore`, `.env.example`, `.env` in place,
       first commit `39dc77d`
 - [ ] **17. Dev Tunnel** (VS Code extension) so Teams can reach the local service
-- [ ] **18. GitHub repository** + first push
+- [x] **18. GitHub repository** + first push — DONE 18 Sep 2026
+      `https://github.com/SyamPadala/UC04-AI-Scrum-Master-Assistant`
+      Local branch renamed `master` -> `main` and rebased onto the
+      auto-created README commit, so history is linear.
+      *Verified before pushing:* no secret was ever committed — only docs
+      appear in history, and `.env`, `teamdetails.txt`, `*-key.json` and
+      `service-account*.json` are all git-ignored. Re-check this before any
+      future push that adds a credential-shaped file.
 
 ## E. Fill the gaps already open in `.env`
 
