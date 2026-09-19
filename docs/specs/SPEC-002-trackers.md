@@ -87,7 +87,7 @@ type TrackerConfig =
 | `Date` | Date and time (no time) | The stand-up date |
 | `WIN` | Single line of text | Work item number; empty when none was named (A8) |
 | `Description` | Single line of text | The work item's title, from Jira/ADO |
-| `AssignedTo` | Single line of text | Member display name |
+| `AssignedTo` | Single line of text | Member display name, from Microsoft 365 |
 | `Comment` | Multiple lines of text | The member's own words; empty on a Blocked row |
 | `Status` | Choice | `In Progress` / `Completed` / `Blocked` (list order) |
 | `AnyBlocker` | Multiple lines of text | The blocker, if any |
@@ -119,6 +119,13 @@ from `JIRA_STORY_POINTS_FIELD`; on the delivered site that value is
 is absent on an issue, treat the points as unknown and exclude that issue from
 the velocity calculation rather than counting it as zero — counting it as zero
 silently understates completion (A6).
+
+**Identity across systems.** A member is never matched to a Jira user by name
+or email. `Member.jiraAccountId` records the link explicitly, set once through
+`scripts/link-jira.mjs`. Jira display names are owned by each person's Atlassian
+profile and cannot be set by the site admin, and Jira hides other users' email
+addresses, so every matching scheme breaks silently on a rename. An absent
+`jiraAccountId` means "not linked" and must never be treated as "no match".
 
 ## Edge cases
 

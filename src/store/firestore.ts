@@ -29,6 +29,27 @@ export async function activeTeams (): Promise<TeamConfig[]> {
   return snapshot.docs.map((doc) => doc.data() as TeamConfig)
 }
 
+/**
+ * Finds the team a person belongs to (FR-10).
+ *
+ * A one-to-one Teams message carries no team, so the roster is what resolves
+ * it. A person in no team, or in two, is a configuration error and is reported
+ * as such rather than guessed at.
+ */
+export async function teamForMember (memberId: string): Promise<TeamConfig | undefined> {
+  const snapshot = await db.collection('teams').get()
+  const matches = snapshot.docs
+    .map((doc) => doc.data() as TeamConfig)
+    .filter((team) => team.members.some((m) => m.memberId === memberId))
+
+  if (matches.length > 1) {
+    throw new Error(
+      `${memberId} is on more than one team (${matches.map((t) => t.name).join(', ')}); rosters must not overlap`
+    )
+  }
+  return matches[0]
+}
+
 export async function getTeam (teamId: string): Promise<TeamConfig | undefined> {
   const doc = await db.collection('teams').doc(teamId).get()
   return doc.exists ? (doc.data() as TeamConfig) : undefined

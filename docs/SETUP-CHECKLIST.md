@@ -115,32 +115,31 @@ app is not installed for them.
       stored conversation references. A member missing from that list will be
       silently skipped at reminder time.
 
-- [ ] **5b. Keep identities consistent across systems**
+- [ ] **5b. Link each person's identities across systems** — SOLVED 20 Sep 2026
 
-      The same four people must exist, with matching names, in:
-      - Microsoft 365 / Teams (items 3-5a)
-      - the tracker's AssignedTo column (items 6-7)
-      - Jira, as story assignees (item 9)
+      **The problem.** Nothing reliably connects a person in Microsoft Teams to
+      the same person in Jira. Display names are owned by each person's own
+      Atlassian profile and cannot be set by the site admin — inviting
+      `madhavi.andoju@...` produced the Jira name `madhavi.andoju`, not
+      `Madhavi Andoju`, and only she can change it. Email matching does not work
+      either: Jira hides other users' email addresses by default, and the
+      `/user/email` endpoint is restricted to whitelisted apps. The owner
+      account is worse still — its name comes from the linked Google account, so
+      even its own holder cannot change it in Atlassian.
 
-      If a Jira assignee does not match a roster member, their stories will not
-      be attributed to them in the summary and story lookup will come back empty.
+      **The solution.** Store the link explicitly, once, per person. Each member
+      in the team record in Firestore carries `memberId` (Entra object id) and
+      `jiraAccountId` (Jira account id). Nothing is matched at run time, so a
+      rename in either system cannot break attribution.
 
-      **Canonical names — DECIDED 18 Sep 2026.** The casing was fixed in M365
-      (`TIWARI SATYAM` -> `Tiwari Satyam`) and verified through Graph. These
-      exact strings are the roster, and must be reproduced letter for letter in
-      Jira and the tracker's AssignedTo column:
+      `node scripts/link-jira.mjs` lists the Jira accounts and the roster;
+      `node scripts/link-jira.mjs "Name"=N` records a link. It refuses to point
+      two people at one Jira account, which would silently attribute one
+      person's work to the other.
 
-      | Display name | Login |
-      |---|---|
-      | `Madhavi Andoju` | madhavi.andoju |
-      | `Sai Krishna Akula` | saikrishna.akula |
-      | `Tiwari Satyam` | tiwari.satyam |
-      | `Syam Padala` | syam.padala |
-
-      `Sai Krishna Akula` carries a space that his login does not. The login and
-      display name need not match each other; the display name must match
-      across systems. Re-verify through Graph before creating accounts
-      elsewhere — a rename in M365 silently breaks attribution.
+      *Status:* `Syam Padala` is linked. The other three have no Atlassian
+      account yet, so they cannot be linked until they are invited to Jira and
+      accept.
 
 - [x] **6. SharePoint "Daily Status Tracker" list** — DONE 18 Sep 2026
       On the team site `https://syampadala.sharepoint.com/sites/ScrumTeamAlpha`

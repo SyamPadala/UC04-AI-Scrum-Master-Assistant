@@ -3,9 +3,20 @@
 export type JobType = 'reminder' | 'followup' | 'summary' | 'participation'
 
 export interface Member {
-  /** Entra object id. */
+  /** Entra object id — this person's identity in Microsoft 365 and Teams. */
   memberId: string
   displayName: string
+  /**
+   * This person's Jira account id (SPEC-002, item 5b).
+   *
+   * Stored explicitly rather than matched on display name or email: Jira names
+   * are owned by the person's own Atlassian profile and cannot be set by the
+   * site admin, and Jira hides other users' email addresses by default. Any
+   * matching scheme therefore breaks silently the moment someone is renamed.
+   * Undefined means the link has not been made; the code must treat that as
+   * "unknown", never as "no match".
+   */
+  jiraAccountId?: string
   /** Set when the app is installed for this person; without it they cannot be messaged. */
   conversationRef?: string
 }

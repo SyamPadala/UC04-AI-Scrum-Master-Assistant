@@ -1,22 +1,23 @@
 import express from 'express'
+import { createAgentRequestHandler } from '@microsoft/agents-hosting-express'
 import { config } from './config/env.js'
-import { adapter, agent, headerPropagation } from './bot/adapter.js'
+import { agent, authConfig } from './bot/adapter.js'
 import { firestoreReachable } from './store/firestore.js'
 import { runTick } from './jobs/tick.js'
 
 const app = express()
 app.use(express.json())
 
-// Teams delivers every activity here. The SDK verifies the request came from
-// Microsoft before the handler sees it.
-app.post('/api/messages', (request, response) => {
-  void adapter.process(
-    request as never,
-    response as never,
-    async (context) => { await agent.run(context) },
-    headerPropagation
-  )
-})
+/**
+ * Teams delivers every activity here.
+ *
+ * The SDK's own handler is used rather than calling the adapter directly: it
+ * applies the JWT authorization step that both verifies the request came from
+ * Microsoft and establishes the identity the app needs to reply. Wiring the
+ * adapter by hand skips that, and every reply then fails with a 401 while
+ * proactive messages — which carry their own credentials — keep working.
+ */
+app.post('/api/messages', createAgentRequestHandler(agent, authConfig) as never)
 
 /**
  * Cloud Scheduler heartbeat.
@@ -45,7 +46,7 @@ app.get('/health', (_request, response) => {
     response.json({
       status: 'ok',
       firestore: await firestoreReachable() ? 'ok' : 'unreachable',
-      version: '0.2.0'
+      version: '0.3.0'
     })
   })()
 })
