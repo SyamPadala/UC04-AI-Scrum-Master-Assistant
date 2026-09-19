@@ -84,7 +84,7 @@ now git-ignored. Do not commit it.**
 | Scheduler | Google Cloud Scheduler (one job every 5 min calls `/tick`) |
 | Data store | Google Firestore |
 | Secrets | Google Secret Manager |
-| Code / CI | GitHub Enterprise + GitHub Actions |
+| Code | GitHub. **No CI/CD** — deployment is a manual `gcloud run deploy` from Cloud Shell. Automated pipelines are disallowed on this engagement (19 Sep 2026). |
 | Local dev | VS Code; the app is reached through its Cloud Run URL |
 
 ---
@@ -237,7 +237,7 @@ Follow the daily cycle so a working slice exists early; build against mocks so a
 4. Excel Online and Jira comment trackers.
 5. Jira/ADO sprint data → Agent 2 (FR-07) → FR-08 distribution.
 6. FR-10 multi-team + admin Adaptive Card.
-7. Deploy: Cloud Run, Secret Manager, Cloud Scheduler, GitHub Actions.
+7. Deploy: Cloud Run, Secret Manager, Cloud Scheduler — all deployed by hand from Cloud Shell. No build automation.
 8. Prove: 2-team end-to-end, eval report, latency and run-log reports, README, setup guide, demo script.
 
 ---

@@ -55,7 +55,9 @@ Gemini via a provider adapter in `src/llm/` (`LLM_PROVIDER`: gemini | anthropic 
 vertex). Gemini is the approved substitute for Claude and is what ships (A12).
 **No fallback:** an LLM failure retries the same model, then fails explicitly.
 The program never substitutes its own output for the model's. ·
-Cloud Run · Cloud Scheduler · Firestore · Secret Manager · GitHub Actions.
+Cloud Run · Cloud Scheduler · Firestore · Secret Manager.
+**No CI/CD.** Automated build or deploy pipelines are disallowed on this
+engagement. Deployment is a manual `gcloud run deploy` run from Cloud Shell.
 
 ## Layout
 

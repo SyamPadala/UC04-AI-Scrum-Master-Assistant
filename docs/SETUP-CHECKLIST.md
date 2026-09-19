@@ -275,6 +275,13 @@ credit. These items are the services inside it.
       `service-account*.json` are all git-ignored. Re-check this before any
       future push that adds a credential-shaped file.
 
+      **No CI/CD on this engagement (19 Sep 2026).** Automated build and
+      deploy pipelines are disallowed. GitHub is used for source only.
+      Deployment is a manual `gcloud run deploy --source .` run by hand from
+      Cloud Shell, the browser terminal in the Google Cloud console. Do not
+      propose GitHub Actions, Cloud Build triggers or any deploy-on-push
+      arrangement.
+
 ## E. Fill the gaps already open in `.env`
 
 Checked 17 Sep 2026 — these keys exist but are still **empty**:
