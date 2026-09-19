@@ -124,6 +124,16 @@ silently understates completion (A6).
 
 - **Second message from the same member, same day.** That member's rows for the
   date are deleted and rewritten, not appended (A11).
+
+  **Decided 19 Sep 2026: replace, not combine.** The PRD assumption A11 says
+  multiple messages are "combined into one update", and replacing is not
+  combining — the earlier message's content is lost. Accepted knowingly for the
+  POC because the demo has each member sending one message per day, and
+  combining properly means reading the member's existing rows back out of the
+  tracker and re-extracting over the merged text, which needs the LLM.
+  If the demo changes to several messages per person per day, this decision
+  has to be revisited: `write()` would merge the existing rows with the new
+  extraction rather than deleting them.
 - **Blocker with no work item** ("no VPN access"). Its own row: `WIN` and
   `Description` empty, `Status` = `Blocked`, text in `AnyBlocker`, `Comment`
   empty (user decision, 18 Sep 2026 — the text is not duplicated).
