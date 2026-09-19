@@ -2,6 +2,26 @@ import { ActivityHandler, MessageFactory, type TurnContext } from '@microsoft/ag
 import type { StandupUpdate, Tracker } from '../trackers/types.js'
 import { localDate } from '../config/time.js'
 import { config } from '../config/env.js'
+import { saveConversationRef } from '../store/firestore.js'
+
+/**
+ * Stores what the app needs to message this person later.
+ *
+ * The reference is captured on every activity, not only on install: a member
+ * who was added to the team before the app existed still becomes reachable the
+ * first time they say anything.
+ */
+async function rememberSender (context: TurnContext): Promise<void> {
+  const from = context.activity.from
+  if (from?.id === undefined) return
+  const reference = context.activity.getConversationReference()
+  await saveConversationRef(
+    config.teams.teamId,
+    from.aadObjectId ?? from.id,
+    from.name ?? 'Unknown',
+    JSON.stringify(reference)
+  )
+}
 
 /**
  * First working slice: a member's message is captured and written to the tracker.
@@ -15,9 +35,11 @@ export class ScrumAssistant extends ActivityHandler {
     super()
 
     this.onMessage(async (context: TurnContext, next) => {
+      await rememberSender(context)
+
       const text = (context.activity.text ?? '').trim()
       const memberName = context.activity.from?.name ?? 'Unknown'
-      const memberId = context.activity.from?.id ?? ''
+      const memberId = context.activity.from?.aadObjectId ?? context.activity.from?.id ?? ''
 
       if (text === '') {
         await next()
@@ -25,7 +47,7 @@ export class ScrumAssistant extends ActivityHandler {
       }
 
       const update: StandupUpdate = {
-        teamId: context.activity.conversation?.id ?? 'unknown',
+        teamId: config.teams.teamId,
         memberId,
         memberName,
         localDate: localDate(new Date(), config.defaultTimezone),
@@ -60,6 +82,7 @@ export class ScrumAssistant extends ActivityHandler {
     this.onMembersAdded(async (context: TurnContext, next) => {
       for (const member of context.activity.membersAdded ?? []) {
         if (member.id !== context.activity.recipient?.id) {
+          await rememberSender(context)
           await context.sendActivity(MessageFactory.text(
             'Scrum Assistant is installed. Send me your status update and I will record it.'
           ))

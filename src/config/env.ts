@@ -54,6 +54,28 @@ export const config = {
     clientSecret: required('GRAPH_CLIENT_SECRET')
   },
 
+  gcp: {
+    projectId: required('GCP_PROJECT_ID'),
+    firestoreDatabase: optional('FIRESTORE_DATABASE', '(default)'),
+    /** Empty on Cloud Run, where the runtime service account is used instead. */
+    credentialsPath: optional('GOOGLE_APPLICATION_CREDENTIALS', '')
+  },
+
+  tick: {
+    /** Shared secret that stops anyone POSTing /tick and firing jobs. */
+    sharedSecret: required('TICK_SHARED_SECRET')
+  },
+
+  teams: {
+    /**
+     * The single team this deployment serves. FR-10 (multi-team) resolves the
+     * team from the incoming activity instead; until then one team is
+     * configured here so conversation references have somewhere to go.
+     */
+    teamId: required('TEAMS_TEAM_ID'),
+    stakeholderChannelId: optional('STAKEHOLDER_CHANNEL_ID', '')
+  },
+
   sharepoint: {
     siteId: required('SHAREPOINT_SITE_ID'),
     listId: required('SHAREPOINT_LIST_ID')

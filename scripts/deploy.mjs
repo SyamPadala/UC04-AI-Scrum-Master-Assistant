@@ -81,15 +81,29 @@ for (let i = 0; i < 60 && !built; i++) {
 if (!built) throw new Error('build did not finish within 10 minutes')
 console.log(' done')
 
-// 4. release, keeping the environment variables already on the service
+// 4. release.
+// Runtime configuration is taken from .env, except GOOGLE_APPLICATION_CREDENTIALS:
+// on Cloud Run the service runs as its own service account and must not be
+// handed a key file path that does not exist in the container.
+const RUNTIME_KEYS = [
+  'BOT_APP_ID', 'BOT_APP_PASSWORD', 'M365_TENANT_ID',
+  'GRAPH_CLIENT_ID', 'GRAPH_CLIENT_SECRET',
+  'SHAREPOINT_SITE_ID', 'SHAREPOINT_LIST_ID',
+  'GCP_PROJECT_ID', 'FIRESTORE_DATABASE',
+  'TEAMS_TEAM_ID', 'STAKEHOLDER_CHANNEL_ID',
+  'TICK_SHARED_SECRET', 'DEFAULT_TIMEZONE', 'DEFAULT_GRACE_MINUTES'
+]
+const missingKeys = RUNTIME_KEYS.filter((k) => (env[k] ?? '') === '')
+if (missingKeys.length > 0) throw new Error(`not set in .env: ${missingKeys.join(', ')}`)
+const runtimeEnv = RUNTIME_KEYS.map((name) => ({ name, value: env[name] }))
+
 const base = `https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/services/${SERVICE}`
-const current = await (await fetch(base, { headers: await headers() })).json()
 const release = await fetch(base, {
   method: 'PATCH',
   headers: await headers({ 'content-type': 'application/json' }),
   body: JSON.stringify({
     template: {
-      containers: [{ image: TAG, env: current.template.containers[0].env, resources: { limits: { cpu: '1', memory: '512Mi' } } }],
+      containers: [{ image: TAG, env: runtimeEnv, resources: { limits: { cpu: '1', memory: '512Mi' } } }],
       scaling: { minInstanceCount: 0, maxInstanceCount: 2 },
       timeout: '300s'
     }
