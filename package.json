@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
@@ -14,7 +16,8 @@
     "@microsoft/agents-hosting": "^1.8.1",
     "@microsoft/agents-hosting-express": "^1.8.1",
     "dotenv": "^16.4.5",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "google-auth-library": "^11.1.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
