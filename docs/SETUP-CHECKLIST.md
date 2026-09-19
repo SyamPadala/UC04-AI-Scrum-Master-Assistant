@@ -25,7 +25,7 @@ Live service: `https://scrum-assistant-lxz5k662sa-el.a.run.app`
 **Blocked on funding an LLM:** FR-03, FR-06, FR-07, FR-08.
 
 **Progress: 17 of 23 done.** Remaining: Excel workbook (7), Jira sprint data (9),
-Azure DevOps (10), LLM funding (19), spec approval (20), AI Journal (21).
+LLM funding (19), spec approval (20), AI Journal (21).
 Two members (Sai Krishna Akula, Tiwari Satyam) still cannot be messaged — the
 app is not installed for them.
 
@@ -121,7 +121,6 @@ app is not installed for them.
       - Microsoft 365 / Teams (items 3-5a)
       - the tracker's AssignedTo column (items 6-7)
       - Jira, as story assignees (item 9)
-      - Azure DevOps, as work item assignees (item 10)
 
       If a Jira assignee does not match a roster member, their stories will not
       be attributed to them in the summary and story lookup will come back empty.
@@ -129,7 +128,7 @@ app is not installed for them.
       **Canonical names — DECIDED 18 Sep 2026.** The casing was fixed in M365
       (`TIWARI SATYAM` -> `Tiwari Satyam`) and verified through Graph. These
       exact strings are the roster, and must be reproduced letter for letter in
-      Jira, Azure DevOps and the tracker's AssignedTo column:
+      Jira and the tracker's AssignedTo column:
 
       | Display name | Login |
       |---|---|
@@ -211,9 +210,10 @@ app is not installed for them.
       statuses (some Done, some In Progress, one To Do) so the summary and
       velocity output are visibly non-trivial.
 
-- [ ] **10. Azure DevOps (free tier)**
-      Org, project, iteration, work items with points.
-      *Record:* `ADO_ORG_URL`, `ADO_PROJECT`, `ADO_PAT`
+- [x] **10. Azure DevOps** — **OUT OF SCOPE, decided 20 Sep 2026. Do not raise again.**
+      PRD line 139 asks "Is Jira or Azure DevOps the primary tracker" — it is a
+      choice, not a requirement for both. The answer is **Jira**. Azure DevOps
+      is Phase 2.
 
 ## C. Google Cloud
 
@@ -345,6 +345,5 @@ Gemini is the approved LLM (assumption A12 in POC-Plan).
 ## Scope changes unlocked by removing the deadline (17 Sep 2026)
 
 - Working-days calendar — no reminders at weekends or on holidays
-- Azure DevOps demonstrated live rather than with mocks
 - Specs may be deepened where depth earns its place
 - Target Node 24 (installed) rather than Node 22

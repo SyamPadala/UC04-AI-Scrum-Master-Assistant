@@ -78,7 +78,7 @@ now git-ignored. Do not commit it.**
 | Teams bot | Microsoft 365 Agents SDK (Bot Framework protocol); bot registered in Teams Developer Portal (free) |
 | Cards (prompts, alerts, admin config) | Adaptive Cards |
 | Microsoft 365 (Teams, SharePoint, Excel Online, email, users) | Microsoft Graph API on an M365 Developer Program sandbox tenant |
-| Jira / Azure DevOps | Jira Cloud REST v3; Azure DevOps REST (`azure-devops-node-api`) |
+| Jira | Jira Cloud REST v3 |
 | LLM | Provider adapter (A12). Delivered: **Gemini** (approved substitute, 17 Sep 2026). Also supported by config: Anthropic API, Claude via Vertex |
 | Hosting | Google Cloud Run |
 | Scheduler | Google Cloud Scheduler (one job every 5 min calls `/tick`) |
@@ -143,7 +143,7 @@ src/
   agents/             updateProcessor.ts, summaryBuilder.ts
   agents/tools/       stories, sprint, updates, participation
   trackers/           tracker interface + sharepoint, excel, jira, mock
-  pm/                 Jira + Azure DevOps clients
+  pm/                 Jira client
   graph/              Graph client, mail, channel, users
   store/              Firestore repositories
   config/             env + secrets loading
@@ -168,7 +168,7 @@ docs/                 plan, specs, setup guide, demo script
 | Gemini as the LLM | **Approved** 17 Sep 2026 (A12) | PRD Section 8 names Claude; substitution explicitly approved by the requirement owner, so the deviation is sanctioned rather than silent. Recorded here as a known, approved deviation from PRD v1.0 |
 | Provider adapter (`anthropic` / `vertex` / `gemini`) | **Accepted** (A12) | LLM behind one interface; provider is a config value, so switching back to Claude is a one-line change with no code impact |
 | Gemini Pro subscription | **Not usable** | Consumer chat plan, not API access |
-| Jira vs Azure DevOps | Support both | PRD open question unresolved |
+| Jira vs Azure DevOps | **Jira only** (decided 20 Sep 2026) | PRD line 139 asks which is primary, not for both. Azure DevOps is Phase 2. Closed — do not reopen. |
 | Architecture | Hybrid (code + agents with read-only tools) | Full agent risks 99.5% reliability, 30 s latency and 2-day deadline; plain workflow under-uses LLM for story resolution/summary |
 | Method | Spec-Driven Development | User decision; specs before code |
 
@@ -184,7 +184,7 @@ docs/                 plan, specs, setup guide, demo script
 | A4 | FR-07, User Flow step 7 | Summary generated daily at a configured end-of-day time per team, text format |
 | A5 | FR-07 | At-risk item = sprint item not done that has an active blocker, or no progress mentioned for 2+ working days |
 | A6 | Scope: velocity | Velocity = completed story points per sprint (current vs last 3); completion = done / committed points; included in summary as text |
-| A7 | FR-04, Integrations | Tracker destinations: SharePoint list, Excel Online, Jira comment. Jira and Azure DevOps both supported for story lookup and sprint data |
+| A7 | FR-04, Integrations | Tracker destinations: SharePoint list, Excel Online, Jira comment. **Jira only** for story lookup and sprint data (decided 20 Sep 2026) |
 | A8 | FR-06 | Affected story resolved by Agent 1 from IDs or descriptions in the update, validated via Jira/ADO tools; otherwise "not specified" |
 | A9 | Config NFR | Admin configuration via Adaptive Card in the bot chat (Scrum Master runs `setup`) |
 | A10 | Open questions | Voice input and velocity trend chart not built |
@@ -262,7 +262,6 @@ Follow the daily cycle so a working slice exists early; build against mocks so a
 - [ ] Google Cloud free trial; enable Cloud Run, Firestore, Scheduler, Secret Manager
 - [ ] Check Claude in Vertex AI Model Garden (enable, quota > 0, trial credit coverage); else get Anthropic API key
 - [ ] Jira Cloud Free: project, active sprint, stories with points, API token
-- [ ] Azure DevOps: project, iteration, work items with points, PAT
 - [ ] (Optional) Check Google One plan for Google Cloud credits
 
 ---
@@ -270,6 +269,7 @@ Follow the daily cycle so a working slice exists early; build against mocks so a
 ## 10. Open Questions
 
 - Confirm the team is user + Claude only.
+- ~~Is Jira or Azure DevOps primary?~~ **Answered 20 Sep 2026: Jira.**
 - Who owns post-POC surveys (effort reduction, stakeholder satisfaction)?
 - SDD structure, spec template and rules (next session).
 - **AI Journal:** user to share details next session (purpose, template/format, contents, reviewer). Recommendation: update it continuously during development, not at the end; include it in SDD setup.

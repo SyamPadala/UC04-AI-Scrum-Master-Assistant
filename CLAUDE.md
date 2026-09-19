@@ -50,7 +50,7 @@ deterministic code.
 ## Stack
 
 TypeScript / Node.js 24 · Microsoft 365 Agents SDK · Adaptive Cards ·
-Microsoft Graph · Jira Cloud REST v3 + `azure-devops-node-api` ·
+Microsoft Graph · Jira Cloud REST v3 (Azure DevOps is out of scope) ·
 Gemini via a provider adapter in `src/llm/` (`LLM_PROVIDER`: gemini | anthropic |
 vertex). Gemini is the approved substitute for Claude and is what ships (A12).
 **No fallback:** an LLM failure retries the same model, then fails explicitly.
@@ -70,7 +70,7 @@ src/
   agents/             updateProcessor.ts, summaryBuilder.ts
   agents/tools/       stories, sprint, updates, participation (read-only)
   trackers/           tracker interface + sharepoint, excel, jira, mock
-  pm/                 Jira + Azure DevOps clients
+  pm/                 Jira client
   graph/              Graph client, mail, channel, users
   store/              Firestore repositories
   config/             env + secrets loading

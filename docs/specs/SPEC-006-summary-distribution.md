@@ -67,7 +67,7 @@ buildSummary(team: TeamConfig, localDate: string): Promise<DailySummary>;
 distributeSummary(team: TeamConfig, summary: DailySummary): Promise<DistributionResult>;
 ```
 
-Sprint data comes from Jira Cloud REST v3 or Azure DevOps, per team config
+Sprint data comes from Jira Cloud REST v3
 (A7 — both supported). Prompt in `src/agents/prompts/summaryBuilder.md`.
 
 ## Configuration
