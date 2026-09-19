@@ -1,7 +1,7 @@
 import { Firestore } from '@google-cloud/firestore'
 import { config } from '../config/env.js'
 import type {
-  JobType, NonResponderFlag, ParticipationRecord, RunLog, RunOutcome, TeamConfig
+  ConfigChange, JobType, NonResponderFlag, ParticipationRecord, RunLog, RunOutcome, TeamConfig
 } from '../types.js'
 
 /**
@@ -164,4 +164,36 @@ export async function saveFlag (flag: NonResponderFlag): Promise<void> {
   await db.collection('flags')
     .doc(flagId(flag.teamId, flag.memberId, flag.missedDates))
     .set(flag)
+}
+
+/** Today's job outcomes for the status card. */
+export async function runsForDate (
+  teamId: string, localDate: string
+): Promise<Array<{ jobType: string, outcome: string, detail?: string }>> {
+  const jobTypes: JobType[] = ['reminder', 'followup', 'summary', 'participation']
+  const refs = jobTypes.map((jobType) => db.collection('runs').doc(runId(teamId, localDate, jobType)))
+  const docs = await db.getAll(...refs)
+  const claimed = docs.filter((doc) => doc.exists).map((doc) => doc.data() as { jobType: JobType })
+
+  const results: Array<{ jobType: string, outcome: string, detail?: string }> = []
+  for (const claim of claimed) {
+    const logs = await db.collection('runLogs')
+      .where('teamId', '==', teamId)
+      .where('localDate', '==', localDate)
+      .where('jobType', '==', claim.jobType)
+      .get()
+    const latest = logs.docs
+      .map((doc) => doc.data() as RunLog)
+      .sort((a, b) => Number(b.startedAt) - Number(a.startedAt))[0]
+    results.push({
+      jobType: claim.jobType,
+      outcome: latest?.outcome ?? 'running',
+      ...(latest?.detail === undefined ? {} : { detail: latest.detail })
+    })
+  }
+  return results
+}
+
+export async function recordConfigChange (change: ConfigChange): Promise<void> {
+  await db.collection('configChanges').add(change)
 }

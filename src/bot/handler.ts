@@ -3,6 +3,7 @@ import type { StandupUpdate, Tracker } from '../trackers/types.js'
 import { localDate } from '../config/time.js'
 import { config } from '../config/env.js'
 import { saveConversationRef } from '../store/firestore.js'
+import { handleAdminCommand, handleCardSubmit, parseAdminCommand } from './admin.js'
 
 /**
  * Stores what the app needs to message this person later.
@@ -37,11 +38,31 @@ export class ScrumAssistant extends ActivityHandler {
     this.onMessage(async (context: TurnContext, next) => {
       await rememberSender(context)
 
+      // A card Save arrives as a message with no text and a value payload.
+      const submitted = context.activity.value
+      if (submitted !== undefined && submitted !== null && typeof submitted === 'object') {
+        const payload = submitted as Record<string, unknown>
+        if (payload.command === 'saveConfig') {
+          await handleCardSubmit(payload, context)
+          await next()
+          return
+        }
+      }
+
       const text = (context.activity.text ?? '').trim()
       const memberName = context.activity.from?.name ?? 'Unknown'
       const memberId = context.activity.from?.aadObjectId ?? context.activity.from?.id ?? ''
 
       if (text === '') {
+        await next()
+        return
+      }
+
+      // Admin words are commands, not stand-up updates. Checked before the
+      // tracker write so 'setup' never ends up recorded as someone's status.
+      const command = parseAdminCommand(text)
+      if (command !== undefined) {
+        await handleAdminCommand(command, context)
         await next()
         return
       }
@@ -84,7 +105,8 @@ export class ScrumAssistant extends ActivityHandler {
         if (member.id !== context.activity.recipient?.id) {
           await rememberSender(context)
           await context.sendActivity(MessageFactory.text(
-            'Scrum Assistant is installed. Send me your status update and I will record it.'
+            'Scrum Assistant is installed. Send me your status update and I will record it. ' +
+            'Type **help** to see what else I can do.'
           ))
         }
       }

@@ -70,3 +70,10 @@ export interface NonResponderFlag {
   missedDates: string[]
   flaggedAt: Date
 }
+
+export interface ConfigChange {
+  teamId: string
+  changedBy: string
+  changedAt: Date
+  fields: Array<{ field: string, from: unknown, to: unknown }>
+}

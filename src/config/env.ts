@@ -66,6 +66,11 @@ export const config = {
     sharedSecret: required('TICK_SHARED_SECRET')
   },
 
+  admin: {
+    /** Users who may configure any team, beyond that team's Scrum Master. */
+    userIds: optional('ADMIN_USER_IDS', '').split(',').map((id) => id.trim()).filter((id) => id !== '')
+  },
+
   teams: {
     /**
      * The single team this deployment serves. FR-10 (multi-team) resolves the
