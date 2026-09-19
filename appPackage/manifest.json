@@ -1,0 +1,36 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "0.1.0",
+  "id": "7683510c-5d82-41cf-bc22-9e02a4f49254",
+  "packageName": "com.syampadala.scrumassistant",
+  "developer": {
+    "name": "Syam Padala",
+    "websiteUrl": "https://github.com/SyamPadala/UC04-AI-Scrum-Master-Assistant",
+    "privacyUrl": "https://github.com/SyamPadala/UC04-AI-Scrum-Master-Assistant",
+    "termsOfUseUrl": "https://github.com/SyamPadala/UC04-AI-Scrum-Master-Assistant"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "Scrum Assistant",
+    "full": "AI-Powered Scrum Master Assistant"
+  },
+  "description": {
+    "short": "Collects daily stand-up updates and keeps the tracker current.",
+    "full": "Sends stand-up reminders, collects status updates in plain language, writes them to the Daily Status Tracker, escalates blockers to the Scrum Master and publishes a daily sprint summary."
+  },
+  "accentColor": "#2A6DB5",
+  "bots": [
+    {
+      "botId": "7683510c-5d82-41cf-bc22-9e02a4f49254",
+      "scopes": ["personal", "team"],
+      "supportsFiles": false,
+      "isNotificationOnly": false
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": []
+}
