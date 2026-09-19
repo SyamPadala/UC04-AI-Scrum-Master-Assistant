@@ -8,55 +8,90 @@
 
 ## 0. Session Status — Where We Left Off
 
-**Updated:** Fri 18 Sep 2026, evening
-**State:** Setup in progress, 8 of 23 checklist items done. Still no code.
+**Updated:** Sun 20 Sep 2026, end of day
+**State:** The assistant is built, deployed and running unattended on Cloud Run.
+Five of ten functional requirements are demonstrable on live infrastructure.
 
-**Done this session (17-18 Sep):**
-- M365 tenant users: 3 created (Madhavi Andoju, Tiwari Satyam, Saikrishna Akula),
-  Business Basic licences, role User. Trial has **25** licences, not 5.
-  One sign-in verified. 4th user / Scrum Master identity **still undecided**.
-- Teams team "Scrum Team Alpha" (private) with first channel
-  "Stakeholder Updates". Org-wide team "SyamPadala" was auto-created — ignore it.
-- Bot registered in Teams Developer Portal ("Scrum Assistant"). Endpoint address
-  deliberately empty until the app is deployed to Cloud Run.
-- SharePoint list "Daily Status Tracker" created on the team site
-  `syampadala.sharepoint.com:/sites/ScrumTeamAlpha`.
-- `.env` filled: `M365_TENANT_ID`, `TEAMS_TEAM_ID`, `STAKEHOLDER_CHANNEL_ID`,
-  `BOT_APP_ID`, `BOT_APP_PASSWORD`, `EXCEL_WORKSHEET=Status`.
+Live service: `https://scrum-assistant-lxz5k662sa-el.a.run.app`
+Repository: `https://github.com/SyamPadala/UC04-AI-Scrum-Master-Assistant` (public)
 
-**Tracker format changed by the user (18 Sep) — specs updated:**
-One row per work item, not one row per member per day. Columns:
-`Date`, `WIN`, `Description`, `AssignedTo`, `Comment`, `Status`
-(Choice: Completed / In Progress / Blocked), `AnyBlocker`.
-- `Description` = the work item's title, read from Jira/ADO by code.
-- `Comment` = the member's own words. Empty on a Blocked row (no duplication).
-- A blocker with no work item gets its own `Blocked` row.
-- A second message from the same member deletes and rewrites that member's rows
-  for the day (A11).
-SPEC-002 and SPEC-004 rewritten to match; SPEC-004 now carries the
-ExtractionOutput -> TrackerRow mapping. Both still **Draft**.
+### Working, proven end to end
 
-**Next (setup):** Entra app + Graph consent (item 8) -> Excel workbook (7) ->
-Firestore + service account (11, 13) -> member onboarding (5a).
-Items 9, 10, 18 can wait until the code needs them.
+| FR | What it does | Evidence |
+|---|---|---|
+| FR-01 | Sends stand-up reminders on schedule | Fired unattended at 22:55 on 19 Sep and again at 01:00 on 20 Sep, both delivered |
+| FR-02 | Accepts a reply written in plain language | Messages from two accounts recorded |
+| FR-04 | Writes the update to the SharePoint tracker | Rows visible in Daily Status Tracker |
+| FR-05 | Chases only those who have not replied | Correctly sent to nobody when both had replied |
+| FR-09 | Records participation, flags repeat non-responders | 50% rate recorded; two missed days raised one flag each, second run raised none |
+| NFR Configuration | Scrum Master changes settings from inside Teams | `setup` card saved 09:00 -> 01:00 and the reminder fired at the new time |
 
-**Next (build):** blocked on two things only — paste `GEMINI_API_KEY` and
-`LLM_MODEL` into `.env` (item 19), and approve the specs (item 20).
-SPEC-001..004 need nothing from Microsoft.
+Also working: `status`, `pause`, `resume`, `help`; replacement of a member's
+rows on a second message the same day (A11); idempotent jobs — two ticks in one
+window do the work once; members who cannot be messaged are named rather than
+silently skipped.
 
-**Open design point, not yet decided:** Graph's `ChannelMessage.Send` is
-delegated-only, so a background service cannot post the summary to a Teams
-channel through Graph. The bot must post it itself using its own channel
-reference. This changes item 8's permission list and SPEC-006.
+### Infrastructure, all verified
 
-**Still open:** 4th user / Scrum Master · AI Journal definition · POC-Plan
-Sections 2, 4, 6, 8, 9 still carry stale Node 22 / dev-program / Claude / Friday
-references.
+Cloud Run (asia-south1) · Cloud Scheduler hitting `/tick` every 5 minutes ·
+Firestore (`default`, asia-south1) · Entra app with four Graph permissions ·
+SharePoint list with corrected column internal names · Teams app published to
+the organisation catalogue · Jira Cloud connection · GitHub.
 
-**Local file `teamdetails.txt` holds test-user passwords in plain text. It is
-now git-ignored. Do not commit it.**
+Deployment is manual: `node scripts/deploy.mjs`. No CI/CD — automated pipelines
+are disallowed on this engagement.
 
-**No code has been written yet.**
+### Decided this session
+
+- **Azure DevOps is out of scope.** PRD line 139 asks which of Jira or ADO is
+  primary; the answer is Jira. Closed, not to be reopened.
+- **Dev Tunnel removed.** The app is reached at its Cloud Run URL.
+- **Replace, not combine**, for a second message the same day — recorded in
+  SPEC-002 with the condition that would force a revisit.
+- **Cross-system identity is stored, not matched.** `Member.jiraAccountId`
+  records the link explicitly. Jira display names belong to each person's own
+  Atlassian profile and cannot be set by the site admin; Jira hides other users'
+  email addresses. Every matching scheme breaks silently on a rename.
+
+### Blocked on one thing: an unfunded LLM
+
+FR-03 (extraction), FR-06 (blocker escalation), FR-07 (daily summary) and
+FR-08 (distribution) are all waiting on the same thing. The Gemini key is valid
+but every call returns `429 prepayment credits are depleted`; the grant is per
+account, so new keys and new projects fail identically. Needs billing activated
+(~$10 minimum top-up, actual usage around $3) or a funded Anthropic key.
+
+### Pending — user
+
+1. **Jira sprint data.** Create a sprint covering today (15–29 Sep), move in
+   SCRUM-22, 7, 6, 21, 20, 5, give each points and a status, assign all six to
+   Syam Padala. Agreed 20 Sep to test with one account; the other three need
+   Atlassian accounts only if per-person breakdown is wanted.
+2. **Fund the LLM.**
+3. **Install the app for Sai Krishna Akula and Tiwari Satyam** — they cannot be
+   messaged until then. Their passwords were changed, so this is on hold.
+4. **Approve SPEC-001..008** — still Draft. Code was written at the user's
+   explicit instruction while they remain so.
+5. **Excel workbook** — the drive id is already in `.env`.
+
+### Pending — build
+
+1. **Jira reading code** — active sprint, stories, points, statuses. Buildable
+   now; shows nothing until the sprint data exists.
+2. **Second team (FR-10)** — deferred by the user on 20 Sep. Needs the message
+   handler to resolve the team from the sender rather than from `.env`.
+3. **The four LLM requirements**, once funded.
+4. **Eight known deviations from the coding rules** — see `docs/KNOWN-DEBT.md`.
+   The user will say when. The one with a live failure mode is item 7: the
+   message handler reads the tracker from `.env` rather than the team record in
+   Firestore, which breaks the moment a second team exists.
+5. **Three secrets sit in plain text** in the Cloud Run configuration rather
+   than Secret Manager.
+
+### Known gap
+
+`teamdetails.txt` holds test-user passwords in plain text. Git-ignored, never
+committed, but present on a OneDrive-synced path.
 
 ---
 
