@@ -2,7 +2,7 @@
 
 The single source of truth for setup state. Read this first in a new session.
 
-**Last updated:** 18 Sep 2026
+**Last updated:** 19 Sep 2026
 **Focus right now:** setup only. No coding until setup is further along and the
 specs are approved (item 20).
 
@@ -13,16 +13,21 @@ in chat.
 
 ## Where we are in one line
 
-Tenant, 3 test users, the Teams team + stakeholder channel, the registered bot,
-the SharePoint tracker list and the Entra app all exist, a Graph write to the
-tracker list has been proven end to end, the Google Cloud side is built and
-tested, and the code is on GitHub. Next: approve the specs (20), then the
-Excel workbook (7) and Jira/ADO (9, 10). Items 17 and 5a cannot be finished
-until code exists; item 19 is blocked on funding an LLM.
+**The app is built, deployed and running unattended.** Cloud Scheduler wakes it
+every 5 minutes; it sends stand-up reminders, accepts a plain-language reply,
+writes it to the SharePoint tracker, and chases only those who have not replied.
+Proven live on 19 Sep 2026: the scheduler fired at 22:55 IST and delivered
+reminders to two members.
 
-**Progress: 13 of 23 done** (items 1, 2, 3, 4, 5, 6, 8, 11, 12, 13, 15, 16, 18).
-Item 14 deliberately skipped.
-Item 19 is **blocked** on funding an LLM — see item 19.
+Live service: `https://scrum-assistant-lxz5k662sa-el.a.run.app`
+
+**Demonstrable now:** FR-01, FR-02, FR-04, FR-05.
+**Blocked on funding an LLM:** FR-03, FR-06, FR-07, FR-08.
+
+**Progress: 17 of 23 done.** Remaining: Excel workbook (7), Jira sprint data (9),
+Azure DevOps (10), LLM funding (19), spec approval (20), AI Journal (21).
+Two members (Sai Krishna Akula, Tiwari Satyam) still cannot be messaged — the
+app is not installed for them.
 
 ---
 
