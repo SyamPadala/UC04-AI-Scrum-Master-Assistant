@@ -39,7 +39,10 @@ export class SharePointTracker implements Tracker {
     for (const row of update.rows) {
       await graphRequest('POST', `${this.base}/items`, {
         fields: {
-          [FIELD.date]: `${update.localDate}T00:00:00Z`,
+          // Midday, not midnight: SharePoint renders dates in the site's own
+          // timezone, and midnight UTC displays as the previous day anywhere
+          // west of UTC. Midday is the same calendar date from UTC-11 to UTC+11.
+          [FIELD.date]: `${update.localDate}T12:00:00Z`,
           [FIELD.win]: row.win ?? '',
           [FIELD.description]: row.description ?? '',
           [FIELD.assignedTo]: row.assignedTo,

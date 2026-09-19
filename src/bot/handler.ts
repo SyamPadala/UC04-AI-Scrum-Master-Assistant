@@ -1,10 +1,7 @@
 import { ActivityHandler, MessageFactory, type TurnContext } from '@microsoft/agents-hosting'
 import type { StandupUpdate, Tracker } from '../trackers/types.js'
-
-/** 'YYYY-MM-DD' for the given moment. Timezone handling arrives with SPEC-001. */
-function localDate (at: Date): string {
-  return at.toISOString().slice(0, 10)
-}
+import { localDate } from '../config/time.js'
+import { config } from '../config/env.js'
 
 /**
  * First working slice: a member's message is captured and written to the tracker.
@@ -31,7 +28,7 @@ export class ScrumAssistant extends ActivityHandler {
         teamId: context.activity.conversation?.id ?? 'unknown',
         memberId,
         memberName,
-        localDate: localDate(new Date()),
+        localDate: localDate(new Date(), config.defaultTimezone),
         rows: [{
           win: null,
           description: null,

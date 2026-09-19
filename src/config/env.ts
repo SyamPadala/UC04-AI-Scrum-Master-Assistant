@@ -38,6 +38,7 @@ function optional (name: string, fallback: string): string {
 export const config = {
   port: Number(optional('PORT', '3978')),
   dryRun: optional('DRY_RUN', 'false') === 'true',
+  defaultTimezone: optional('DEFAULT_TIMEZONE', 'Asia/Kolkata'),
 
   bot: {
     appId: required('BOT_APP_ID'),
