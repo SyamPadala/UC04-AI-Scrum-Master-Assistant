@@ -1,12 +1,33 @@
 import 'dotenv/config'
 
-/** Reads a required environment variable, failing loudly at startup rather than at first use. */
+const missing: string[] = []
+
+/**
+ * Reads a required environment variable.
+ *
+ * Every missing name is collected and reported together, because a container
+ * that exits on the first missing variable makes the operator redeploy once
+ * per variable to discover them all.
+ */
 function required (name: string): string {
   const value = process.env[name]
   if (value === undefined || value.trim() === '') {
-    throw new Error(`Missing required environment variable: ${name}`)
+    missing.push(name)
+    return ''
   }
   return value.trim()
+}
+
+/** Called once the whole config has been read, so the report is complete. */
+function assertComplete (): void {
+  if (missing.length === 0) return
+  const lines = [
+    `Cannot start: ${missing.length} required environment variable(s) are not set:`,
+    ...missing.map((name) => `  - ${name}`),
+    'Set them on the Cloud Run service (Variables & Secrets), or in .env when running locally.'
+  ]
+  console.error(lines.join('\n'))
+  process.exit(1)
 }
 
 function optional (name: string, fallback: string): string {
@@ -37,3 +58,5 @@ export const config = {
     listId: required('SHAREPOINT_LIST_ID')
   }
 } as const
+
+assertComplete()
