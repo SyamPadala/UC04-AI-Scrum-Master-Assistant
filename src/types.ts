@@ -28,6 +28,9 @@ export interface TeamConfig {
   summaryTime: string
   members: Member[]
   scrumMasterId: string
+  /** A3: missed days inside the rolling window before a member is flagged. */
+  habitualThreshold: number
+  habitualWindowDays: number
   tracker: TrackerConfig
   stakeholders: { channelId?: string, emails: string[] }
 }
@@ -42,4 +45,28 @@ export interface RunLog {
   startedAt: Date
   durationMs: number
   detail?: string
+}
+
+export interface ParticipationEntry {
+  memberId: string
+  memberName: string
+  status: 'responded' | 'missed'
+  respondedAt?: Date
+  withinGrace?: boolean
+}
+
+export interface ParticipationRecord {
+  teamId: string
+  localDate: string
+  entries: ParticipationEntry[]
+  /** 0..1, measured at the cut-off. */
+  rate: number
+}
+
+export interface NonResponderFlag {
+  teamId: string
+  memberId: string
+  memberName: string
+  missedDates: string[]
+  flaggedAt: Date
 }

@@ -62,6 +62,9 @@ const team = {
   standupTime,
   gracePeriodMinutes: Number(env.DEFAULT_GRACE_MINUTES || 120),
   summaryTime: '18:00',
+  // A3: two missed stand-ups inside a five-day window counts as habitual.
+  habitualThreshold: Number(process.env.HABITUAL_THRESHOLD ?? 2),
+  habitualWindowDays: Number(process.env.HABITUAL_WINDOW_DAYS ?? 5),
   scrumMasterId: scrumMaster.id,
   members: users.value.map((u) => ({
     memberId: u.id,

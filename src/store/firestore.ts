@@ -1,6 +1,8 @@
 import { Firestore } from '@google-cloud/firestore'
 import { config } from '../config/env.js'
-import type { JobType, RunLog, RunOutcome, TeamConfig } from '../types.js'
+import type {
+  JobType, NonResponderFlag, ParticipationRecord, RunLog, RunOutcome, TeamConfig
+} from '../types.js'
 
 /**
  * Firestore holds configuration, conversation references and run metadata only.
@@ -114,4 +116,52 @@ export async function completeRun (
  */
 export async function releaseRun (teamId: string, localDate: string, jobType: JobType): Promise<void> {
   await db.collection('runs').doc(runId(teamId, localDate, jobType)).delete()
+}
+
+export async function saveParticipation (record: ParticipationRecord): Promise<void> {
+  await db.collection('participation')
+    .doc(`${record.teamId}_${record.localDate}`)
+    .set(record)
+}
+
+/**
+ * The most recent days of participation for a team, newest first.
+ *
+ * Fetched by document name rather than with a where+orderBy query: that
+ * combination needs a composite index, and the document id already encodes
+ * team and date, so the ids can simply be computed.
+ */
+export async function recentParticipation (
+  teamId: string, days: number, timeZone: string, endingOn: Date = new Date()
+): Promise<ParticipationRecord[]> {
+  const dates: string[] = []
+  for (let back = 0; back < days; back++) {
+    const day = new Date(endingOn.getTime() - back * 86_400_000)
+    dates.push(new Intl.DateTimeFormat('en-CA', {
+      timeZone, year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(day))
+  }
+
+  const refs = dates.map((date) => db.collection('participation').doc(`${teamId}_${date}`))
+  const docs = await db.getAll(...refs)
+  return docs.filter((doc) => doc.exists).map((doc) => doc.data() as ParticipationRecord)
+}
+
+function flagId (teamId: string, memberId: string, missedDates: string[]): string {
+  // Keyed on the streak's first missed date, so one flag per streak rather
+  // than one per day (SPEC-007 behaviour 5).
+  return `${teamId}_${memberId}_${missedDates[0]}`
+}
+
+export async function alreadyFlagged (
+  teamId: string, memberId: string, missedDates: string[]
+): Promise<boolean> {
+  const doc = await db.collection('flags').doc(flagId(teamId, memberId, missedDates)).get()
+  return doc.exists
+}
+
+export async function saveFlag (flag: NonResponderFlag): Promise<void> {
+  await db.collection('flags')
+    .doc(flagId(flag.teamId, flag.memberId, flag.missedDates))
+    .set(flag)
 }

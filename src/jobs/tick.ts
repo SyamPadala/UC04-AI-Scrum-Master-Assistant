@@ -3,6 +3,7 @@ import { activeTeams, claimRun, completeRun, releaseRun } from '../store/firesto
 import { isDue } from './schedule.js'
 import { localDate } from '../config/time.js'
 import { sendFollowUps, sendReminders } from './reminder.js'
+import { flagHabitualNonResponders, recordParticipation } from './participation.js'
 import { SharePointTracker } from '../trackers/sharepoint.js'
 import type { Tracker } from '../trackers/types.js'
 
@@ -13,8 +14,8 @@ export interface TickEntry {
   detail?: string
 }
 
-/** Jobs that exist today. Summary and participation arrive with SPEC-006/007. */
-const JOBS: JobType[] = ['reminder', 'followup']
+/** Jobs that exist today. The summary arrives with SPEC-006 and the LLM. */
+const JOBS: JobType[] = ['reminder', 'followup', 'participation']
 
 function trackerFor (team: TeamConfig): Tracker {
   switch (team.tracker.kind) {
@@ -45,17 +46,30 @@ export async function runTick (now: Date = new Date()): Promise<TickEntry[]> {
 
       const startedAt = new Date()
       try {
-        const result = jobType === 'reminder'
-          ? await sendReminders(team)
-          : await sendFollowUps(team, trackerFor(team), today)
+        let outcome: RunOutcome
+        let detail: string
 
-        const outcome: RunOutcome =
-          result.failed > 0 ? 'partial'
+        if (jobType === 'participation') {
+          const record = await recordParticipation(team, trackerFor(team), today)
+          const flags = await flagHabitualNonResponders(team, today)
+          const percent = Math.round(record.rate * 100)
+          const responded = record.entries.filter((e) => e.status === 'responded').length
+          detail = `participation ${percent}% (${responded}/${record.entries.length})` +
+            (flags.length > 0 ? `; flagged ${flags.map((f) => f.memberName).join(', ')}` : '')
+          outcome = 'success'
+        } else {
+          const result = jobType === 'reminder'
+            ? await sendReminders(team)
+            : await sendFollowUps(team, trackerFor(team), today)
+
+          outcome = result.failed > 0 ? 'partial'
             : result.sent === 0 && result.skipped > 0 ? 'partial'
               : 'success'
+          detail = result.detail
+        }
 
-        await completeRun(team.teamId, today, jobType, outcome, startedAt, result.detail)
-        entries.push({ teamId: team.teamId, jobType, outcome, detail: result.detail })
+        await completeRun(team.teamId, today, jobType, outcome, startedAt, detail)
+        entries.push({ teamId: team.teamId, jobType, outcome, detail })
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error)
         // Log first, then release: the log is a separate document, so releasing
