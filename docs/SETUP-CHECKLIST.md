@@ -260,7 +260,12 @@ credit. These items are the services inside it.
 - [x] **15. Node 24, npm, git** — installed
 - [x] **16. Repo initialised** — `.gitignore`, `.env.example`, `.env` in place,
       first commit `39dc77d`
-- [ ] **17. Dev Tunnel** (VS Code extension) so Teams can reach the local service
+- [x] **17. Dev Tunnel** — **REMOVED from scope 19 Sep 2026, do not re-add**
+      A Dev Tunnel gives a laptop a temporary public web address so Teams can
+      reach an app running locally. It is a convenience for developers who want
+      to test without redeploying — it is not required.
+      The app is deployed to Cloud Run and the bot registration points at the
+      Cloud Run URL. One address, one place. Decision made by the user.
 - [x] **18. GitHub repository** + first push — DONE 18 Sep 2026
       `https://github.com/SyamPadala/UC04-AI-Scrum-Master-Assistant`
       Local branch renamed `master` -> `main` and rebased onto the

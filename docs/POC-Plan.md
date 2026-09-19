@@ -18,7 +18,7 @@
 - Teams team "Scrum Team Alpha" (private) with first channel
   "Stakeholder Updates". Org-wide team "SyamPadala" was auto-created — ignore it.
 - Bot registered in Teams Developer Portal ("Scrum Assistant"). Endpoint address
-  deliberately empty until the Dev Tunnel exists.
+  deliberately empty until the app is deployed to Cloud Run.
 - SharePoint list "Daily Status Tracker" created on the team site
   `syampadala.sharepoint.com:/sites/ScrumTeamAlpha`.
 - `.env` filled: `M365_TENANT_ID`, `TEAMS_TEAM_ID`, `STAKEHOLDER_CHANNEL_ID`,
@@ -37,7 +37,7 @@ SPEC-002 and SPEC-004 rewritten to match; SPEC-004 now carries the
 ExtractionOutput -> TrackerRow mapping. Both still **Draft**.
 
 **Next (setup):** Entra app + Graph consent (item 8) -> Excel workbook (7) ->
-Firestore + service account (11, 13) -> Dev Tunnel (17) -> member onboarding (5a).
+Firestore + service account (11, 13) -> member onboarding (5a).
 Items 9, 10, 18 can wait until the code needs them.
 
 **Next (build):** blocked on two things only — paste `GEMINI_API_KEY` and
@@ -85,7 +85,7 @@ now git-ignored. Do not commit it.**
 | Data store | Google Firestore |
 | Secrets | Google Secret Manager |
 | Code / CI | GitHub Enterprise + GitHub Actions |
-| Local dev | VS Code + Dev Tunnel |
+| Local dev | VS Code; the app is reached through its Cloud Run URL |
 
 ---
 
@@ -233,7 +233,7 @@ Follow the daily cycle so a working slice exists early; build against mocks so a
 
 1. Foundation: server, config, Firestore store, tracker interface + mock, Teams manifest.
 2. Agent 1 + eval set (~40 labelled updates) — riskiest part first; check accuracy and latency.
-3. Daily cycle locally (Dev Tunnel): FR-01 → FR-02 → FR-03 → FR-04 (SharePoint) → FR-06 → FR-05 → FR-09.
+3. Daily cycle on Cloud Run: FR-01 → FR-02 → FR-03 → FR-04 (SharePoint) → FR-06 → FR-05 → FR-09.
 4. Excel Online and Jira comment trackers.
 5. Jira/ADO sprint data → Agent 2 (FR-07) → FR-08 distribution.
 6. FR-10 multi-team + admin Adaptive Card.
@@ -280,7 +280,7 @@ Follow the daily cycle so a working slice exists early; build against mocks so a
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Account setup delays (sandbox eligibility) | Blocks real integrations | Build against mocks; local hosting via Dev Tunnel if Cloud Run is not ready |
+| Account setup delays | Blocks real integrations | Build against mocks until the accounts are ready |
 | Graph permission / proactive install issues | No reminders | Install app to Teams team to capture conversation references; sandbox admin consent |
 | Agent latency vs 30 s NFR | NFR miss | Capped tool iterations, tight timeout, smaller model if needed; measure early. No fallback path, so latency must be met by the model itself |
 | 2-day timeline incl. SDD setup | Features incomplete | Keep specs lean; build in daily-cycle order; Friday afternoon buffer |
