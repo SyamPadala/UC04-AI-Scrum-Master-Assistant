@@ -2,7 +2,7 @@
 
 The single source of truth for setup state. Read this first in a new session.
 
-**Last updated:** 19 Sep 2026
+**Last updated:** 20 Sep 2026
 **Focus right now:** setup only. No coding until setup is further along and the
 specs are approved (item 20).
 
@@ -24,7 +24,7 @@ Live service: `https://scrum-assistant-lxz5k662sa-el.a.run.app`
 **Demonstrable now:** FR-01, FR-02, FR-04, FR-05.
 **Blocked on funding an LLM:** FR-03, FR-06, FR-07, FR-08.
 
-**Progress: 17 of 23 done.** Remaining: Excel workbook (7), Jira sprint data (9),
+**Progress: 18 of 23 done.** Remaining: Excel workbook (7),
 LLM funding (19), spec approval (20), AI Journal (21).
 Two members (Sai Krishna Akula, Tiwari Satyam) still cannot be messaged — the
 app is not installed for them.
@@ -181,7 +181,8 @@ app is not installed for them.
 
 ## B. Project management tools
 
-- [ ] **9. Jira Cloud (free tier)** — connection DONE 18 Sep 2026, data NOT done
+- [x] **9. Jira Cloud (free tier)** — connection DONE 18 Sep 2026,
+      sprint data DONE 20 Sep 2026
       Site `https://demo-jira-validation.atlassian.net`, project `SCRUM`
       (AIDemo), board 1. Auth verified (HTTP Basic, `email:token`).
       `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` and
@@ -190,24 +191,33 @@ app is not installed for them.
       Story points live in `customfield_10016` ("Story point estimate").
       This ID is per-site, never hardcode it — see SPEC-002 Configuration.
 
-      **The sprint data does not yet support the features.** Audited 18 Sep:
-      - The active sprint "SCRUM Sprint 0" contains **0 issues**; all 9 sit in
-        the backlog. Agent 2 would find nothing, so FR-07 has no data.
-      - That sprint **ended 15 Sep**, three days before the audit. A5 (at-risk)
-        and A6 (velocity) both reason about progress against elapsed time.
-      - **Every issue is UNASSIGNED.** FR-07 cannot attribute work and FR-06
-        cannot resolve a blocker to a member's story (A8).
-      - Only 3 of 9 issues carry points, so completion and velocity are
-        meaningless.
-      - **Only one assignable Jira user exists (`syam`).** The three test users
-        have no Atlassian account, so they cannot be assigned anything. This is
-        the hard blocker — see item 5b.
+      **Sprint data now supports the features.** Sprint 0 closed; SCRUM Sprint 1
+      is active, 19 Sep -> 3 Oct, so it spans today and the elapsed-time
+      reasoning in A5 (at-risk) and A6 (velocity) has something to measure.
+      A sprint goal was set — "Onboarding orchestrator: screening, risk scoring
+      and notifications" — because FR-07 reports completion *against the goal*
+      and an empty goal renders as nothing.
 
-      *To finish:* invite the three members (free tier allows 10 users) with
-      display names matching M365 exactly; create a sprint spanning today;
-      put ~6 pointed issues in it, assigned across all four people, with mixed
-      statuses (some Done, some In Progress, one To Do) so the summary and
-      velocity output are visibly non-trivial.
+      | Issue | Points | Status |
+      |---|---|---|
+      | SCRUM-22 | 3 | Done |
+      | SCRUM-7 | 5 | Done |
+      | SCRUM-6 | 3 | In Progress |
+      | SCRUM-21 | 5 | In Progress |
+      | SCRUM-20 | 8 | In Progress |
+      | SCRUM-5 | 2 | To Do |
+
+      26 points committed, 8 done (31%), all six assigned, none unpointed.
+      SCRUM-8, 9, 10 deliberately left in the backlog — a sprint holding the
+      entire backlog is not a realistic picture.
+
+      **All six are assigned to the single Jira account `syam`**
+      (`5c108d9cdda509509755093a`), agreed 20 Sep: test with one account. The
+      other three members need Atlassian accounts only if a per-person
+      breakdown is wanted. Note the Jira display name is `syam`, not
+      "Syam Padala" — this is cosmetic. Nothing matches on name; the tracker
+      writes `Member.displayName` from the M365 roster, and Jira attribution
+      uses the stored `jiraAccountId`. See item 5b.
 
 - [x] **10. Azure DevOps** — **OUT OF SCOPE, decided 20 Sep 2026. Do not raise again.**
       PRD line 139 asks "Is Jira or Azure DevOps the primary tracker" — it is a

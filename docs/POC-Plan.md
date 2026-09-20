@@ -63,21 +63,22 @@ account, so new keys and new projects fail identically. Needs billing activated
 
 ### Pending — user
 
-1. **Jira sprint data.** Create a sprint covering today (15–29 Sep), move in
-   SCRUM-22, 7, 6, 21, 20, 5, give each points and a status, assign all six to
-   Syam Padala. Agreed 20 Sep to test with one account; the other three need
-   Atlassian accounts only if per-person breakdown is wanted.
-2. **Fund the LLM.**
-3. **Install the app for Sai Krishna Akula and Tiwari Satyam** — they cannot be
+1. **Fund the LLM.**
+2. **Install the app for Sai Krishna Akula and Tiwari Satyam** — they cannot be
    messaged until then. Their passwords were changed, so this is on hold.
-4. **Approve SPEC-001..008** — still Draft. Code was written at the user's
+3. **Approve SPEC-001..008** — still Draft. Code was written at the user's
    explicit instruction while they remain so.
-5. **Excel workbook** — the drive id is already in `.env`.
+4. **Excel workbook** — the drive id is already in `.env`.
+
+*Done 20 Sep: Jira sprint data.* SCRUM Sprint 1 is active, 19 Sep -> 3 Oct,
+26 points committed, 8 done, all six issues assigned and pointed, sprint goal
+set. See SETUP-CHECKLIST item 9.
 
 ### Pending — build
 
-1. **Jira reading code** — active sprint, stories, points, statuses. Buildable
-   now; shows nothing until the sprint data exists.
+1. **Jira read layer** (`src/pm/jira.ts`) — active sprint, stories, points,
+   statuses, assignees, velocity history. In progress 20 Sep. The sprint data
+   it reads now exists, so it is verifiable against real values.
 2. **Second team (FR-10)** — deferred by the user on 20 Sep. Needs the message
    handler to resolve the team from the sender rather than from `.env`.
 3. **The four LLM requirements**, once funded.
