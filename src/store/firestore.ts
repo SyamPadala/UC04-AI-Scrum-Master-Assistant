@@ -187,6 +187,19 @@ export async function saveFlag (flag: NonResponderFlag): Promise<void> {
     .set(flag)
 }
 
+/**
+ * Whether the day's summary has already run for this team (A14).
+ *
+ * The claim is written when the summary starts, so this is true whether it
+ * built successfully or not. That is deliberate: the day's record has been
+ * taken either way, and a closing time that depends on whether a job
+ * succeeded cannot be explained to a team.
+ */
+export async function summaryHasRun (teamId: string, localDate: string): Promise<boolean> {
+  const doc = await db.collection('runs').doc(runId(teamId, localDate, 'summary')).get()
+  return doc.exists
+}
+
 /** Today's job outcomes for the status card. */
 export async function runsForDate (
   teamId: string, localDate: string

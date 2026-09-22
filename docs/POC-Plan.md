@@ -203,6 +203,7 @@ docs/                 plan, specs, setup guide, demo script
 | Jira vs Azure DevOps | **Jira only** (decided 20 Sep 2026) | PRD line 139 asks which is primary, not for both. Azure DevOps is Phase 2. Closed — do not reopen. |
 | Architecture | Hybrid (code + agents with read-only tools) | Full agent risks 99.5% reliability, 30 s latency and 2-day deadline; plain workflow under-uses LLM for story resolution/summary |
 | Method | Spec-Driven Development | User decision; specs before code |
+| Updates after the summary | **Rejected. The stand-up closes when the summary is sent** (decided 22 Sep 2026) | A stand-up needs a real closing time; accepting updates all day teaches the team there is no deadline. Rollover to the next day was considered and rejected: it lets a member stay permanently a day behind while never being chased or flagged. The PRD is silent on late replies, so this is the user's decision, not a requirement |
 
 ---
 
@@ -223,6 +224,7 @@ docs/                 plan, specs, setup guide, demo script
 | A11 | FR-02 | Multiple messages from a member on the same day are combined into one update |
 | A12 | Section 8 (LLM) | PRD names Claude; **Gemini approved as substitute by the requirement owner, 17 Sep 2026**. The LLM sits behind a provider adapter (`anthropic` / `vertex` / `gemini`) so the choice is a config value. FR-03 accuracy is measured and reported against whichever provider is actually delivered |
 | A13 | Privacy NFR | "No retention in LLM training data" is satisfied only on a paid or enterprise tier. If the delivered LLM runs on a free tier whose terms permit training on submitted data, this is reported as a known NFR gap, and the POC is demonstrated with synthetic data only |
+| A14 | FR-02, FR-05, FR-09 | The day closes when the summary job runs. A member who messages after that is told the stand-up is closed and to speak to the Scrum Master; nothing is written to the tracker and they are counted as missed. The day closes whether or not the summary built successfully, because the day's record has been taken either way. Decided 22 Sep 2026 |
 
 ---
 
@@ -303,6 +305,10 @@ Follow the daily cycle so a working slice exists early; build against mocks so a
 - Confirm the team is user + Claude only.
 - ~~Is Jira or Azure DevOps primary?~~ **Answered 20 Sep 2026: Jira.**
 - Who owns post-POC surveys (effort reduction, stakeholder satisfaction)?
+- **Should a second follow-up be sent?** FR-05 specifies one, and the PRD never mentions another. Raised 22 Sep 2026.
+- **Should the summary name the members who never replied?** FR-07 lists what the summary contains and non-responders are not in the list. Raised 22 Sep 2026.
+- **Should a member confirm the work item the LLM picked before the tracker is written?** User's proposal, 22 Sep 2026. The PRD's own mitigation for this risk is different — Scrum Master review after the fact. Not decided; the user asked to discuss it later.
+- **Should the summary show work reported complete that Jira still shows open?** Completion and velocity are read from Jira, so the summary understates progress until someone moves the ticket. Harmless mid-sprint, permanent if it happens at the sprint boundary. Raised 22 Sep 2026.
 - SDD structure, spec template and rules (next session).
 - **AI Journal:** user to share details next session (purpose, template/format, contents, reviewer). Recommendation: update it continuously during development, not at the end; include it in SDD setup.
 

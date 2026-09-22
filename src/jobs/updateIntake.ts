@@ -5,6 +5,7 @@ import type { StandupUpdate, Tracker, TrackerRow } from '../trackers/types.js'
 import type { ExtractionOutput } from '../agents/schema.js'
 import { extractUpdate } from '../agents/updateProcessor.js'
 import { sendBlockerAlert } from './blockerAlert.js'
+import { summaryHasRun } from '../store/firestore.js'
 import { config } from '../config/env.js'
 
 /**
@@ -160,16 +161,39 @@ async function resolveStories (output: ExtractionOutput, pm: PmClient, known: St
   return stories
 }
 
+/**
+ * Raised when a member messages after the day's summary has gone out (A14).
+ *
+ * The stand-up closes when the summary runs: nothing is written to the tracker
+ * and the member is sent to their Scrum Master. Thrown before the model is
+ * called, so a message that will not be recorded is never paid for.
+ */
+export class StandupClosedError extends Error {
+  constructor (public readonly localDate: string) {
+    super(`the stand-up for ${localDate} closed when the summary was sent`)
+    this.name = 'StandupClosedError'
+  }
+}
+
 export async function processUpdate (
   team: TeamConfig,
   memberId: string,
   memberName: string,
   text: string,
   localDate: string,
-  deps: { llm: LlmClient, pm: PmClient, tracker: Tracker }
+  deps: {
+    llm: LlmClient
+    pm: PmClient
+    tracker: Tracker
+    /** Injected in tests; the store is the real source. */
+    summaryHasRun?: (teamId: string, localDate: string) => Promise<boolean>
+  }
 ): Promise<IntakeResult> {
   const receivedAt = new Date()
   const member = team.members.find((entry) => entry.memberId === memberId)
+
+  const closed = await (deps.summaryHasRun ?? summaryHasRun)(team.teamId, localDate)
+  if (closed) throw new StandupClosedError(localDate)
 
   const extraction = await extractUpdate(
     {

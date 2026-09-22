@@ -7,8 +7,19 @@ import { localDate } from '../config/time.js'
 import { config } from '../config/env.js'
 import { saveChannelRef, saveConversationRef, teamForMember } from '../store/firestore.js'
 import { trackerFor } from '../trackers/factory.js'
-import { processUpdate } from '../jobs/updateIntake.js'
+import { processUpdate, StandupClosedError } from '../jobs/updateIntake.js'
 import { handleAdminCommand, handleCardSubmit, parseAdminCommand } from './admin.js'
+
+/**
+ * What a member is told once the day has closed (A14).
+ *
+ * Names the Scrum Master as the way through, so the message is an instruction
+ * rather than a refusal. Kept here as one string: the wording is the Scrum
+ * Master's to change, and there is only one place to change it.
+ */
+const CLOSED_NOTICE =
+  "Today's stand-up is closed — the daily summary has already gone out, so I have not recorded that. " +
+  'Please speak to your Scrum Master about anything you still need to report.'
 
 /**
  * Stores what the app needs to message this person later.
@@ -159,6 +170,15 @@ export class ScrumAssistant extends ActivityHandler {
       }
       await context.sendActivity(MessageFactory.text(parts.join(' ')))
     } catch (error) {
+      // A14: closing time is not a failure. The member is told plainly where
+      // to go instead, and nothing is recorded for the day.
+      if (error instanceof StandupClosedError) {
+        console.log(JSON.stringify({
+          event: 'update.standupClosed', teamId: team.teamId, memberId, localDate: today
+        }))
+        await context.sendActivity(MessageFactory.text(CLOSED_NOTICE))
+        return
+      }
       await this.reportFailure(context, memberId, error)
     }
   }
