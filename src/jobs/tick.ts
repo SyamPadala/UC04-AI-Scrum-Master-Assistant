@@ -59,64 +59,93 @@ export async function runTick (
     for (const jobType of JOBS) {
       if (!isDue(team, jobType, now)) continue
       if (!await claimRun(team.teamId, today, jobType)) continue
-
-      const startedAt = new Date()
-      try {
-        let outcome: RunOutcome
-        let detail: string
-
-        if (jobType === 'participation') {
-          const record = await recordParticipation(team, trackerFor(team), today)
-          const flags = await flagHabitualNonResponders(team, today)
-          const percent = Math.round(record.rate * 100)
-          const responded = record.entries.filter((e) => e.status === 'responded').length
-          detail = `participation ${percent}% (${responded}/${record.entries.length})` +
-            (flags.length > 0 ? `; flagged ${flags.map((f) => f.memberName).join(', ')}` : '')
-          outcome = 'success'
-        } else if (jobType === 'summary') {
-          const result = await runSummary(team, today, { llm, pm, tracker: trackerFor(team) })
-          // Reaching one of the two stakeholder routes is a real outcome, not a
-          // failure — SPEC-006 item 8 keeps the half that worked.
-          outcome = result.distribution.channel === 'sent' && result.distribution.email === 'sent'
-            ? 'success'
-            : result.distribution.channel === 'sent' || result.distribution.email === 'sent'
-              ? 'partial'
-              : 'failed'
-          detail = result.distribution.detail
-        } else {
-          const result = jobType === 'reminder'
-            ? await sendReminders(team)
-            : await sendFollowUps(team, trackerFor(team), today)
-
-          outcome = result.failed > 0 ? 'partial'
-            : result.sent === 0 && result.skipped > 0 ? 'partial'
-              : 'success'
-          detail = result.detail
-        }
-
-        await completeRun(team.teamId, today, jobType, outcome, startedAt, detail)
-        entries.push({ teamId: team.teamId, jobType, outcome, detail })
-      } catch (error) {
-        const detail = error instanceof Error ? error.message : String(error)
-        // Log first, then release: the log is a separate document, so releasing
-        // afterwards leaves no claim behind and the next tick retries.
-        await completeRun(team.teamId, today, jobType, 'failed', startedAt, detail)
-
-        // A spent budget or a switched-off model will fail identically on the
-        // next tick. Releasing the claim would retry it every five minutes
-        // until midnight — 288 attempts at a problem only a person can fix.
-        const willRecur = error instanceof LlmBudgetError || error instanceof LlmOfflineError
-        if (!willRecur) await releaseRun(team.teamId, today, jobType)
-
-        entries.push({
-          teamId: team.teamId,
-          jobType,
-          outcome: 'failed',
-          detail: willRecur ? `${detail} (not retried today)` : detail
-        })
-      }
+      entries.push(await runClaimedJob(team, jobType, today, llm, pm))
     }
   }
 
   return entries
+}
+
+/**
+ * Runs one job that has already been claimed, and records what happened.
+ *
+ * Shared by the scheduler and by the `run` command so that triggering a job by
+ * hand exercises the same code path the scheduler uses. A test that ran
+ * something else would prove nothing.
+ */
+async function runClaimedJob (
+  team: TeamConfig, jobType: JobType, today: string, llm: LlmClient, pm: PmClient
+): Promise<TickEntry> {
+  const startedAt = new Date()
+  try {
+    let outcome: RunOutcome
+    let detail: string
+
+    if (jobType === 'participation') {
+      const record = await recordParticipation(team, trackerFor(team), today)
+      const flags = await flagHabitualNonResponders(team, today)
+      const percent = Math.round(record.rate * 100)
+      const responded = record.entries.filter((e) => e.status === 'responded').length
+      detail = `participation ${percent}% (${responded}/${record.entries.length})` +
+        (flags.length > 0 ? `; flagged ${flags.map((f) => f.memberName).join(', ')}` : '')
+      outcome = 'success'
+    } else if (jobType === 'summary') {
+      const result = await runSummary(team, today, { llm, pm, tracker: trackerFor(team) })
+      // Reaching one of the two stakeholder routes is a real outcome, not a
+      // failure — SPEC-006 item 8 keeps the half that worked.
+      outcome = result.distribution.channel === 'sent' && result.distribution.email === 'sent'
+        ? 'success'
+        : result.distribution.channel === 'sent' || result.distribution.email === 'sent'
+          ? 'partial'
+          : 'failed'
+      detail = result.distribution.detail
+    } else {
+      const result = jobType === 'reminder'
+        ? await sendReminders(team)
+        : await sendFollowUps(team, trackerFor(team), today)
+
+      outcome = result.failed > 0 ? 'partial'
+        : result.sent === 0 && result.skipped > 0 ? 'partial'
+          : 'success'
+      detail = result.detail
+    }
+
+    await completeRun(team.teamId, today, jobType, outcome, startedAt, detail)
+    return { teamId: team.teamId, jobType, outcome, detail }
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    // Log first, then release: the log is a separate document, so releasing
+    // afterwards leaves no claim behind and the next tick retries.
+    await completeRun(team.teamId, today, jobType, 'failed', startedAt, detail)
+
+    // A spent budget or a switched-off model will fail identically on the
+    // next tick. Releasing the claim would retry it every five minutes
+    // until midnight — 288 attempts at a problem only a person can fix.
+    const willRecur = error instanceof LlmBudgetError || error instanceof LlmOfflineError
+    if (!willRecur) await releaseRun(team.teamId, today, jobType)
+
+    return {
+      teamId: team.teamId,
+      jobType,
+      outcome: 'failed',
+      detail: willRecur ? `${detail} (not retried today)` : detail
+    }
+  }
+}
+
+/**
+ * Runs one job immediately, whether or not it is due and whether or not it has
+ * already run today. Triggered by the `run` command.
+ *
+ * A development aid: the daily cycle is built to happen once at a set time, so
+ * testing it otherwise means waiting for the clock. Any existing claim for the
+ * day is dropped first, so the job can be run repeatedly.
+ */
+export async function runJobNow (
+  team: TeamConfig, jobType: JobType, now: Date = new Date()
+): Promise<TickEntry> {
+  const today = localDate(now, team.timezone)
+  await releaseRun(team.teamId, today, jobType)
+  await claimRun(team.teamId, today, jobType)
+  return await runClaimedJob(team, jobType, today, createLlm(), jiraClient())
 }

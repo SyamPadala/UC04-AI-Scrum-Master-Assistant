@@ -4,15 +4,31 @@ import { adminSetupCard, adminStatusCard } from '../cards/adminCards.js'
 import { getTeam, recordConfigChange, runsForDate, saveTeam } from '../store/firestore.js'
 import { localDate } from '../config/time.js'
 import { config } from '../config/env.js'
+import { runJobNow } from '../jobs/tick.js'
+import type { JobType } from '../types.js'
 
-export type AdminCommand = 'setup' | 'status' | 'pause' | 'resume' | 'help'
+export type AdminCommand = 'setup' | 'status' | 'pause' | 'resume' | 'help' | 'run'
 
 const COMMANDS: AdminCommand[] = ['setup', 'status', 'pause', 'resume', 'help']
+
+const JOB_TYPES: JobType[] = ['reminder', 'followup', 'summary', 'participation']
 
 /** Recognises an admin command, or returns undefined if this is an ordinary message. */
 export function parseAdminCommand (text: string): AdminCommand | undefined {
   const word = text.trim().toLowerCase()
-  return COMMANDS.find((c) => c === word)
+  const exact = COMMANDS.find((c) => c === word)
+  if (exact !== undefined) return exact
+
+  // 'run' takes one word after it. Anything longer is a sentence a member
+  // wrote — "run through the backlog with me" is an update, not a command,
+  // and treating it as one would silently lose their day's work.
+  return /^run(\s+\S+)?$/.test(word) ? 'run' : undefined
+}
+
+/** The job named after `run`, or undefined when it is missing or not a job. */
+export function parseJobArgument (text: string): JobType | undefined {
+  const argument = text.trim().toLowerCase().replace(/^run\s*/, '').trim()
+  return JOB_TYPES.find((job) => job === argument)
 }
 
 /** Only the team's Scrum Master, or a configured admin, may change settings. */
@@ -35,7 +51,8 @@ export async function handleAdminCommand (command: AdminCommand, context: TurnCo
     await context.sendActivity(MessageFactory.text(
       'I record your stand-up update — just tell me what you worked on.\n\n' +
       'The Scrum Master can also use: **setup** to change settings, **status** to see ' +
-      'what ran today, and **pause** / **resume** to stop and restart the daily messages.'
+      'what ran today, **pause** / **resume** to stop and restart the daily messages, ' +
+      'and **run reminder** (or followup, summary, participation) to trigger one now.'
     ))
     return
   }
@@ -53,6 +70,32 @@ export async function handleAdminCommand (command: AdminCommand, context: TurnCo
     await context.sendActivity(MessageFactory.text(
       'Only the Scrum Master can change these settings.'
     ))
+    return
+  }
+
+  // A development aid, not part of the daily cycle: the scheduler runs each job
+  // once at its set time, so testing one otherwise means waiting for the clock.
+  // Runs the same code the scheduler runs, and works while paused.
+  if (command === 'run') {
+    const jobType = parseJobArgument(context.activity.text ?? '')
+    if (jobType === undefined) {
+      await context.sendActivity(MessageFactory.text(
+        `Tell me which one to run: ${JOB_TYPES.map((j) => `**run ${j}**`).join(', ')}.`
+      ))
+      return
+    }
+
+    await context.sendActivity(MessageFactory.text(`Running the ${jobType} now...`))
+    try {
+      const entry = await runJobNow(team, jobType)
+      await context.sendActivity(MessageFactory.text(
+        `${jobType}: ${entry.outcome}${entry.detail === undefined ? '' : ` — ${entry.detail}`}`
+      ))
+    } catch (error) {
+      await context.sendActivity(MessageFactory.text(
+        `The ${jobType} could not be run: ${error instanceof Error ? error.message : String(error)}`
+      ))
+    }
     return
   }
 
