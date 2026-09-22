@@ -3,7 +3,6 @@
   "manifestVersion": "1.17",
   "version": "0.1.0",
   "id": "7683510c-5d82-41cf-bc22-9e02a4f49254",
-  "packageName": "com.syampadala.scrumassistant",
   "developer": {
     "name": "Syam Padala",
     "websiteUrl": "https://github.com/SyamPadala/UC04-AI-Scrum-Master-Assistant",
@@ -26,11 +25,17 @@
   "bots": [
     {
       "botId": "7683510c-5d82-41cf-bc22-9e02a4f49254",
-      "scopes": ["personal", "team"],
+      "scopes": [
+        "personal",
+        "team"
+      ],
       "supportsFiles": false,
       "isNotificationOnly": false
     }
   ],
-  "permissions": ["identity", "messageTeamMembers"],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
   "validDomains": []
 }
