@@ -8,86 +8,82 @@
 
 ## 0. Session Status — Where We Left Off
 
-**Updated:** Sun 20 Sep 2026, end of day
-**State:** The assistant is built, deployed and running unattended on Cloud Run.
-Five of ten functional requirements are demonstrable on live infrastructure.
+**Updated:** Mon 21 Sep 2026 (reconciled 22 Sep 2026 against the session log)
+**State:** All ten functional requirements are implemented **and deployed**.
+The LLM is funded and working; FR-03 is measured at 92.5% against the eval set.
 
 Live service: `https://scrum-assistant-lxz5k662sa-el.a.run.app`
 Repository: `https://github.com/SyamPadala/UC04-AI-Scrum-Master-Assistant` (public)
 
-### Working, proven end to end
+### Implemented and evidenced
 
 | FR | What it does | Evidence |
 |---|---|---|
-| FR-01 | Sends stand-up reminders on schedule | Fired unattended at 22:55 on 19 Sep and again at 01:00 on 20 Sep, both delivered |
+| FR-01 | Sends stand-up reminders on schedule | Fired unattended 19 and 20 Sep, both delivered |
 | FR-02 | Accepts a reply written in plain language | Messages from two accounts recorded |
+| FR-03 | Extracts completed / in progress / blockers | **92.5% on 40 labelled updates**, `eval/last-run.json` |
 | FR-04 | Writes the update to the SharePoint tracker | Rows visible in Daily Status Tracker |
 | FR-05 | Chases only those who have not replied | Correctly sent to nobody when both had replied |
-| FR-09 | Records participation, flags repeat non-responders | 50% rate recorded; two missed days raised one flag each, second run raised none |
-| NFR Configuration | Scrum Master changes settings from inside Teams | `setup` card saved 09:00 -> 01:00 and the reminder fired at the new time |
+| FR-06 | DMs the Scrum Master when a blocker is reported | Built and deployed 21 Sep; not yet demonstrated live |
+| FR-07 | Builds the daily consolidated summary | Ran unattended on the server at 21:55 on 21 Sep and built a summary |
+| FR-08 | Posts it to the channel and emails stakeholders | Built and deployed 21 Sep; delivery reached nobody — no stakeholder channel reference stored, no stakeholder emails, `SUMMARY_SENDER_USER_ID` unset |
+| FR-09 | Records participation, flags repeat non-responders | 50% rate recorded; one flag raised, repeat suppressed |
+| FR-10 | Resolves the team from the sender, per-team tracker | Code path built; a second team is not yet configured |
+| NFR Latency | Update received to tracker written | Worst case 7.8 s of a 30 s budget |
+| NFR Configuration | Scrum Master changes settings from inside Teams | `setup` card saved 09:00 -> 01:00, reminder fired at the new time |
 
-Also working: `status`, `pause`, `resume`, `help`; replacement of a member's
-rows on a second message the same day (A11); idempotent jobs — two ticks in one
-window do the work once; members who cannot be messaged are named rather than
-silently skipped.
+Also working: `status`, `pause`, `resume`, `help`; merging of a member's rows
+across several messages on the same day (A11, `mergeRows()`); idempotent jobs;
+members who cannot be messaged are named rather than silently skipped.
 
-### Infrastructure, all verified
+### The LLM, and what it costs
 
-Cloud Run (asia-south1) · Cloud Scheduler hitting `/tick` every 5 minutes ·
-Firestore (`default`, asia-south1) · Entra app with four Graph permissions ·
-SharePoint list with corrected column internal names · Teams app published to
-the organisation catalogue · Jira Cloud connection · GitHub.
+Billing was activated on the existing Gemini project on 21 Sep 2026 and the key
+in `.env` began working unchanged. `gemini-3.5-flash-lite` clears the FR-03
+target, so nothing more expensive is needed.
 
-Deployment is manual: `node scripts/deploy.mjs`. No CI/CD — automated pipelines
-are disallowed on this engagement.
+Three guards sit in front of every model call, in `src/llm/`:
 
-### Decided this session
+| Guard | Setting | Why |
+|---|---|---|
+| Recorded responses | `LLM_CACHE` | Replays a previous answer to the same request, free. Testing fifty times costs what testing once costs. |
+| Live switch | `LLM_LIVE`, **off by default** | A cache miss fails loudly rather than silently billing. Separate from `DRY_RUN`, which only stops Teams messages. |
+| Daily ceiling | `LLM_MAX_CALLS_PER_DAY`, default 200 | Counted in Firestore, so a Cloud Run restart cannot reset it. Billing alerts lag 24-48 hours; this acts in time. |
 
-- **Azure DevOps is out of scope.** PRD line 139 asks which of Jira or ADO is
-  primary; the answer is Jira. Closed, not to be reopened.
-- **Dev Tunnel removed.** The app is reached at its Cloud Run URL.
-- **Replace, not combine**, for a second message the same day — recorded in
-  SPEC-002 with the condition that would force a revisit.
-- **Cross-system identity is stored, not matched.** `Member.jiraAccountId`
-  records the link explicitly. Jira display names belong to each person's own
-  Atlassian profile and cannot be set by the site admin; Jira hides other users'
-  email addresses. Every matching scheme breaks silently on a rename.
+Every call's token counts are recorded in `llmUsage/{date}` — counts only, never
+content. The whole of 21 Sep, including a failed first run, the full 40-case
+eval and the evening's build, came to **59 calls and 61,975 tokens**.
 
-### Blocked on one thing: an unfunded LLM
+### Not yet done
 
-FR-03 (extraction), FR-06 (blocker escalation), FR-07 (daily summary) and
-FR-08 (distribution) are all waiting on the same thing. The Gemini key is valid
-but every call returns `429 prepayment credits are depleted`; the grant is per
-account, so new keys and new projects fail identically. Needs billing activated
-(~$10 minimum top-up, actual usage around $3) or a funded Anthropic key.
-
-### Pending — user
-
-1. **Fund the LLM.**
-2. **Install the app for Sai Krishna Akula and Tiwari Satyam** — they cannot be
-   messaged until then. Their passwords were changed, so this is on hold.
-3. **Approve SPEC-001..008** — still Draft. Code was written at the user's
+1. **Add the bot to the "Stakeholder Updates" channel** — without a stored
+   channel reference FR-08 has nowhere to post.
+2. **Stakeholder emails and `SUMMARY_SENDER_USER_ID`** — the other half of
+   FR-08. The summary is built correctly; only delivery fails.
+3. **Install the app for Sai Krishna Akula and Tiwari Satyam** — they cannot be
+   messaged until then.
+4. **Approve SPEC-001..008** — still Draft. Code was written at the user's
    explicit instruction while they remain so.
-4. **Excel workbook** — the drive id is already in `.env`.
+5. **Excel workbook** (tracker destination 2) and the **Jira comment** tracker.
+   The drive id is already in `.env`.
+6. **A second team**, to demonstrate FR-10 end to end.
+7. **`README.md` is still empty**, and step 8 of the build order lists it as a
+   deliverable.
+8. **Known debt** — see `docs/KNOWN-DEBT.md`. Items 6 and 7 are now closed;
+   item 9 is a new, deliberate disagreement between SPEC-006 and the code, and
+   is the one to settle first.
+9. **Four secrets in plain text** in the Cloud Run configuration, now including
+   the billable Gemini key, rather than Secret Manager.
 
-*Done 20 Sep: Jira sprint data.* SCRUM Sprint 1 is active, 19 Sep -> 3 Oct,
-26 points committed, 8 done, all six issues assigned and pointed, sprint goal
-set. See SETUP-CHECKLIST item 9.
+**Deployed twice on 21 Sep** (21:50 and ~23:0x, the second carrying the merge
+fix). `scripts/deploy.mjs` carries optional keys through and forces `LLM_LIVE`
+from `CLOUD_RUN_LLM_LIVE` and `LLM_CACHE=false`, so a laptop's settings can
+never become the server's by accident.
 
-### Pending — build
-
-1. **Jira read layer** (`src/pm/jira.ts`) — active sprint, stories, points,
-   statuses, assignees, velocity history. In progress 20 Sep. The sprint data
-   it reads now exists, so it is verifiable against real values.
-2. **Second team (FR-10)** — deferred by the user on 20 Sep. Needs the message
-   handler to resolve the team from the sender rather than from `.env`.
-3. **The four LLM requirements**, once funded.
-4. **Eight known deviations from the coding rules** — see `docs/KNOWN-DEBT.md`.
-   The user will say when. The one with a live failure mode is item 7: the
-   message handler reads the tracker from `.env` rather than the team record in
-   Firestore, which breaks the moment a second team exists.
-5. **Three secrets sit in plain text** in the Cloud Run configuration rather
-   than Secret Manager.
+**One question left open:** does A11 ("multiple messages from a member on the
+same day are combined into one update") match how a Scrum Master actually
+works? The code now matches A11; A11 is an assumption we wrote, not a client
+requirement, so it is the user's to change.
 
 ### Known gap
 

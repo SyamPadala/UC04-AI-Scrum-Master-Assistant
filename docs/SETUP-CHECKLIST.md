@@ -2,7 +2,7 @@
 
 The single source of truth for setup state. Read this first in a new session.
 
-**Last updated:** 20 Sep 2026
+**Last updated:** 21 Sep 2026
 **Focus right now:** setup only. No coding until setup is further along and the
 specs are approved (item 20).
 
@@ -13,19 +13,22 @@ in chat.
 
 ## Where we are in one line
 
-**The app is built, deployed and running unattended.** Cloud Scheduler wakes it
-every 5 minutes; it sends stand-up reminders, accepts a plain-language reply,
-writes it to the SharePoint tracker, and chases only those who have not replied.
-Proven live on 19 Sep 2026: the scheduler fired at 22:55 IST and delivered
-reminders to two members.
+**All ten functional requirements are implemented and deployed.** The assistant
+sends reminders, reads replies with Gemini, writes them to SharePoint, chases
+non-responders, alerts on blockers, builds the end-of-day summary and tracks
+participation. FR-03 extraction accuracy is measured at **92.5%** against 40
+labelled updates; the target is 90%.
 
 Live service: `https://scrum-assistant-lxz5k662sa-el.a.run.app`
 
-**Demonstrable now:** FR-01, FR-02, FR-04, FR-05.
-**Blocked on funding an LLM:** FR-03, FR-06, FR-07, FR-08.
+**Demonstrable now:** FR-01, FR-02, FR-03, FR-04, FR-05, FR-09, NFR Config.
+**Built but not yet seen live:** FR-06 blocker alert, FR-10 second team.
+**Blocked on setup, not code:** FR-07/FR-08 delivery — the summary builds
+correctly but has nowhere to go until the bot is added to the stakeholder
+channel or stakeholder emails are set (items 22 and 23).
 
-**Progress: 18 of 23 done.** Remaining: Excel workbook (7),
-LLM funding (19), spec approval (20), AI Journal (21).
+**Progress: 19 of 25 done.** Remaining: Excel workbook (7), spec approval (20),
+AI Journal (21), stakeholder channel (22), summary email (23).
 Two members (Sai Krishna Akula, Tiwari Satyam) still cannot be messaged — the
 app is not installed for them.
 
@@ -300,25 +303,30 @@ credit. These items are the services inside it.
 
 Checked 17 Sep 2026 — these keys exist but are still **empty**:
 
-- [ ] **19. Blank values in `.env`** — BLOCKED 18 Sep 2026, needs a funded LLM
-      - `GEMINI_API_KEY` — pasted, valid, and **unusable**. Every call returns
-        `429 RESOURCE_EXHAUSTED / prepayment credits are depleted`.
-        Google issues free Gemini API access on this account as a prepaid
-        credit balance, not as an RPM/RPD quota. A balance does not refill on
-        a clock, so waiting does nothing.
-        Verified closed: a new key on the same project fails the same way
-        (keys are credentials, the balance is per project), and a key on a
-        **new project fails too** — the grant is per account, not per project.
-        The ₹28,663 GCP trial credit does not cover it either.
-        **The only ways forward are to activate billing on the Gemini project
-        or to fund `LLM_PROVIDER=anthropic`.** Do not re-try new keys.
-      - `LLM_MODEL` — currently `gemini-3.5-flash-lite`. Change before the eval:
-        lite tiers trade accuracy for cost, and FR-03 needs >=90% extraction
-        accuracy. Start at a full flash tier and only drop to lite if the eval
-        shows headroom. Latency has a 30 s budget and is not the tight
-        constraint; accuracy is.
-      - ~~`M365_TENANT_ID`~~ — DONE, taken from the team link. The tenant GUID (admin centre -> Settings ->
-        Org settings, or Entra overview). `M365_TENANT_DOMAIN` is already set.
+- [x] **19. The LLM is funded** — DONE 21 Sep 2026
+      Billing was activated on the **existing** Gemini project. The key already
+      in `.env` started working unchanged — no new key was needed. Verified
+      with a two-word call: HTTP 200, 8 tokens.
+
+      `LLM_MODEL=gemini-3.5-flash-lite` scores 92.5% on the eval, above the 90%
+      FR-03 needs, so the earlier note about moving to a full flash tier is
+      closed — the lite tier is sufficient and cheaper.
+
+      **Three spend guards are in place and each was verified working**
+      (`src/llm/`):
+
+      | Guard | Setting | What it does |
+      |---|---|---|
+      | Recorded responses | `LLM_CACHE` | Replays an identical request for free. Forced **off** on Cloud Run: a recorded response holds update content, which belongs only in the tracker |
+      | Live switch | `LLM_LIVE` | Off by default. A cache miss fails loudly rather than billing |
+      | Daily ceiling | `LLM_MAX_CALLS_PER_DAY` | Default 200, counted in Firestore so a restart cannot reset it |
+
+      Token counts per day are in Firestore at `llmUsage/{date}` — counts only,
+      never content. The whole of 21 Sep, including the full eval, came to
+      **59 calls and 61,975 tokens**.
+
+      **Do not set `LLM_CACHE=true` on Cloud Run.** `scripts/deploy.mjs` forces
+      it to false regardless of `.env`.
 
 ## F. Project decisions still open
 
@@ -327,6 +335,27 @@ Checked 17 Sep 2026 — these keys exist but are still **empty**:
       until this is done.
 - [ ] **21. AI Journal** — purpose, format, contents, who reviews it.
       Recommendation: maintain it continuously during the build, not at the end.
+
+## G. Blocking FR-08 delivery — added 21 Sep 2026
+
+The summary builds correctly. It has nowhere to send it. Either of these fixes
+half of FR-08; both fixes all of it.
+
+- [ ] **22. Add the bot to the "Stakeholder Updates" channel**
+      The bot posts to a channel itself, using a stored channel reference,
+      because `ChannelMessage.Send` is delegated-only and a background service
+      can never use it (item 8). That reference is captured the first time the
+      bot sees an activity in the channel, which means the app has to be added
+      to the team/channel once.
+      *Verify:* the `channelRef` field appears on the team record in Firestore.
+
+- [ ] **23. Stakeholder email**
+      Two parts, both needed:
+      - **Addresses** — set via the `setup` card, "Stakeholder emails".
+      - **`SUMMARY_SENDER_USER_ID`** — the mailbox the summary is sent *from*.
+        `Mail.Send` is an application permission, so Graph has no signed-in user
+        to infer a sender from and must be told. Use the admin account's Entra
+        object id.
 
 ---
 

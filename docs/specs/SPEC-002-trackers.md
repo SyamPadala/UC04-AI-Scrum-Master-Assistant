@@ -129,18 +129,32 @@ addresses, so every matching scheme breaks silently on a rename. An absent
 
 ## Edge cases
 
-- **Second message from the same member, same day.** That member's rows for the
-  date are deleted and rewritten, not appended (A11).
+- **Second message from the same member, same day.** The member's rows for the
+  date are **merged**, not replaced (A11).
 
-  **Decided 19 Sep 2026: replace, not combine.** The PRD assumption A11 says
-  multiple messages are "combined into one update", and replacing is not
-  combining — the earlier message's content is lost. Accepted knowingly for the
-  POC because the demo has each member sending one message per day, and
-  combining properly means reading the member's existing rows back out of the
-  tracker and re-extracting over the merged text, which needs the LLM.
-  If the demo changes to several messages per person per day, this decision
-  has to be revisited: `write()` would merge the existing rows with the new
-  extraction rather than deleting them.
+  **Amended 21 Sep 2026: merge, not replace.** The original decision of
+  19 Sep was to replace, recorded knowingly on the grounds that each member
+  would send one message per day. That stopped being true the first time it was
+  used: a member reported SCRUM-6 and SCRUM-7, remembered SCRUM-21, sent a
+  second message, and the first two rows were deleted. The spec named exactly
+  this as the condition to revisit, and it has been.
+
+  Merging is by work item, in code, with no second model call:
+
+  | Situation | Result |
+  |---|---|
+  | New message names a work item with no existing row | Row added |
+  | New message names a work item that already has a row | That row is replaced |
+  | Existing row's work item is not mentioned again | Row kept unchanged |
+  | New message has a remark with no work item | Added, unless word-for-word identical to one already there |
+  | Member says "nothing to report" having already reported | Nothing changes; the earlier rows stand |
+
+  One row per work item is kept deliberately. The tracker records where each
+  item stands, not a transcript of what was said, so "SCRUM-6 is done now"
+  updates that row rather than leaving two rows in contradiction. It also keeps
+  the summary honest, since Agent 2 reads these rows back and two conflicting
+  rows for one item would have to be guessed between.
+
 - **Blocker with no work item** ("no VPN access"). Its own row: `WIN` and
   `Description` empty, `Status` = `Blocked`, text in `AnyBlocker`, `Comment`
   empty (user decision, 18 Sep 2026 — the text is not duplicated).
