@@ -4,8 +4,13 @@ import { isDue } from './schedule.js'
 import { localDate } from '../config/time.js'
 import { sendFollowUps, sendReminders } from './reminder.js'
 import { flagHabitualNonResponders, recordParticipation } from './participation.js'
-import { SharePointTracker } from '../trackers/sharepoint.js'
-import type { Tracker } from '../trackers/types.js'
+import { trackerFor } from '../trackers/factory.js'
+import { runSummary } from './summary.js'
+import { createLlm } from '../llm/index.js'
+import { JiraClient } from '../pm/jira.js'
+import { config } from '../config/env.js'
+import { LlmBudgetError, LlmOfflineError, type LlmClient } from '../llm/types.js'
+import type { PmClient } from '../pm/types.js'
 
 export interface TickEntry {
   teamId: string
@@ -14,17 +19,9 @@ export interface TickEntry {
   detail?: string
 }
 
-/** Jobs that exist today. The summary arrives with SPEC-006 and the LLM. */
-const JOBS: JobType[] = ['reminder', 'followup', 'participation']
-
-function trackerFor (team: TeamConfig): Tracker {
-  switch (team.tracker.kind) {
-    case 'sharepoint':
-      return new SharePointTracker(team.tracker.siteId, team.tracker.listId)
-    case 'mock':
-      throw new Error('mock tracker is not wired up yet')
-  }
-}
+// Order matters: the summary is built before participation is counted, so the
+// figures the summary quotes are the ones that were true when it ran.
+const JOBS: JobType[] = ['reminder', 'followup', 'summary', 'participation']
 
 /**
  * One scheduler heartbeat.
@@ -33,9 +30,28 @@ function trackerFor (team: TeamConfig): Tracker {
  * job-level failure never fails the request — Cloud Scheduler would otherwise
  * retry the whole tick and re-run work that already succeeded.
  */
-export async function runTick (now: Date = new Date()): Promise<TickEntry[]> {
+function jiraClient (): PmClient {
+  return new JiraClient({
+    baseUrl: config.jira.baseUrl,
+    email: config.jira.email,
+    apiToken: config.jira.apiToken,
+    projectKey: config.jira.projectKey,
+    storyPointsField: config.jira.storyPointsField,
+    boardId: config.jira.boardId
+  })
+}
+
+export async function runTick (
+  now: Date = new Date(),
+  deps: { llm?: LlmClient, pm?: PmClient } = {}
+): Promise<TickEntry[]> {
   const entries: TickEntry[] = []
   const teams = await activeTeams()
+
+  // Built once per tick rather than per team: both are stateless, and the
+  // summary job is the only caller that needs them.
+  const llm = deps.llm ?? createLlm()
+  const pm = deps.pm ?? jiraClient()
 
   for (const team of teams) {
     const today = localDate(now, team.timezone)
@@ -57,6 +73,16 @@ export async function runTick (now: Date = new Date()): Promise<TickEntry[]> {
           detail = `participation ${percent}% (${responded}/${record.entries.length})` +
             (flags.length > 0 ? `; flagged ${flags.map((f) => f.memberName).join(', ')}` : '')
           outcome = 'success'
+        } else if (jobType === 'summary') {
+          const result = await runSummary(team, today, { llm, pm, tracker: trackerFor(team) })
+          // Reaching one of the two stakeholder routes is a real outcome, not a
+          // failure — SPEC-006 item 8 keeps the half that worked.
+          outcome = result.distribution.channel === 'sent' && result.distribution.email === 'sent'
+            ? 'success'
+            : result.distribution.channel === 'sent' || result.distribution.email === 'sent'
+              ? 'partial'
+              : 'failed'
+          detail = result.distribution.detail
         } else {
           const result = jobType === 'reminder'
             ? await sendReminders(team)
@@ -75,8 +101,19 @@ export async function runTick (now: Date = new Date()): Promise<TickEntry[]> {
         // Log first, then release: the log is a separate document, so releasing
         // afterwards leaves no claim behind and the next tick retries.
         await completeRun(team.teamId, today, jobType, 'failed', startedAt, detail)
-        await releaseRun(team.teamId, today, jobType)
-        entries.push({ teamId: team.teamId, jobType, outcome: 'failed', detail })
+
+        // A spent budget or a switched-off model will fail identically on the
+        // next tick. Releasing the claim would retry it every five minutes
+        // until midnight — 288 attempts at a problem only a person can fix.
+        const willRecur = error instanceof LlmBudgetError || error instanceof LlmOfflineError
+        if (!willRecur) await releaseRun(team.teamId, today, jobType)
+
+        entries.push({
+          teamId: team.teamId,
+          jobType,
+          outcome: 'failed',
+          detail: willRecur ? `${detail} (not retried today)` : detail
+        })
       }
     }
   }

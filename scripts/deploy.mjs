@@ -93,9 +93,43 @@ const RUNTIME_KEYS = [
   'TEAMS_TEAM_ID', 'STAKEHOLDER_CHANNEL_ID',
   'TICK_SHARED_SECRET', 'DEFAULT_TIMEZONE', 'DEFAULT_GRACE_MINUTES'
 ]
+
+// Carried through when set in .env, skipped when not. The LLM and Jira
+// settings live here rather than above because the service starts without
+// them — it simply cannot do the parts that need them.
+const OPTIONAL_KEYS = [
+  'LLM_PROVIDER', 'LLM_MODEL', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY',
+  'LLM_MAX_CALLS_PER_DAY',
+  'AGENT1_MAX_TOOL_ITERATIONS', 'AGENT1_TIMEOUT_MS', 'AGENT1_MAX_RETRIES',
+  'AGENT2_MAX_TOOL_ITERATIONS', 'AGENT2_TIMEOUT_MS', 'AGENT2_MAX_RETRIES',
+  'STALE_PROGRESS_DAYS', 'BLOCKER_ALERT_DEDUPE', 'SUMMARY_SENDER_USER_ID',
+  'JIRA_BASE_URL', 'JIRA_EMAIL', 'JIRA_API_TOKEN', 'JIRA_PROJECT_KEY',
+  'JIRA_STORY_POINTS_FIELD', 'JIRA_BOARD_ID'
+]
+
+/**
+ * Settings the deployed service must not inherit from a developer's .env.
+ *
+ * LLM_LIVE decides whether this service is allowed to spend money, and
+ * LLM_CACHE decides whether model output is written to disk — which the
+ * Privacy NFR does not permit outside the tracker. Both are stated here so a
+ * laptop's local settings can never become the running service's settings by
+ * accident. Turn spending on deliberately, in the Cloud Run console.
+ */
+const RUNTIME_OVERRIDES = {
+  LLM_LIVE: env.CLOUD_RUN_LLM_LIVE ?? 'false',
+  LLM_CACHE: 'false'
+}
+
 const missingKeys = RUNTIME_KEYS.filter((k) => (env[k] ?? '') === '')
 if (missingKeys.length > 0) throw new Error(`not set in .env: ${missingKeys.join(', ')}`)
-const runtimeEnv = RUNTIME_KEYS.map((name) => ({ name, value: env[name] }))
+
+const runtimeEnv = [
+  ...RUNTIME_KEYS.map((name) => ({ name, value: env[name] })),
+  ...OPTIONAL_KEYS.filter((name) => (env[name] ?? '') !== '').map((name) => ({ name, value: env[name] })),
+  ...Object.entries(RUNTIME_OVERRIDES).map(([name, value]) => ({ name, value }))
+]
+console.log(`runtime settings: ${runtimeEnv.length} (LLM_LIVE=${RUNTIME_OVERRIDES.LLM_LIVE})`)
 
 const base = `https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/services/${SERVICE}`
 const release = await fetch(base, {

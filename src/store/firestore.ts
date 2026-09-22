@@ -218,3 +218,110 @@ export async function runsForDate (
 export async function recordConfigChange (change: ConfigChange): Promise<void> {
   await db.collection('configChanges').add(change)
 }
+
+/**
+ * Claims one LLM call against the day's ceiling.
+ *
+ * Counted in Firestore rather than in memory because Cloud Run scales to zero
+ * and a restarted instance would start counting from nothing. Returns false
+ * when the ceiling is reached; the caller must then fail rather than spend.
+ *
+ * Counts only — no prompt, no completion, no member text. The Privacy NFR
+ * applies to this document like any other.
+ */
+export async function reserveLlmCall (localDate: string, maxPerDay: number): Promise<boolean> {
+  const ref = db.collection('llmUsage').doc(localDate)
+  try {
+    return await db.runTransaction(async (tx) => {
+      const doc = await tx.get(ref)
+      const calls = doc.exists ? Number((doc.data() as { calls?: number }).calls ?? 0) : 0
+      if (calls >= maxPerDay) return false
+      tx.set(ref, { localDate, calls: calls + 1 }, { merge: true })
+      return true
+    })
+  } catch (error) {
+    // A counter that cannot be read must not become a free pass to spend.
+    console.error(JSON.stringify({ event: 'llm.reserve.failed', localDate, error: String(error) }))
+    return false
+  }
+}
+
+/** Records what a completed call actually cost. Token counts only. */
+export async function recordLlmUsage (
+  localDate: string, label: string,
+  usage: { inputTokens: number, outputTokens: number }
+): Promise<void> {
+  const ref = db.collection('llmUsage').doc(localDate)
+  try {
+    await db.runTransaction(async (tx) => {
+      const doc = await tx.get(ref)
+      const data = (doc.exists ? doc.data() : {}) as Record<string, number | string | undefined>
+      const previousIn = Number(data.inputTokens ?? 0)
+      const previousOut = Number(data.outputTokens ?? 0)
+      const previousLabel = Number(data[`calls_${label}`] ?? 0)
+      tx.set(ref, {
+        localDate,
+        inputTokens: previousIn + usage.inputTokens,
+        outputTokens: previousOut + usage.outputTokens,
+        [`calls_${label}`]: previousLabel + 1
+      }, { merge: true })
+    })
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'llm.usage.failed', localDate, error: String(error) }))
+  }
+}
+
+/** Today's spend, for the status card and the run report. */
+export async function llmUsageFor (localDate: string): Promise<{
+  calls: number, inputTokens: number, outputTokens: number
+}> {
+  const doc = await db.collection('llmUsage').doc(localDate).get()
+  const data = (doc.exists ? doc.data() : {}) as Record<string, number | undefined>
+  return {
+    calls: Number(data.calls ?? 0),
+    inputTokens: Number(data.inputTokens ?? 0),
+    outputTokens: Number(data.outputTokens ?? 0)
+  }
+}
+
+/**
+ * Remembers that a blocker has already been alerted on (SPEC-005).
+ *
+ * The key is a hash of the normalised blocker text, never the text itself:
+ * a blocker description is update content and must not be stored outside the
+ * tracker (Privacy NFR). Returns true when this is the first time today.
+ */
+export async function claimBlockerAlert (
+  teamId: string, memberId: string, localDate: string, blockerHash: string
+): Promise<boolean> {
+  const ref = db.collection('blockerAlerts').doc(`${teamId}_${memberId}_${localDate}_${blockerHash}`)
+  try {
+    await db.runTransaction(async (tx) => {
+      const doc = await tx.get(ref)
+      if (doc.exists) throw new Error('already-alerted')
+      tx.create(ref, { teamId, memberId, localDate, blockerHash, alertedAt: new Date() })
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Remembers the channel the app was installed into, so the summary can be
+ * posted there later (FR-08).
+ *
+ * The bot posts to the channel itself rather than through Graph:
+ * `ChannelMessage.Send` is delegated-only, so a background service with no
+ * signed-in user can never use it (checklist item 8). A stored conversation
+ * reference is the only route a scheduled job has.
+ */
+export async function saveChannelRef (teamId: string, reference: string): Promise<void> {
+  await db.collection('teams').doc(teamId).set({ channelRef: reference }, { merge: true })
+}
+
+export async function getChannelRef (teamId: string): Promise<string | undefined> {
+  const doc = await db.collection('teams').doc(teamId).get()
+  const value = (doc.data() as { channelRef?: string } | undefined)?.channelRef
+  return value === undefined || value === '' ? undefined : value
+}

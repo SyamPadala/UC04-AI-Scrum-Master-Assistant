@@ -1,0 +1,560 @@
+[
+  {
+    "id": "e01",
+    "note": "plain three-part update, all keys named",
+    "text": "Finished SCRUM-7 yesterday. Today I'm on SCRUM-6. Blocked on SCRUM-6 because I don't have the staging credentials.",
+    "expect": {
+      "completed": [
+        "SCRUM-7"
+      ],
+      "inProgress": [
+        "SCRUM-6"
+      ],
+      "blockers": [
+        "SCRUM-6"
+      ],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e02",
+    "note": "no keys, but both descriptions name open sprint items (A8)",
+    "text": "Wrapped up the webhook validation work. Moving on to the risk scoring rules today. Nothing blocking me.",
+    "expect": {
+      "completed": [
+        "SCRUM-20"
+      ],
+      "inProgress": [
+        "SCRUM-21"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e03",
+    "note": "nothing to report",
+    "text": "Nothing to report today.",
+    "expect": {
+      "completed": [],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e04",
+    "note": "not a status update at all",
+    "text": "thanks!",
+    "expect": {
+      "completed": [],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "low"
+    }
+  },
+  {
+    "id": "e05",
+    "note": "blocker with no work item",
+    "text": "Still waiting on VPN access from IT, so I couldn't start anything yesterday.",
+    "expect": {
+      "completed": [],
+      "inProgress": [],
+      "blockers": [
+        null
+      ],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e06",
+    "note": "two completed items in one sentence",
+    "text": "Closed off SCRUM-7 and SCRUM-22 yesterday evening.",
+    "expect": {
+      "completed": [
+        "SCRUM-7",
+        "SCRUM-22"
+      ],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e07",
+    "note": "same item both in progress and blocked",
+    "text": "SCRUM-20 is in progress but I'm stuck — the HMAC signature from the vendor keeps failing validation.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-20"
+      ],
+      "blockers": [
+        "SCRUM-20"
+      ],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e08",
+    "note": "invented key that does not exist in Jira",
+    "text": "Finished SCRUM-9999 this morning.",
+    "expect": {
+      "completed": [
+        null
+      ],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e09",
+    "note": "two separate blockers",
+    "text": "Working on SCRUM-21. Two problems: the test data hasn't been refreshed, and I still can't get into the Jira admin screen.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-21"
+      ],
+      "blockers": [
+        null,
+        null
+      ],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e10",
+    "note": "terse, key only",
+    "text": "SCRUM-6 done.",
+    "expect": {
+      "completed": [
+        "SCRUM-6"
+      ],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e11",
+    "note": "lowercase key",
+    "text": "picked up scrum-5 today, nothing blocking",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-5"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e12",
+    "note": "future tense only",
+    "text": "I'll be starting on the notification templates after lunch.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        null
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e13",
+    "note": "\"the screening service\" is SCRUM-20 by description (A8)",
+    "text": "Same as yesterday, still on the screening service.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-20"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e14",
+    "note": "blocker phrased as waiting on a person",
+    "text": "SCRUM-21 is coded but I'm waiting on Priya to review the PR before I can close it.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-21"
+      ],
+      "blockers": [
+        "SCRUM-21"
+      ],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e15",
+    "note": "long, rambling, three items",
+    "text": "Yesterday was mostly meetings but I did manage to finish SCRUM-22 in the afternoon. This morning I've started SCRUM-20, which is the async screening piece, and I expect that to take a couple of days. I also need to pick up SCRUM-5 at some point this week but haven't started it yet.",
+    "expect": {
+      "completed": [
+        "SCRUM-22"
+      ],
+      "inProgress": [
+        "SCRUM-20",
+        "SCRUM-5"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e16",
+    "note": "greeting only",
+    "text": "morning",
+    "expect": {
+      "completed": [],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "low"
+    }
+  },
+  {
+    "id": "e17",
+    "note": "typos and missing punctuation",
+    "text": "finshed scrum-7 yestrday workin on scrum-6 today no blokers",
+    "expect": {
+      "completed": [
+        "SCRUM-7"
+      ],
+      "inProgress": [
+        "SCRUM-6"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e18",
+    "note": "blocker resolved, so not a blocker",
+    "text": "The VPN issue from yesterday is sorted now. Back on SCRUM-6.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-6"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e19",
+    "note": "on leave",
+    "text": "I'm on leave today, no update.",
+    "expect": {
+      "completed": [],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e20",
+    "note": "numbered list format",
+    "text": "1. Done: SCRUM-7\n2. Doing: SCRUM-20\n3. Blockers: none",
+    "expect": {
+      "completed": [
+        "SCRUM-7"
+      ],
+      "inProgress": [
+        "SCRUM-20"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e21",
+    "note": "key written with a space",
+    "text": "Completed SCRUM 22 and started SCRUM 21.",
+    "expect": {
+      "completed": [
+        "SCRUM-22"
+      ],
+      "inProgress": [
+        "SCRUM-21"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e22",
+    "note": "blocker on an item not mentioned elsewhere",
+    "text": "Carrying on with SCRUM-6. Separately, SCRUM-5 can't start until the data migration is signed off.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-6"
+      ],
+      "blockers": [
+        "SCRUM-5"
+      ],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e23",
+    "note": "partial work, not complete",
+    "text": "Made good progress on SCRUM-20 but it's not finished.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-20"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e24",
+    "note": "question rather than an update",
+    "text": "Is stand-up at 9 or 9:30 today?",
+    "expect": {
+      "completed": [],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "low"
+    }
+  },
+  {
+    "id": "e25",
+    "note": "three completed, nothing in progress",
+    "text": "Closed SCRUM-7, SCRUM-22 and the documentation task yesterday. Nothing new picked up yet.",
+    "expect": {
+      "completed": [
+        "SCRUM-7",
+        "SCRUM-22",
+        null
+      ],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e26",
+    "note": "blocker described without the word blocked",
+    "text": "On SCRUM-21. The sandbox keeps timing out so I can't test anything end to end.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-21"
+      ],
+      "blockers": [
+        "SCRUM-21"
+      ],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e27",
+    "note": "very short with a blocker",
+    "text": "Blocked.",
+    "expect": {
+      "completed": [],
+      "inProgress": [],
+      "blockers": [
+        null
+      ],
+      "confidence": "low"
+    }
+  },
+  {
+    "id": "e28",
+    "note": "mixed English and Hindi",
+    "text": "SCRUM-6 ka kaam finish ho gaya. Aaj SCRUM-20 pe kaam kar raha hoon.",
+    "expect": {
+      "completed": [
+        "SCRUM-6"
+      ],
+      "inProgress": [
+        "SCRUM-20"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e29",
+    "note": "reporting someone else's blocker",
+    "text": "I'm on SCRUM-5. Rahul mentioned he's stuck on the API keys, flagging it in case nobody else has.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-5"
+      ],
+      "blockers": [
+        null
+      ],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e30",
+    "note": "code review work with no key",
+    "text": "Spent yesterday reviewing pull requests. Today I'm back on my own tickets.",
+    "expect": {
+      "completed": [
+        null
+      ],
+      "inProgress": [
+        null
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e31",
+    "note": "emoji only",
+    "text": "👍",
+    "expect": {
+      "completed": [],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "low"
+    }
+  },
+  {
+    "id": "e32",
+    "note": "blocker with a dependency on another team",
+    "text": "SCRUM-20 in progress. Waiting on the platform team to open the firewall port, that's holding it up.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-20"
+      ],
+      "blockers": [
+        "SCRUM-20"
+      ],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e33",
+    "note": "two items, one done one blocked",
+    "text": "SCRUM-22 is done. SCRUM-5 is blocked, I need the schema from the architects.",
+    "expect": {
+      "completed": [
+        "SCRUM-22"
+      ],
+      "inProgress": [],
+      "blockers": [
+        "SCRUM-5"
+      ],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e34",
+    "note": "hedged completion",
+    "text": "SCRUM-7 is basically done, just needs a final test.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-7"
+      ],
+      "blockers": [],
+      "confidence": "low"
+    }
+  },
+  {
+    "id": "e35",
+    "note": "meeting-heavy day",
+    "text": "No dev work yesterday, was in the architecture review all day. Starting SCRUM-6 now.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-6"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e36",
+    "note": "bug found, reported as a blocker",
+    "text": "Working through SCRUM-21 but found a bug in the shared auth library that stops the callback firing.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-21"
+      ],
+      "blockers": [
+        "SCRUM-21"
+      ],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e37",
+    "note": "one item completed, another started, blocker on neither",
+    "text": "Finished SCRUM-22, started SCRUM-20. My laptop is being replaced tomorrow so I may lose half a day.",
+    "expect": {
+      "completed": [
+        "SCRUM-22"
+      ],
+      "inProgress": [
+        "SCRUM-20"
+      ],
+      "blockers": [
+        null
+      ],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e38",
+    "note": "all three sections, explicit labels",
+    "text": "Yesterday: SCRUM-7. Today: SCRUM-6. Blockers: none.",
+    "expect": {
+      "completed": [
+        "SCRUM-7"
+      ],
+      "inProgress": [
+        "SCRUM-6"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e39",
+    "note": "key mentioned only as context, no work claimed",
+    "text": "Has anyone looked at SCRUM-5 recently? I haven't touched it.",
+    "expect": {
+      "completed": [],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "low"
+    }
+  },
+  {
+    "id": "e40",
+    "note": "two in progress, one blocked, one done",
+    "text": "Done: SCRUM-7. In flight: SCRUM-20 and SCRUM-21. SCRUM-20 is held up waiting for the vendor's test certificate.",
+    "expect": {
+      "completed": [
+        "SCRUM-7"
+      ],
+      "inProgress": [
+        "SCRUM-20",
+        "SCRUM-21"
+      ],
+      "blockers": [
+        "SCRUM-20"
+      ],
+      "confidence": "high"
+    }
+  }
+]

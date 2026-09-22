@@ -21,3 +21,6 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .deploy-source.tar.gz
+
+# llm response cache — model output, development only
+.llm-cache/
