@@ -22,6 +22,10 @@ item is a rule the repo already binds itself to.
 | 12 | 24 — secrets come from Secret Manager | Three secrets, soon four with the Gemini key, sit in plain text in the Cloud Run configuration. | Cloud Run config |
 | 13 | Success metric — participation is measured *within the grace period* | Everyone who replied is recorded as `withinGrace: true` without the arrival time ever being checked. A member chased at the cut-off and replying two hours later is recorded as punctual, so the metric cannot be reported. | `jobs/participation.ts` |
 | 14 | FR-09 — participation reflects who reported that day | Who replied is derived from the tracker at the moment the count runs, and tracker rows carry a date but no time. A reply that lands after the count is in the tracker yet recorded as missed, so the tracker, the summary and the participation record can disagree about the same day. | `jobs/participation.ts`, `trackers/sharepoint.ts` |
+| 15 | FR-10 — configuration is per team | Two places in the message handler use the single team id from the server settings instead of the sender's team: anyone who messages the assistant is added to that one team's roster, and any channel the assistant sees becomes that team's summary channel, replacing the last one. Same class as item 7, which was closed after only the update path was fixed. **Deferred to 23 Sep 2026 by the user**; no exposure today, because only accounts inside the user's own tenant can install the app. | `bot/handler.ts` |
+| 16 | FR-07 — the summary lists **active** blockers | Blockers are taken from today's tracker rows only, so a blocker raised yesterday and still unresolved disappears from the summary at midnight. The at-risk section inherits the same limit. Raised by the user, 23 Sep 2026. | `jobs/summary.ts` |
+| 17 | FR-07/FR-08 — the summary is read by stakeholders | Agent 2 is told to write plain text with no headings or bullets, because the same text is sent as a plain-text email. Posted into a Teams channel it reads as a wall of text. Needs simple formatting for Teams and an HTML body for mail. Raised by the user, 23 Sep 2026. | `agents/prompts/summaryBuilder.ts`, `graph/mail.ts` |
+| 18 | A member's name is their own | Every incoming message overwrites the stored display name, so a message that carries no name replaces a real name with "Unknown". That is how Tiwari Satyam is recorded. | `bot/handler.ts` |
 
 ## Closed since 19 Sep
 
@@ -29,6 +33,7 @@ item is a rule the repo already binds itself to.
 |---|---|---|
 | 6 | 28, 29, 30 — unit tests, first-class mock tracker, `eval/` | 24 unit tests over extraction shaping, schedule evaluation and tracker mapping; `trackers/mock.ts` is fully working; `eval/` holds 40 labelled updates and a scorer. |
 | 7 | 8 — one source per setting | The message handler now resolves the team from the sender's roster and takes the tracker from that team's record. `trackers/factory.ts` is the single place a tracker is built. This was the item with a live failure mode. |
+| — | FR-02 — updates are collected in one-to-one Teams chat | Channel messages were being recorded as stand-up updates, and a channel message also replaced the sender's personal chat reference, which would have sent their next reminder to the whole team. Channel activity is now used for one thing only: learning where to post the summary. Found and fixed 23 Sep 2026. |
 
 ## Notes on the open items
 

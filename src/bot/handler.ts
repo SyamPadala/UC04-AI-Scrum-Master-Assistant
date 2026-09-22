@@ -68,8 +68,18 @@ export class ScrumAssistant extends ActivityHandler {
     super()
 
     this.onMessage(async (context: TurnContext, next) => {
+      // A channel is a discussion forum, not a stand-up. Nothing said there is
+      // a status update, so the only thing taken from it is the channel itself,
+      // which is where the summary is posted. Taking the sender from here too
+      // would replace their personal chat with the channel and send their next
+      // reminder to the whole team.
+      if (context.activity.conversation?.conversationType === 'channel') {
+        await rememberChannel(context)
+        await next()
+        return
+      }
+
       await rememberSender(context)
-      await rememberChannel(context)
 
       // A card Save arrives as a message with no text and a value payload.
       const submitted = context.activity.value
