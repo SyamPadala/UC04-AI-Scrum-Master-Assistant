@@ -130,6 +130,26 @@ export async function completeRun (
 }
 
 /**
+ * Records the outcome of a job run by hand with the `run` command.
+ *
+ * Touches no claim: a manual run must neither use up the scheduled job nor
+ * close the stand-up. Marked `trigger: 'manual'` so the status card, which
+ * reports the scheduled cycle, can leave it out.
+ */
+export async function logManualRun (
+  teamId: string, localDate: string, jobType: JobType,
+  outcome: RunOutcome, startedAt: Date, detail?: string
+): Promise<void> {
+  const entry: RunLog = {
+    teamId, jobType, localDate, outcome, startedAt,
+    durationMs: Date.now() - startedAt.getTime(),
+    trigger: 'manual',
+    ...(detail === undefined ? {} : { detail })
+  }
+  await db.collection('runLogs').add(entry)
+}
+
+/**
  * Releases a claim so a later tick retries the job.
  *
  * Used when a job threw before completing: without this the day's reminder
@@ -218,6 +238,7 @@ export async function runsForDate (
       .get()
     const latest = logs.docs
       .map((doc) => doc.data() as RunLog)
+      .filter((log) => log.trigger !== 'manual')
       .sort((a, b) => Number(b.startedAt) - Number(a.startedAt))[0]
     results.push({
       jobType: claim.jobType,

@@ -52,7 +52,8 @@ export async function handleAdminCommand (command: AdminCommand, context: TurnCo
       'I record your stand-up update — just tell me what you worked on.\n\n' +
       'The Scrum Master can also use: **setup** to change settings, **status** to see ' +
       'what ran today, **pause** / **resume** to stop and restart the daily messages, ' +
-      'and **run reminder** (or followup, summary, participation) to trigger one now.'
+      'and **run reminder** (or followup, summary, participation) to trigger one now — ' +
+      'a manual run for testing, which leaves the scheduled day untouched.'
     ))
     return
   }
@@ -75,7 +76,9 @@ export async function handleAdminCommand (command: AdminCommand, context: TurnCo
 
   // A development aid, not part of the daily cycle: the scheduler runs each job
   // once at its set time, so testing one otherwise means waiting for the clock.
-  // Runs the same code the scheduler runs, and works while paused.
+  // Runs the same code the scheduler runs, and works while paused. Isolated
+  // from the scheduled cycle: it does not use up today's scheduled job and does
+  // not close the stand-up.
   if (command === 'run') {
     const jobType = parseJobArgument(context.activity.text ?? '')
     if (jobType === undefined) {
@@ -85,11 +88,13 @@ export async function handleAdminCommand (command: AdminCommand, context: TurnCo
       return
     }
 
-    await context.sendActivity(MessageFactory.text(`Running the ${jobType} now...`))
+    await context.sendActivity(MessageFactory.text(
+      `Running the ${jobType} now, as a manual run. Today's scheduled ${jobType} still goes out at its usual time.`
+    ))
     try {
       const entry = await runJobNow(team, jobType)
       await context.sendActivity(MessageFactory.text(
-        `${jobType}: ${entry.outcome}${entry.detail === undefined ? '' : ` — ${entry.detail}`}`
+        `Manual ${jobType}: ${entry.outcome}${entry.detail === undefined ? '' : ` — ${entry.detail}`}`
       ))
     } catch (error) {
       await context.sendActivity(MessageFactory.text(

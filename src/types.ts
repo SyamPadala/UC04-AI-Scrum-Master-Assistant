@@ -56,6 +56,8 @@ export interface RunLog {
   startedAt: Date
   durationMs: number
   detail?: string
+  /** Absent on scheduled runs, which predate the field. */
+  trigger?: 'manual'
 }
 
 export interface ParticipationEntry {

@@ -1,5 +1,5 @@
 import type { JobType, RunOutcome, TeamConfig } from '../types.js'
-import { activeTeams, claimRun, completeRun, releaseRun } from '../store/firestore.js'
+import { activeTeams, claimRun, completeRun, logManualRun, releaseRun } from '../store/firestore.js'
 import { isDue } from './schedule.js'
 import { localDate } from '../config/time.js'
 import { sendFollowUps, sendReminders } from './reminder.js'
@@ -66,50 +66,19 @@ export async function runTick (
   return entries
 }
 
+/** Which of the two flows started a job. */
+export type Trigger = 'scheduled' | 'manual'
+
 /**
- * Runs one job that has already been claimed, and records what happened.
- *
- * Shared by the scheduler and by the `run` command so that triggering a job by
- * hand exercises the same code path the scheduler uses. A test that ran
- * something else would prove nothing.
+ * Runs one job that the scheduler has claimed, and records what happened
+ * against that claim.
  */
 async function runClaimedJob (
   team: TeamConfig, jobType: JobType, today: string, llm: LlmClient, pm: PmClient
 ): Promise<TickEntry> {
   const startedAt = new Date()
   try {
-    let outcome: RunOutcome
-    let detail: string
-
-    if (jobType === 'participation') {
-      const record = await recordParticipation(team, trackerFor(team), today)
-      const flags = await flagHabitualNonResponders(team, today)
-      const percent = Math.round(record.rate * 100)
-      const responded = record.entries.filter((e) => e.status === 'responded').length
-      detail = `participation ${percent}% (${responded}/${record.entries.length})` +
-        (flags.length > 0 ? `; flagged ${flags.map((f) => f.memberName).join(', ')}` : '')
-      outcome = 'success'
-    } else if (jobType === 'summary') {
-      const result = await runSummary(team, today, { llm, pm, tracker: trackerFor(team) })
-      // Reaching one of the two stakeholder routes is a real outcome, not a
-      // failure — SPEC-006 item 8 keeps the half that worked.
-      outcome = result.distribution.channel === 'sent' && result.distribution.email === 'sent'
-        ? 'success'
-        : result.distribution.channel === 'sent' || result.distribution.email === 'sent'
-          ? 'partial'
-          : 'failed'
-      detail = result.distribution.detail
-    } else {
-      const result = jobType === 'reminder'
-        ? await sendReminders(team)
-        : await sendFollowUps(team, trackerFor(team), today)
-
-      outcome = result.failed > 0 ? 'partial'
-        : result.sent === 0 && result.skipped > 0 ? 'partial'
-          : 'success'
-      detail = result.detail
-    }
-
+    const { outcome, detail } = await executeJob(team, jobType, today, llm, pm, 'scheduled')
     await completeRun(team.teamId, today, jobType, outcome, startedAt, detail)
     return { teamId: team.teamId, jobType, outcome, detail }
   } catch (error) {
@@ -134,18 +103,77 @@ async function runClaimedJob (
 }
 
 /**
- * Runs one job immediately, whether or not it is due and whether or not it has
- * already run today. Triggered by the `run` command.
+ * The job itself, shared by both flows so that a manual run exercises the
+ * same code the scheduler runs. A test that ran something else would prove
+ * nothing.
  *
- * A development aid: the daily cycle is built to happen once at a set time, so
- * testing it otherwise means waiting for the clock. Any existing claim for the
- * day is dropped first, so the job can be run repeatedly.
+ * The trigger decides only what the job leaves behind for the scheduler to
+ * read. A manual participation count is reported but not saved, because the
+ * saved record and the flags are what the scheduled count builds on.
+ */
+async function executeJob (
+  team: TeamConfig, jobType: JobType, today: string,
+  llm: LlmClient, pm: PmClient, trigger: Trigger
+): Promise<{ outcome: RunOutcome, detail: string }> {
+  const persist = trigger === 'scheduled'
+
+  if (jobType === 'participation') {
+    const record = await recordParticipation(team, trackerFor(team), today, { persist })
+    const flags = await flagHabitualNonResponders(team, today, { todayRecord: record, persist })
+    const percent = Math.round(record.rate * 100)
+    const responded = record.entries.filter((e) => e.status === 'responded').length
+    const flagWord = persist ? 'flagged' : 'would flag'
+    return {
+      outcome: 'success',
+      detail: `participation ${percent}% (${responded}/${record.entries.length})` +
+        (flags.length > 0 ? `; ${flagWord} ${flags.map((f) => f.memberName).join(', ')}` : '')
+    }
+  }
+
+  if (jobType === 'summary') {
+    const result = await runSummary(team, today, { llm, pm, tracker: trackerFor(team) })
+    // Reaching one of the two stakeholder routes is a real outcome, not a
+    // failure — SPEC-006 item 8 keeps the half that worked.
+    const outcome: RunOutcome =
+      result.distribution.channel === 'sent' && result.distribution.email === 'sent'
+        ? 'success'
+        : result.distribution.channel === 'sent' || result.distribution.email === 'sent'
+          ? 'partial'
+          : 'failed'
+    return { outcome, detail: result.distribution.detail }
+  }
+
+  const result = jobType === 'reminder'
+    ? await sendReminders(team)
+    : await sendFollowUps(team, trackerFor(team), today)
+
+  const outcome: RunOutcome = result.failed > 0 ? 'partial'
+    : result.sent === 0 && result.skipped > 0 ? 'partial'
+      : 'success'
+  return { outcome, detail: result.detail }
+}
+
+/**
+ * Runs one job immediately, for testing and demos. Triggered by the `run`
+ * command.
+ *
+ * Isolated from the scheduler: it never reads, takes or releases the day's run
+ * claim. So a manual run neither uses up the scheduled job nor closes the
+ * stand-up (A14), and the scheduled cycle carries on exactly as if the manual
+ * run had not happened. It is logged, marked as manual, for the record.
  */
 export async function runJobNow (
   team: TeamConfig, jobType: JobType, now: Date = new Date()
 ): Promise<TickEntry> {
   const today = localDate(now, team.timezone)
-  await releaseRun(team.teamId, today, jobType)
-  await claimRun(team.teamId, today, jobType)
-  return await runClaimedJob(team, jobType, today, createLlm(), jiraClient())
+  const startedAt = new Date()
+  try {
+    const { outcome, detail } = await executeJob(team, jobType, today, createLlm(), jiraClient(), 'manual')
+    await logManualRun(team.teamId, today, jobType, outcome, startedAt, detail)
+    return { teamId: team.teamId, jobType, outcome, detail }
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    await logManualRun(team.teamId, today, jobType, 'failed', startedAt, detail)
+    return { teamId: team.teamId, jobType, outcome: 'failed', detail }
+  }
 }

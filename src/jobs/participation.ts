@@ -15,7 +15,8 @@ import { sendProactive } from '../bot/adapter.js'
  * update content lives.
  */
 export async function recordParticipation (
-  team: TeamConfig, tracker: Tracker, localDate: string
+  team: TeamConfig, tracker: Tracker, localDate: string,
+  options: { persist: boolean } = { persist: true }
 ): Promise<ParticipationRecord> {
   const updates = await tracker.readToday(team.teamId, localDate)
   const responders = new Set(updates.map((u) => u.memberName))
@@ -34,7 +35,9 @@ export async function recordParticipation (
     rate: team.members.length === 0 ? 0 : responded / team.members.length
   }
 
-  await saveParticipation(record)
+  // A manual run reports the count without saving it: the saved record is
+  // what the scheduled count and the non-responder streaks are built on.
+  if (options.persist) await saveParticipation(record)
   return record
 }
 
@@ -44,12 +47,47 @@ export async function recordParticipation (
  * A member is flagged once per streak, not once per day — otherwise the Scrum
  * Master is told the same thing every morning and stops reading it. Replying
  * again ends the streak, and the next miss starts a fresh one.
+ *
+ * With `persist` off (a manual run) the flags are worked out and returned but
+ * neither saved nor sent. Saving one would mark the streak as already flagged
+ * and silence the scheduled flag that should follow.
  */
 export async function flagHabitualNonResponders (
-  team: TeamConfig, localDate: string
+  team: TeamConfig, localDate: string,
+  options: { todayRecord?: ParticipationRecord, persist: boolean } = { persist: true }
 ): Promise<NonResponderFlag[]> {
-  const history = await recentParticipation(team.teamId, team.habitualWindowDays, team.timezone)
+  const stored = await recentParticipation(team.teamId, team.habitualWindowDays, team.timezone)
+  const history = withToday(stored, options.todayRecord)
   const flags: NonResponderFlag[] = []
+
+  for (const candidate of streaksToFlag(team, history, localDate)) {
+    if (await alreadyFlagged(team.teamId, candidate.memberId, candidate.missedDates)) continue
+
+    const flag: NonResponderFlag = { ...candidate, flaggedAt: new Date() }
+    if (options.persist) await saveFlag(flag)
+    flags.push(flag)
+  }
+
+  if (flags.length > 0 && options.persist) await notifyScrumMaster(team, flags)
+  return flags
+}
+
+/**
+ * The stored history with today's count in place of whatever is stored for
+ * today. A manual count is never saved, so it has to be put in by hand.
+ */
+export function withToday (
+  history: ParticipationRecord[], today: ParticipationRecord | undefined
+): ParticipationRecord[] {
+  if (today === undefined) return history
+  return [today, ...history.filter((record) => record.localDate !== today.localDate)]
+}
+
+/** Members whose missed days reach the threshold and who did not reply today. */
+export function streaksToFlag (
+  team: TeamConfig, history: ParticipationRecord[], localDate: string
+): Array<Omit<NonResponderFlag, 'flaggedAt'>> {
+  const candidates: Array<Omit<NonResponderFlag, 'flaggedAt'>> = []
 
   for (const member of team.members) {
     const missedDates = history
@@ -68,21 +106,15 @@ export async function flagHabitualNonResponders (
     ) ?? false
     if (repliedToday) continue
 
-    if (await alreadyFlagged(team.teamId, member.memberId, missedDates)) continue
-
-    const flag: NonResponderFlag = {
+    candidates.push({
       teamId: team.teamId,
       memberId: member.memberId,
       memberName: member.displayName,
-      missedDates,
-      flaggedAt: new Date()
-    }
-    await saveFlag(flag)
-    flags.push(flag)
+      missedDates
+    })
   }
 
-  if (flags.length > 0) await notifyScrumMaster(team, flags)
-  return flags
+  return candidates
 }
 
 async function notifyScrumMaster (team: TeamConfig, flags: NonResponderFlag[]): Promise<void> {
