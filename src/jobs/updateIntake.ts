@@ -74,6 +74,10 @@ export function toTrackerRows (
       attached.anyBlocker = attached.anyBlocker === null
         ? blocker.description
         : `${attached.anyBlocker}; ${blocker.description}`
+      // Work that is blocked is not progressing, and a Status filter for
+      // Blocked must find it. Completed work stays completed: the member said
+      // it is finished, and a blocker mentioned against it does not undo that.
+      if (attached.status === 'In Progress') attached.status = 'Blocked'
       continue
     }
 

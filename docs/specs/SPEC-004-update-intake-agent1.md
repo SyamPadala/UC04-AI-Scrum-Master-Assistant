@@ -74,8 +74,12 @@ work item, so code turns this output into `TrackerRow[]`:
 |---|---|
 | each `completed[i]` | `WIN` = `storyRef`, `Comment` = `comment`, `Status` = `Completed` |
 | each `inProgress[i]` | `WIN` = `storyRef`, `Comment` = `comment`, `Status` = `In Progress` |
-| a blocker whose `storyRef` matches a row above | that row's `AnyBlocker` |
+| a blocker whose `storyRef` matches a row above | that row's `AnyBlocker`; an `In Progress` row becomes `Blocked`, a `Completed` row stays `Completed` |
 | a blocker with no match | its own row, `Status` = `Blocked`, `Comment` empty |
+
+Amended 24 Sep 2026: a blocked item used to keep `Status` = `In Progress`, so a
+Status filter for `Blocked` missed it. Found live on Tiwari Satyam's SCRUM-20
+update.
 
 `Description` is never produced by the agent. Code fills it from
 `lookup_story(storyRef)` against Jira/ADO, and leaves it empty when there is no

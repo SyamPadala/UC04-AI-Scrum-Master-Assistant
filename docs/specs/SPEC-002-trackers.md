@@ -56,7 +56,7 @@ interface TrackerRow {
                                   // never the member's words
   assignedTo: string;             // member display name
   comment: string | null;         // what the member said about it, in their
-                                  // words; null on a Blocked row
+                                  // words; null on a blocker-only row
   status: RowStatus;
   anyBlocker: string | null;
 }
@@ -88,7 +88,7 @@ type TrackerConfig =
 | `WIN` | Single line of text | Work item number; empty when none was named (A8) |
 | `Description` | Single line of text | The work item's title, from Jira/ADO |
 | `AssignedTo` | Single line of text | Member display name, from Microsoft 365 |
-| `Comment` | Multiple lines of text | The member's own words; empty on a Blocked row |
+| `Comment` | Multiple lines of text | The member's own words; empty on a blocker-only row (no work item) |
 | `Status` | Choice | `In Progress` / `Completed` / `Blocked` (list order) |
 | `AnyBlocker` | Multiple lines of text | The blocker, if any |
 

@@ -8,7 +8,7 @@ export interface TrackerRow {
   description: string | null
   /** Member display name, taken from Teams. */
   assignedTo: string
-  /** What the member said about this item, in their words; null on a Blocked row. */
+  /** What the member said about this item, in their words; null on a blocker-only row. */
   comment: string | null
   status: RowStatus
   anyBlocker: string | null

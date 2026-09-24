@@ -72,7 +72,20 @@ test('a blocker on a listed item attaches to that row instead of adding one', ()
 
   assert.equal(rows.length, 1)
   assert.equal(rows[0].anyBlocker, 'sandbox times out')
-  assert.equal(rows[0].status, 'In Progress')
+  assert.equal(rows[0].status, 'Blocked', 'blocked work must be findable by Status')
+})
+
+test('a blocker against completed work keeps it Completed', () => {
+  const rows = toTrackerRows({
+    completed: [{ storyRef: 'SCRUM-6', comment: 'done' }],
+    inProgress: [],
+    blockers: [{ description: 'deploy slot not booked', storyRef: 'SCRUM-6' }],
+    confidence: 'high'
+  }, 'Madhavi Andoju', 'raw', stories)
+
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].status, 'Completed')
+  assert.equal(rows[0].anyBlocker, 'deploy slot not booked')
 })
 
 test('a blocker with no work item gets its own Blocked row, comment empty', () => {
