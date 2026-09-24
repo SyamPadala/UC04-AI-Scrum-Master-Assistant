@@ -143,6 +143,11 @@ export async function teamView (team: TeamConfig): Promise<unknown> {
       channelConnected: channelRef !== undefined
     },
     tracker: team.tracker.kind,
+    trackerDetail: team.tracker.kind === 'jira' ? `${config.jira.baseUrl}/browse/${team.tracker.standupIssueKey}` : null,
+    trackerOptions: [
+      { kind: 'sharepoint', label: 'SharePoint list — Daily Status Tracker', available: config.sharepoint.siteId !== '' },
+      { kind: 'jira', label: 'Jira — a comment on each work item', available: config.jira.standupIssueKey !== '' }
+    ],
     runs,
     changes: changes.map((c) => ({
       changedBy: c.changedBy,
@@ -232,6 +237,42 @@ export async function removeStakeholder (team: TeamConfig, rawEmail: string, act
   if (emails.length === team.stakeholders.emails.length) throw new AdminError(404, `${email} is not on the list.`)
   await applyChange(team, { stakeholders: { ...team.stakeholders, emails } }, actor.name)
   return `${email} removed from the summary list.`
+}
+
+/**
+ * Behaviour 7: choose where the team's updates are written (FR-04).
+ *
+ * The destination is checked before it is saved, so a wrong setting shows up
+ * here rather than as a failed update at stand-up time.
+ */
+export async function setTracker (team: TeamConfig, rawKind: unknown, actor: Actor): Promise<string> {
+  let tracker: TeamConfig['tracker']
+  if (rawKind === 'sharepoint') {
+    tracker = { kind: 'sharepoint', siteId: config.sharepoint.siteId, listId: config.sharepoint.listId }
+    try {
+      await graphRequest('GET', `/sites/${tracker.siteId}/lists/${tracker.listId}?$select=id`)
+    } catch (error) {
+      throw new AdminError(502, `The SharePoint list cannot be reached: ${error instanceof Error ? error.message.slice(0, 160) : String(error)}`)
+    }
+  } else if (rawKind === 'jira') {
+    const key = config.jira.standupIssueKey
+    if (config.jira.baseUrl === '' || key === '') throw new AdminError(503, 'Jira comments are not configured on this server.')
+    tracker = { kind: 'jira', projectKey: config.jira.projectKey, standupIssueKey: key }
+    const client = jira()
+    if (client === undefined || await client.lookupStory(key) === undefined) {
+      throw new AdminError(502, `The Jira stand-up issue ${key} cannot be found.`)
+    }
+  } else {
+    throw new AdminError(400, 'Choose SharePoint or Jira.')
+  }
+
+  const changed = await applyChange(team, { tracker }, actor.name)
+  if (changed.length === 0) return 'Nothing changed.'
+  // Updates already recorded today stay where they were written; the summary
+  // reads only the current destination.
+  return tracker.kind === 'jira'
+    ? `Updates will now be added as comments on the Jira work items; those naming no work item go to ${tracker.standupIssueKey}.`
+    : 'Updates will now be written to the SharePoint list.'
 }
 
 /** Behaviour 8: the same isolated manual run as the chat `run` command (A14). */

@@ -167,6 +167,17 @@ export function adminPage (userName: string): string {
   .kv { display: flex; align-items: center; gap: 14px; }
   .kv .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); flex: none; }
   .kv b { display: block; } .kv small { color: var(--muted); }
+  .choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .choice { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; font: inherit; color: var(--text);
+    padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer;
+    transition: border-color .15s, box-shadow .15s; }
+  .choice:hover { border-color: var(--brand); }
+  .choice[aria-checked="true"] { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+  .choice:disabled { opacity: .5; cursor: not-allowed; }
+  .choice .ic { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); flex: none; }
+  .choice b { display: block; } .choice small { display: block; color: var(--muted); font-size: 12.5px; }
+  .choice .dot { margin-left: auto; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); flex: none; }
+  .choice[aria-checked="true"] .dot { border: 5px solid var(--brand); }
 
   /* Run now */
   .jobs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
@@ -326,10 +337,10 @@ export function adminPage (userName: string): string {
         </div>
       </form>
       <div class="card">
-        <div class="card-body kv">
-          <div class="ic">${icon('db')}</div>
-          <div style="flex:1"><b>Tracker</b><small id="tracker"></small></div>
-          <span class="badge ok">Connected</span>
+        <div class="card-head"><div><h2>Tracker</h2><p>Where each member's extracted update is written. Checked before it is saved.</p></div></div>
+        <div class="card-body">
+          <div class="choices" id="tracker-options" role="radiogroup" aria-label="Tracker destination"></div>
+          <p class="muted" id="tracker-detail" style="margin:14px 0 0"></p>
         </div>
       </div>
     </section>
@@ -562,8 +573,49 @@ export function adminPage (userName: string): string {
     $('threshold-hint').textContent = 'Missed days within ' + s.habitualWindowDays + ' working days'
     $('active').checked = s.active
     $('active-label').textContent = s.active ? 'Running' : 'Paused'
-    const labels = { sharepoint: 'SharePoint list — Daily Status Tracker', jira: 'Jira — a comment on each work item', mock: 'Local test file (mock)' }
-    $('tracker').textContent = labels[view.tracker] || view.tracker
+    renderTracker()
+  }
+
+  // Fixed icon markup from the server, never data: safe to set as HTML.
+  const TRACKER_ICONS = { sharepoint: '${icon('db')}', jira: '${icon('file')}' }
+  const TRACKER_HINTS = {
+    sharepoint: 'One row per work item in the Daily Status Tracker list',
+    jira: 'A comment on each work item; others on the stand-up issue'
+  }
+
+  function renderTracker () {
+    const box = $('tracker-options')
+    box.replaceChildren()
+    for (const option of view.trackerOptions) {
+      const b = el('button', null, 'choice')
+      b.type = 'button'
+      b.setAttribute('role', 'radio')
+      b.setAttribute('aria-checked', String(view.tracker === option.kind))
+      b.disabled = !option.available
+      const ic = el('div', null, 'ic')
+      ic.innerHTML = TRACKER_ICONS[option.kind] || ''
+      const text = el('div')
+      text.append(el('b', option.label))
+      text.append(el('small', option.available ? TRACKER_HINTS[option.kind] : 'Not configured on this server'))
+      b.append(ic, text, el('span', null, 'dot'))
+      b.addEventListener('click', () => {
+        if (view.tracker === option.kind) return
+        if (!confirm('Write new stand-up updates to: ' + option.label + '?\\n\\nUpdates already recorded today stay where they are.')) return
+        act(b, () => api('PUT', '/teams/' + teamId + '/tracker', { kind: option.kind })).catch(() => {})
+      })
+      box.append(b)
+    }
+    const detail = $('tracker-detail')
+    detail.replaceChildren()
+    if (view.trackerDetail) {
+      detail.append('Updates naming no work item go to ')
+      const link = el('a', view.trackerDetail.split('/').pop())
+      link.href = view.trackerDetail
+      link.target = '_blank'
+      link.rel = 'noopener'
+      detail.append(link)
+      detail.append('.')
+    }
   }
 
   function outcomeKind (outcome) { return outcome === 'success' ? 'ok' : outcome === 'failed' ? 'bad' : 'warn' }

@@ -115,7 +115,12 @@ export const config = {
      */
     storyPointsField: optional('JIRA_STORY_POINTS_FIELD', ''),
     /** Resolved from the project key on first use when not set. */
-    boardId: optional('JIRA_BOARD_ID', '')
+    boardId: optional('JIRA_BOARD_ID', ''),
+    /**
+     * The issue that receives stand-up updates naming no work item when a
+     * team's tracker is Jira comments (SPEC-002, assumption A15).
+     */
+    standupIssueKey: optional('JIRA_STANDUP_ISSUE_KEY', '')
   },
 
   llm: {

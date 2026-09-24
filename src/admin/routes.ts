@@ -6,7 +6,7 @@ import { cookie, readCookie, seal, unseal } from './session.js'
 import { adminPage } from './page.js'
 import {
   AdminError, addMember, addStakeholder, linkJira, removeMember, removeStakeholder, runNow,
-  llmUsage, teamFor, teamsFor, teamView, updateSchedule, type Actor
+  llmUsage, setTracker, teamFor, teamsFor, teamView, updateSchedule, type Actor
 } from './service.js'
 
 /**
@@ -131,6 +131,9 @@ export function adminRouter (): express.Router {
     const changed = await updateSchedule(team, request.body as Record<string, unknown>, actor)
     return { message: changed.length === 0 ? 'Nothing changed.' : `Saved: ${changed.join(', ')}.` }
   }))
+
+  router.put('/api/teams/:teamId/tracker', handle(async (request, _response, actor) =>
+    ({ message: await setTracker(await teamFor(actor, request.params.teamId), (request.body as { kind?: unknown }).kind, actor) })))
 
   router.post('/api/teams/:teamId/members', handle(async (request, _response, actor) =>
     ({ message: await addMember(await teamFor(actor, request.params.teamId), (request.body as { email?: unknown }).email, actor) })))

@@ -58,8 +58,12 @@ hand to test it. No script, no config file, no redeploy.
 6. **Stakeholders** — email addresses, added and removed one at a time; and the
    stakeholder channel, shown as connected or not connected (the channel
    reference is captured by the bot, SPEC-006, and cannot be set from here).
-7. **Tracker** — the current destination, read-only until the Excel Online and
-   Jira-comment trackers exist (FR-04). Becomes a choice when they do.
+7. **Tracker** — choose where updates are written: SharePoint list or Jira
+   comments (FR-04). The destination is checked before it is saved (the list
+   is reachable; the Jira stand-up issue exists). Updates already recorded
+   today stay where they were written. Excel Online joins the choice when it
+   is built. Changed from read-only on 24 Sep 2026 so the destination can be
+   switched live.
 8. **Run now** — buttons for reminder, follow-up, summary and participation.
    Same behaviour as the chat `run` command (A14): isolated from the scheduled
    cycle, takes no run claim, does not close the stand-up. The result is shown
@@ -96,6 +100,7 @@ POST /admin/logout
 GET    /admin/api/teams                      // teams this user may manage
 GET    /admin/api/teams/:teamId              // config, roster status, today's runs, change history
 PATCH  /admin/api/teams/:teamId/schedule     // Behaviour 4
+PUT    /admin/api/teams/:teamId/tracker      // Behaviour 7 { kind: 'sharepoint' | 'jira' }
 POST   /admin/api/teams/:teamId/members      // { email }
 DELETE /admin/api/teams/:teamId/members/:memberId
 PUT    /admin/api/teams/:teamId/members/:memberId/jira   // { jiraAccountId }
