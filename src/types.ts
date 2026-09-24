@@ -26,6 +26,8 @@ export interface Member {
 export type TrackerConfig =
   | { kind: 'sharepoint', siteId: string, listId: string }
   | { kind: 'mock', path: string }
+  /** FR-04 destination 3: comments on the Jira work items (SPEC-002). */
+  | { kind: 'jira', projectKey: string, standupIssueKey: string }
 
 export interface TeamConfig {
   teamId: string

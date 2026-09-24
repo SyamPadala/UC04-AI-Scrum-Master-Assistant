@@ -562,7 +562,7 @@ export function adminPage (userName: string): string {
     $('threshold-hint').textContent = 'Missed days within ' + s.habitualWindowDays + ' working days'
     $('active').checked = s.active
     $('active-label').textContent = s.active ? 'Running' : 'Paused'
-    const labels = { sharepoint: 'SharePoint list — Daily Status Tracker', mock: 'Local test file (mock)' }
+    const labels = { sharepoint: 'SharePoint list — Daily Status Tracker', jira: 'Jira — a comment on each work item', mock: 'Local test file (mock)' }
     $('tracker').textContent = labels[view.tracker] || view.tracker
   }
 

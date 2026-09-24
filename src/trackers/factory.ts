@@ -2,6 +2,8 @@ import type { TeamConfig } from '../types.js'
 import type { Tracker } from './types.js'
 import { SharePointTracker } from './sharepoint.js'
 import { MockTracker } from './mock.js'
+import { JiraCommentTracker } from './jira.js'
+import { config } from '../config/env.js'
 
 /**
  * The team's tracker, built from that team's own configuration.
@@ -17,5 +19,15 @@ export function trackerFor (team: TeamConfig): Tracker {
       return new SharePointTracker(team.tracker.siteId, team.tracker.listId)
     case 'mock':
       return new MockTracker(team.tracker.path)
+    case 'jira':
+      // The Jira site and its credentials are one per deployment; which
+      // project and which stand-up issue are the team's own.
+      return new JiraCommentTracker({
+        baseUrl: config.jira.baseUrl,
+        email: config.jira.email,
+        apiToken: config.jira.apiToken,
+        projectKey: team.tracker.projectKey,
+        standupIssueKey: team.tracker.standupIssueKey
+      })
   }
 }

@@ -76,7 +76,7 @@ interface Tracker {
 type TrackerConfig =
   | { kind: 'sharepoint'; siteId: string; listId: string }
   | { kind: 'excel'; driveId: string; itemId: string; worksheet: string }
-  | { kind: 'jira'; baseUrl: string; projectKey: string }
+  | { kind: 'jira'; projectKey: string; standupIssueKey: string }  // site + credentials are per deployment
   | { kind: 'mock'; path: string };
 ```
 
@@ -100,7 +100,10 @@ rows for the date, append the new set.
 
 **Jira** — a comment on each resolved work item, rendering that item's rows;
 rows with no WIN go to a configured daily-standup issue. Upsert by finding our
-own prior comment for that member and date and editing it.
+own prior comments for that member and date and replacing them. Each comment
+carries its rows as a comment property (`uc04.scrumAssistant.standup`), which is
+what is read back — the readable text is for people, never parsed. Built
+24 Sep 2026.
 
 ## Configuration
 
