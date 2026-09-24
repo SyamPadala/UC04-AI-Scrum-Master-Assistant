@@ -14,7 +14,7 @@ No production code for a feature until its spec is `Approved`.
 | SPEC-005 | Blocker detection and escalation | FR-06 | Draft |
 | SPEC-006 | Sprint summary (Agent 2) and distribution | FR-07, FR-08 | Draft |
 | SPEC-007 | Participation tracking | FR-09 | Draft |
-| SPEC-008 | Admin configuration card | NFR Configuration | Draft |
+| SPEC-008 | Admin panel (web) | NFR Configuration | Approved |
 
 ## FR coverage
 

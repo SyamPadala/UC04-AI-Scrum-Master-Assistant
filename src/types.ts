@@ -6,6 +6,8 @@ export interface Member {
   /** Entra object id — this person's identity in Microsoft 365 and Teams. */
   memberId: string
   displayName: string
+  /** Work address, recorded when the member is added from the admin page. */
+  email?: string
   /**
    * This person's Jira account id (SPEC-002, item 5b).
    *

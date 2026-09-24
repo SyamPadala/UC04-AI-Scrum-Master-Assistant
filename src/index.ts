@@ -4,6 +4,7 @@ import { config } from './config/env.js'
 import { agent, authConfig } from './bot/adapter.js'
 import { firestoreReachable } from './store/firestore.js'
 import { runTick } from './jobs/tick.js'
+import { adminRouter } from './admin/routes.js'
 
 const app = express()
 app.use(express.json())
@@ -40,6 +41,9 @@ app.post('/tick', (request, response) => {
     }
   })()
 })
+
+/** The Scrum Master's admin page and its API (SPEC-008). */
+app.use('/admin', adminRouter())
 
 app.get('/health', (_request, response) => {
   void (async () => {

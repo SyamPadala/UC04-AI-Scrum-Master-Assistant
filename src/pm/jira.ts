@@ -58,6 +58,13 @@ const boardListSchema = z.object({
   values: z.array(z.object({ id: z.number(), name: z.string() })).default([])
 })
 
+const userListSchema = z.array(z.looseObject({
+  accountId: z.string(),
+  accountType: z.string().nullish(),
+  displayName: z.string().nullish(),
+  active: z.boolean().nullish()
+}))
+
 type RawIssue = z.infer<typeof issueSchema>
 
 function parseDate (value: string | null | undefined): Date | null {
@@ -259,5 +266,17 @@ export class JiraClient implements PmClient {
     return items.filter(
       (issue) => issue.assigneeAccountId === jiraAccountId && issue.statusCategory !== 'Done'
     )
+  }
+
+  /**
+   * People with an Atlassian account on this site, for linking a roster member
+   * to their Jira identity (SPEC-008). Apps and bots are left out: work is never
+   * assigned to them, so linking one would only hide a mistake.
+   */
+  async listUsers (): Promise<Array<{ accountId: string, displayName: string }>> {
+    const users = await this.get('/rest/api/3/users/search?maxResults=200', userListSchema, 'users')
+    return users
+      .filter((user) => user.accountType === 'atlassian' && user.active !== false)
+      .map((user) => ({ accountId: user.accountId, displayName: user.displayName ?? user.accountId }))
   }
 }

@@ -1,7 +1,8 @@
 import { CardFactory, MessageFactory, type TurnContext } from '@microsoft/agents-hosting'
 import type { TeamConfig } from '../types.js'
-import { adminSetupCard, adminStatusCard } from '../cards/adminCards.js'
-import { recordConfigChange, runsForDate, saveTeam, teamForMember } from '../store/firestore.js'
+import { adminStatusCard } from '../cards/adminCards.js'
+import { runsForDate, teamForMember } from '../store/firestore.js'
+import { applyChange } from '../admin/service.js'
 import { localDate } from '../config/time.js'
 import { config } from '../config/env.js'
 import { runJobNow } from '../jobs/tick.js'
@@ -71,7 +72,7 @@ export async function handleAdminCommand (command: AdminCommand, context: TurnCo
   if (command === 'help') {
     await context.sendActivity(MessageFactory.text(
       'I record your stand-up update — just tell me what you worked on.\n\n' +
-      'The Scrum Master can also use: **setup** to change settings, **status** to see ' +
+      'The Scrum Master can also use: **setup** for the admin page link, **status** to see ' +
       'what ran today, **pause** / **resume** to stop and restart the daily messages, ' +
       'and **run reminder** (or followup, summary, participation) to trigger one now — ' +
       'a manual run for testing, which leaves the scheduled day untouched.'
@@ -125,9 +126,12 @@ export async function handleAdminCommand (command: AdminCommand, context: TurnCo
     return
   }
 
+  // Configuration lives on the admin page now (SPEC-008 behaviour 13).
   if (command === 'setup') {
-    await context.sendActivity(MessageFactory.attachment(
-      CardFactory.adaptiveCard(adminSetupCard(team))
+    await context.sendActivity(MessageFactory.text(
+      config.admin.publicBaseUrl === ''
+        ? 'Settings are managed on the admin page, which is not configured on this server yet.'
+        : `Team members, stakeholders and the schedule are managed on the admin page: ${config.admin.publicBaseUrl}/admin`
     ))
     return
   }
@@ -149,91 +153,9 @@ export async function handleAdminCommand (command: AdminCommand, context: TurnCo
   ))
 }
 
-const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
-
-/** Values submitted from the card arrive as strings and are not trusted. */
-export async function handleCardSubmit (value: Record<string, unknown>, context: TurnContext): Promise<void> {
-  const team = await teamOfSender(context)
-  if (team === undefined) return
-
-  if (!mayConfigure(team, senderIdOf(context))) {
-    await context.sendActivity(MessageFactory.text('Only the Scrum Master can change these settings.'))
-    return
-  }
-
-  const standupTime = String(value.standupTime ?? '').trim()
-  const summaryTime = String(value.summaryTime ?? '').trim()
-  const timezone = String(value.timezone ?? '').trim()
-  const grace = Number(value.gracePeriodMinutes)
-  const active = String(value.active ?? 'true') === 'true'
-  const emails = String(value.stakeholderEmails ?? '')
-    .split(',').map((e) => e.trim()).filter((e) => e !== '')
-
-  const problems: string[] = []
-  if (!TIME_PATTERN.test(standupTime)) problems.push('Stand-up time must look like 09:00.')
-  if (!TIME_PATTERN.test(summaryTime)) problems.push('Summary time must look like 18:00.')
-  if (!Number.isInteger(grace) || grace < 5 || grace > 1440) {
-    problems.push('Follow-up delay must be a whole number of minutes between 5 and 1440.')
-  }
-  // An unknown timezone would make every schedule comparison throw at tick time,
-  // long after the person who typed it has walked away.
-  try {
-    new Intl.DateTimeFormat('en-GB', { timeZone: timezone })
-  } catch {
-    problems.push(`"${timezone}" is not a timezone I recognise. Try Asia/Kolkata.`)
-  }
-
-  if (problems.length > 0) {
-    await context.sendActivity(MessageFactory.text(
-      `I did not save that:\n\n${problems.map((p) => `- ${p}`).join('\n')}`
-    ))
-    return
-  }
-
-  const changed = await applyConfig(
-    team,
-    { standupTime, summaryTime, timezone, gracePeriodMinutes: grace, active,
-      stakeholders: { ...team.stakeholders, emails } },
-    context
-  )
-
-  if (changed.length === 0) {
-    await context.sendActivity(MessageFactory.text('Nothing changed.'))
-    return
-  }
-
-  await context.sendActivity(MessageFactory.text(
-    `Saved:\n\n${changed.map((c) => `- ${c}`).join('\n')}\n\nThe next check will use these settings.`
-  ))
-}
-
-/**
- * Writes the change and records who made it.
- *
- * SPEC-008 requires an audit line per change: a misconfigured demo is much
- * easier to explain when you can see what was changed and by whom.
- */
+/** Pause and resume are recorded like any other change (SPEC-008 behaviour 12). */
 async function applyConfig (
   team: TeamConfig, patch: Partial<TeamConfig>, context: TurnContext
 ): Promise<string[]> {
-  const fields: Array<{ field: string, from: unknown, to: unknown }> = []
-  const described: string[] = []
-
-  for (const [key, next] of Object.entries(patch)) {
-    const before = (team as unknown as Record<string, unknown>)[key]
-    if (JSON.stringify(before) === JSON.stringify(next)) continue
-    fields.push({ field: key, from: before, to: next })
-    described.push(`${key}: ${JSON.stringify(before)} → ${JSON.stringify(next)}`)
-  }
-
-  if (fields.length === 0) return []
-
-  await saveTeam({ ...team, ...patch })
-  await recordConfigChange({
-    teamId: team.teamId,
-    changedBy: context.activity.from?.name ?? 'unknown',
-    changedAt: new Date(),
-    fields
-  })
-  return described
+  return await applyChange(team, patch, context.activity.from?.name ?? 'unknown')
 }

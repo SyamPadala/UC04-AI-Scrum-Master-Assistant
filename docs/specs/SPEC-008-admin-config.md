@@ -1,100 +1,177 @@
-# SPEC-008: Admin configuration card
+# SPEC-008: Admin panel (web)
 
 | | |
 |---|---|
-| **Status** | Draft |
-| **Delivers** | NFR Configuration |
-| **Assumptions** | A9 (configuration via Adaptive Card in the bot chat, `setup` command) |
+| **Status** | Approved (24 Sep 2026) |
+| **Delivers** | NFR Configuration; supports FR-08 (stakeholder list), FR-10 (per-team settings) |
+| **Assumptions** | A9 (configuration via a web admin panel, amended 24 Sep 2026) |
 | **Depends on** | SPEC-001 |
 | **Owner** | Claude |
 
+> **Amended 24 Sep 2026.** Configuration moves from the `setup` Adaptive Card to
+> a web page. The PRD allows either ("Teams adaptive card **or** admin UI";
+> "admin panel (Teams tab **or** web UI)"). A card cannot manage lists — adding
+> and removing members and stakeholders took a round of messages per change.
+> The `setup` card is removed once the page works. User decision.
+
 ## Intent
 
-**In plain words:** the Scrum Master sets the assistant up from inside Teams —
-type `setup` in the chat and a form appears. Who's on the team, what time
-stand-up is, how long to wait before chasing, where to file the updates, who
-gets the summary. No config file, no redeploy, no developer.
+**In plain words:** the Scrum Master opens one web page, signs in with their
+Microsoft 365 account, and manages everything about their team there: who is on
+the team, who receives the summary, when stand-up happens, and running a job by
+hand to test it. No script, no config file, no redeploy.
+
+## Three roles
+
+| Role | Who | Gets |
+|---|---|---|
+| Dev team | The roster | Reminders, follow-ups; sends updates |
+| Scrum Master | One roster member | Blocker alerts, non-responder flags; manages the team on this page |
+| Stakeholders | Email addresses, plus everyone in the stakeholder channel | The daily summary (FR-08) |
 
 ## Behaviour
 
-1. The Scrum Master types `setup` in the bot chat and receives an Adaptive Card
-   pre-filled with the team's current configuration (A9).
-2. The card edits: team name, roster, Scrum Master, timezone, stand-up time,
-   grace period, summary time, tracker destination, stakeholder channel and
-   emails, and active/paused state.
-3. Submitting the card validates the input and saves it. The next heartbeat uses
-   the new settings — no restart.
-4. Only the team's current Scrum Master, or a configured admin, may change that
-   team's configuration. Anyone else gets a polite refusal.
-5. `status` returns a read-only summary of the current configuration and today's
-   run outcomes, so the Scrum Master can check the assistant is working.
-6. `pause` and `resume` set `active`, stopping and restarting all scheduled jobs
-   for that team without deleting anything.
-7. A Scrum Master running `setup` in a chat with no team yet creates a new team
-   (FR-10 — this is how the second team gets added in the demo).
-8. Every configuration change is recorded: who changed it, when, and which
-   fields, so a misconfigured demo can be traced.
+**Access**
+
+1. The page is served by the same Cloud Run service at `/admin`.
+2. Every request requires Microsoft (Entra ID) sign-in on the
+   `SyamPadala.onmicrosoft.com` tenant. There is no anonymous view.
+3. A signed-in user sees and edits only the teams where they are the Scrum
+   Master. A user in `ADMIN_USER_IDS` sees every team. Anyone else sees
+   "You are not the Scrum Master of any team" and nothing more.
+
+**Sections of the page** (one team at a time; a selector when the user has more than one)
+
+4. **Schedule** — stand-up time, follow-up grace period, summary time,
+   timezone, non-responder threshold (A3), and Running / Paused. Everything the
+   `setup` card edits today.
+5. **Dev team** — the roster, each member showing: name, email, whether the
+   assistant can message them (app installed), and whether they are linked to a
+   Jira account.
+   - **Add** by email address. The address is looked up in Microsoft 365
+     (Graph); the member is stored by their Entra object id, not by name.
+   - **Remove** a member. They stop receiving reminders and stop counting
+     towards participation. Rows they already wrote stay in the tracker.
+   - **Link Jira account** — pick from the Jira site's users. Replaces
+     `scripts/link-jira.mjs`. One Jira account cannot be linked to two people.
+   - The Scrum Master is marked and cannot be removed.
+6. **Stakeholders** — email addresses, added and removed one at a time; and the
+   stakeholder channel, shown as connected or not connected (the channel
+   reference is captured by the bot, SPEC-006, and cannot be set from here).
+7. **Tracker** — the current destination, read-only until the Excel Online and
+   Jira-comment trackers exist (FR-04). Becomes a choice when they do.
+8. **Run now** — buttons for reminder, follow-up, summary and participation.
+   Same behaviour as the chat `run` command (A14): isolated from the scheduled
+   cycle, takes no run claim, does not close the stand-up. The result is shown
+   on the page.
+9. **Today** — what ran today and its outcome, what the chat `status` shows.
+10. **Change history** — who changed what and when, for this team.
+
+**Saving**
+
+11. Every change is validated on the server and saved immediately. The next
+    `/tick` uses it; no restart.
+12. Every change is recorded in the change log: who, when, which field, from
+    and to.
+
+**Teams chat after this ships**
+
+13. `setup` is removed; typing it replies with the admin page link.
+14. `help`, `status`, `pause`, `resume` and `run` stay in chat — quick actions
+    a Scrum Master may want without leaving Teams.
 
 ## Interface
 
 ```ts
-type AdminCommand = 'setup' | 'status' | 'pause' | 'resume' | 'help';
+// Pages and JSON API, all under /admin, all behind sign-in.
+GET  /admin                                  // the page
+GET  /admin/login  → Entra authorize         // sign-in
+GET  /admin/auth/callback                    // sets session cookie
+POST /admin/logout
 
-interface ConfigChange {
-  teamId: string; changedBy: string; changedAt: Date;
-  fields: { field: string; from: unknown; to: unknown }[];
-}
-
-handleAdminCommand(cmd: AdminCommand, ctx: TurnContext): Promise<void>;
-applyConfig(teamId: string, patch: Partial<TeamConfig>, changedBy: string): Promise<void>;
+GET    /admin/api/teams                      // teams this user may manage
+GET    /admin/api/teams/:teamId              // config, roster status, today's runs, change history
+PATCH  /admin/api/teams/:teamId/schedule     // Behaviour 4
+POST   /admin/api/teams/:teamId/members      // { email }
+DELETE /admin/api/teams/:teamId/members/:memberId
+PUT    /admin/api/teams/:teamId/members/:memberId/jira   // { jiraAccountId }
+POST   /admin/api/teams/:teamId/stakeholders // { email }
+DELETE /admin/api/teams/:teamId/stakeholders/:email
+POST   /admin/api/teams/:teamId/run/:jobType // Behaviour 8
 ```
 
-Cards: `src/cards/adminSetup.json`, `src/cards/adminStatus.json`. Roster entries
-are picked by name and resolved to object ids via Graph user lookup.
+- Sign-in uses the existing Graph Entra app (`GRAPH_CLIENT_ID`) with the
+  authorization-code flow. The ID token is verified against the tenant's keys;
+  the user's object id (`oid`) is what authorization checks.
+- The session is an HMAC-signed, HttpOnly, Secure, SameSite=Lax cookie. It
+  holds the object id, name and expiry — nothing else. Lax, not Strict: the
+  sign-in callback is a navigation from Microsoft's login page, and a Strict
+  cookie would not be sent with it. Writes are protected by a required header.
+- The page is plain HTML with a small script calling the JSON API. No front-end
+  framework, no build step beyond `tsc`.
+- Code: `src/admin/` (routes, auth, validation), `src/admin/page.ts` (HTML).
+  `index.ts` only mounts the router (coding rule 10).
 
 ## Configuration
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `ADMIN_USER_IDS` | string[] | [] | Users who may configure any team |
-| `SETUP_COMMAND` | string | `setup` | Trigger word |
+| `ADMIN_USER_IDS` | string[] | [] | Users who may manage any team |
+| `ADMIN_SESSION_SECRET` | secret | — | Signs the session cookie; required when the page is enabled |
+| `ADMIN_SESSION_HOURS` | number | 8 | Session length |
+| `PUBLIC_BASE_URL` | string | — | The Cloud Run URL, used to build the sign-in redirect |
+
+**One-time setup (user):** in the Graph Entra app registration, add a **Web**
+redirect URI `<PUBLIC_BASE_URL>/admin/auth/callback`. Delegated `openid`,
+`profile` and `User.Read` need no admin consent beyond what the tenant already
+gives.
 
 ## Edge cases
 
-- **Invalid time format, or grace period that pushes the follow-up past the
-  summary.** Rejected with a specific message naming the field, not a generic
-  error. Nothing is saved.
-- **Roster member who has not installed the app.** Accepted and saved, but the
-  card warns plainly that they cannot be messaged until they do — this is the
-  most likely demo-day failure and it should be visible before the demo.
-- **Timezone that is not a valid IANA name.** Rejected with examples.
-- **Tracker destination that cannot be reached with current credentials.**
-  Saved, with a warning from a connectivity check, so the problem is found at
-  setup rather than at 9 AM.
-- **Two people editing at once.** Last write wins; both changes are recorded in
-  the change log so the conflict is visible.
-- **Non-Scrum-Master runs `setup`.** Refused, and the attempt is logged.
-- **`setup` run while jobs are mid-flight.** Config is read once per job at
-  start, so a change never applies halfway through a run.
-- **Team paused mid-day.** Remaining jobs for the day are skipped with reason
-  "paused"; already-sent messages are not recalled.
+- **Email not found in the tenant, or a guest account.** Refused with the
+  reason; nothing saved.
+- **Person already on another team's roster.** Refused — rosters must not
+  overlap (SPEC-001), or their updates would have no single tracker.
+- **Person already on this roster, or stakeholder already listed.** No change,
+  no error.
+- **Member removed mid-day.** Today's rows stay. They are excluded from
+  follow-up and participation from the next job that runs.
+- **Member added who has not installed the app.** Saved, and shown as "cannot
+  be messaged yet" — visible before the demo, not discovered at reminder time.
+- **Invalid time, timezone, or a grace period that pushes the follow-up past the
+  summary.** Refused with a message naming the field.
+- **Invalid stakeholder email format.** Refused.
+- **Session expired.** API returns 401; the page sends the user back to sign-in.
+- **Cross-site request.** A required custom request header on every write; a
+  form posted from another site cannot send it and is rejected.
+- **Scrum Master of team A calls team B's API directly.** 403, logged.
+- **Two people editing at once.** Last write wins; both changes are in the log.
+- **Privacy.** The page shows no update content — only configuration, roster,
+  run outcomes and counts.
 
 ## Out of scope
 
-A web admin UI — the PRD allows "adaptive card **or** admin UI", and the card is
-the lighter path (A9). Per-member preferences. Role management beyond Scrum
-Master and admin.
+- Changing who the Scrum Master is, and creating a new team from the page.
+  Both are done by `scripts/seed-team.mjs` for now; creating the second team is
+  part of the FR-10 work.
+- Participation reports and non-responder history on the page.
+- Pinning the page as a Teams tab (possible later with no code change to the
+  page itself).
+- Per-member preferences; roles beyond Scrum Master and admin.
 
 ## Verification
 
 | # | Check | Method | Evidence |
 |---|---|---|---|
-| 1 | `setup` returns a pre-filled card | Live run | Screenshot (Configuration NFR) |
-| 2 | Changing stand-up time takes effect without restart | Live run, change then wait for tick | Reminder at new time |
-| 3 | Changing tracker destination takes effect | Live run | Update in the new destination |
-| 4 | Roster change adds and removes reminders | Live run | `ReminderResult` counts |
-| 5 | Second team created from the card | Live run | Two teams running (FR-10) |
-| 6 | Non-Scrum-Master is refused | Live run as a member | Screenshot + log |
-| 7 | Invalid input rejected with a specific message | Live run | Screenshot |
-| 8 | `pause` stops jobs, `resume` restarts them | Live run over two ticks | `RunLog` |
-| 9 | Changes recorded with author and fields | Inspect change log | Export |
+| 1 | Page refuses an anonymous visitor | Open `/admin` in a private window | Redirect to Microsoft sign-in |
+| 2 | Non-Scrum-Master is refused | Sign in as Madhavi | Screenshot + 403 in log |
+| 3 | Schedule change takes effect without restart | Change stand-up time, wait for tick | Reminder at the new time |
+| 4 | Member added by email starts receiving reminders | Add, then Run now → reminder | `ReminderResult` counts |
+| 5 | Removed member stops receiving reminders | Remove, then Run now → reminder | `ReminderResult` counts |
+| 6 | Member on another team is refused | Try to add them | Error shown, nothing saved |
+| 7 | Stakeholder email added receives the summary | Add, then Run now → summary | Email in that inbox |
+| 8 | Run now does not close the stand-up | Run summary, then send an update | Update recorded |
+| 9 | Jira link set from the page | Link, then send an update naming a ticket | Row attributed |
+| 10 | Every change is in the history | Inspect the Change history section | Screenshot |
+| 11 | `setup` in chat returns the page link | Type `setup` | Screenshot |
+| 12 | Unit tests | Validation, authorization, roster overlap | `npm test` |

@@ -266,6 +266,29 @@ export async function recordConfigChange (change: ConfigChange): Promise<void> {
   await db.collection('configChanges').add(change)
 }
 
+export async function allTeams (): Promise<TeamConfig[]> {
+  const snapshot = await db.collection('teams').get()
+  return snapshot.docs.map((doc) => doc.data() as TeamConfig)
+}
+
+/**
+ * The most recent configuration changes for one team, newest first.
+ *
+ * Sorted here rather than in the query: ordering on a second field would need
+ * a composite index, and the history of one team is small.
+ */
+export async function configChangesFor (teamId: string, limit = 25): Promise<ConfigChange[]> {
+  const snapshot = await db.collection('configChanges').where('teamId', '==', teamId).get()
+  return snapshot.docs
+    .map((doc) => {
+      // Firestore hands dates back as Timestamps, not Date objects.
+      const data = doc.data() as Omit<ConfigChange, 'changedAt'> & { changedAt: { toDate: () => Date } }
+      return { ...data, changedAt: data.changedAt.toDate() }
+    })
+    .sort((a, b) => b.changedAt.getTime() - a.changedAt.getTime())
+    .slice(0, limit)
+}
+
 /**
  * Claims one LLM call against the day's ceiling.
  *

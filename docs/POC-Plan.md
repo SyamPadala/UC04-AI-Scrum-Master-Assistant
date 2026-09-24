@@ -219,7 +219,7 @@ docs/                 plan, specs, setup guide, demo script
 | A6 | Scope: velocity | Velocity = completed story points per sprint (current vs last 3); completion = done / committed points; included in summary as text |
 | A7 | FR-04, Integrations | Tracker destinations: SharePoint list, Excel Online, Jira comment. **Jira only** for story lookup and sprint data (decided 20 Sep 2026) |
 | A8 | FR-06 | Affected story resolved by Agent 1 from IDs or descriptions in the update, validated via Jira/ADO tools; otherwise "not specified" |
-| A9 | Config NFR | Admin configuration via Adaptive Card in the bot chat (Scrum Master runs `setup`) |
+| A9 | Config NFR | Admin configuration via a **web admin panel** at `/admin` on the Cloud Run service, behind Microsoft sign-in, Scrum Master only (SPEC-008). **Amended 24 Sep 2026** from the `setup` Adaptive Card, which could not manage lists of members and stakeholders; the card is removed once the page works. The PRD allows either ("adaptive card or admin UI") |
 | A10 | Open questions | Voice input and velocity trend chart not built |
 | A11 | FR-02 | Multiple messages from a member on the same day are combined into one update |
 | A12 | Section 8 (LLM) | PRD names Claude; **Gemini approved as substitute by the requirement owner, 17 Sep 2026**. The LLM sits behind a provider adapter (`anthropic` / `vertex` / `gemini`) so the choice is a config value. FR-03 accuracy is measured and reported against whichever provider is actually delivered |
@@ -246,7 +246,7 @@ docs/                 plan, specs, setup guide, demo script
 | NFR Latency | Timing instrumentation; capped tool iterations and timeout | Latency report (< 30 s) |
 | NFR Privacy | Metadata-only store; Claude via Vertex/API | Design review |
 | NFR Accessibility | Adaptive Cards | Demo on Teams desktop + mobile |
-| NFR Configuration | Admin card | Demo: change schedule/roster/tracker via card |
+| NFR Configuration | Web admin panel (SPEC-008) | Demo: change schedule, roster and stakeholders on the page |
 
 ### Success metrics in the POC
 

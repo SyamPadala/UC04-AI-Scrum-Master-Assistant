@@ -7,7 +7,7 @@ import { localDate } from '../config/time.js'
 import { saveChannelRef, saveConversationRef, teamForChannel, teamForMember } from '../store/firestore.js'
 import { trackerFor } from '../trackers/factory.js'
 import { processUpdate, StandupClosedError } from '../jobs/updateIntake.js'
-import { handleAdminCommand, handleCardSubmit, parseAdminCommand } from './admin.js'
+import { handleAdminCommand, parseAdminCommand } from './admin.js'
 
 /**
  * What a member is told once the day has closed (A14).
@@ -103,17 +103,6 @@ export class ScrumAssistant extends ActivityHandler {
       }
 
       await rememberSender(context)
-
-      // A card Save arrives as a message with no text and a value payload.
-      const submitted = context.activity.value
-      if (submitted !== undefined && submitted !== null && typeof submitted === 'object') {
-        const payload = submitted as Record<string, unknown>
-        if (payload.command === 'saveConfig') {
-          await handleCardSubmit(payload, context)
-          await next()
-          return
-        }
-      }
 
       const text = (context.activity.text ?? '').trim()
       const memberName = context.activity.from?.name ?? 'Unknown'

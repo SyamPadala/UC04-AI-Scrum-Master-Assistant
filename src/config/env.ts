@@ -73,7 +73,19 @@ export const config = {
 
   admin: {
     /** Users who may configure any team, beyond that team's Scrum Master. */
-    userIds: optional('ADMIN_USER_IDS', '').split(',').map((id) => id.trim()).filter((id) => id !== '')
+    userIds: optional('ADMIN_USER_IDS', '').split(',').map((id) => id.trim()).filter((id) => id !== ''),
+    /**
+     * Signs the admin page's session cookie (SPEC-008). Unset means the page
+     * is switched off: without it a session could not be trusted.
+     */
+    sessionSecret: optional('ADMIN_SESSION_SECRET', ''),
+    sessionHours: numeric('ADMIN_SESSION_HOURS', 8),
+    /**
+     * The service's public address. The sign-in redirect must match the one
+     * registered in Entra exactly, and Cloud Run answers on more than one
+     * hostname, so it is configured rather than read from the request.
+     */
+    publicBaseUrl: optional('PUBLIC_BASE_URL', '').replace(/\/+$/, '')
   },
 
   teams: {
