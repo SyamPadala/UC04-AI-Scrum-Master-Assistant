@@ -66,6 +66,10 @@ hand to test it. No script, no config file, no redeploy.
    on the page.
 9. **Today** — what ran today and its outcome, what the chat `status` shows.
 10. **Change history** — who changed what and when, for this team.
+10a. **LLM usage** — model calls and tokens per day for the last 14 days, split
+    by Agent 1 and Agent 2, against the daily call limit; provider, model and
+    whether live calls are on. Counts only (Privacy NFR). Added 24 Sep 2026 at
+    the user's request.
 
 **Saving**
 
@@ -98,6 +102,7 @@ PUT    /admin/api/teams/:teamId/members/:memberId/jira   // { jiraAccountId }
 POST   /admin/api/teams/:teamId/stakeholders // { email }
 DELETE /admin/api/teams/:teamId/stakeholders/:email
 POST   /admin/api/teams/:teamId/run/:jobType // Behaviour 8
+GET    /admin/api/llm                        // Behaviour 10a
 ```
 
 - Sign-in uses the existing Graph Entra app (`GRAPH_CLIENT_ID`) with the

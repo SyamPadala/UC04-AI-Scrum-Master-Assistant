@@ -5,7 +5,8 @@ import { graphRequest } from '../graph/client.js'
 import { JiraClient } from '../pm/jira.js'
 import { runJobNow } from '../jobs/tick.js'
 import {
-  allTeams, configChangesFor, getChannelRef, getTeam, recordConfigChange, runsForDate, saveTeam, teamForMember
+  allTeams, configChangesFor, getChannelRef, getTeam, llmUsageForDates, recordConfigChange, runsForDate, saveTeam,
+  teamForMember
 } from '../store/firestore.js'
 import { checkSchedule, mayManage, normaliseEmail } from './validate.js'
 
@@ -242,3 +243,24 @@ export async function runNow (team: TeamConfig, rawJob: string, actor: Actor): P
   return `Manual ${jobType}: ${entry.outcome}${entry.detail === undefined ? '' : ` — ${entry.detail}`}`
 }
 
+/**
+ * Model usage for the last `days` days (SPEC-008, LLM usage tab).
+ *
+ * Usage is counted per deployment, not per team, so any Scrum Master may see
+ * it. Shows the guards that bound spending alongside the figures.
+ */
+export async function llmUsage (actor: Actor, days = 14): Promise<unknown> {
+  if ((await teamsFor(actor)).length === 0) throw new AdminError(403, 'You are not the Scrum Master of any team.')
+  const now = Date.now()
+  const dates: string[] = []
+  for (let back = days - 1; back >= 0; back--) {
+    dates.push(localDate(new Date(now - back * 86_400_000), config.defaultTimezone))
+  }
+  return {
+    provider: config.llm.provider,
+    model: config.llm.model === '' ? '(provider default)' : config.llm.model,
+    live: config.llm.live,
+    maxCallsPerDay: config.llm.maxCallsPerDay,
+    days: await llmUsageForDates(dates)
+  }
+}

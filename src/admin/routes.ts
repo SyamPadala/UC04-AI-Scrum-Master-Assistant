@@ -6,7 +6,7 @@ import { cookie, readCookie, seal, unseal } from './session.js'
 import { adminPage } from './page.js'
 import {
   AdminError, addMember, addStakeholder, linkJira, removeMember, removeStakeholder, runNow,
-  teamFor, teamsFor, teamView, updateSchedule, type Actor
+  llmUsage, teamFor, teamsFor, teamView, updateSchedule, type Actor
 } from './service.js'
 
 /**
@@ -120,6 +120,8 @@ export function adminRouter (): express.Router {
   })
 
   router.get('/api/teams', handle(async (_request, _response, actor) => ({ teams: await teamsFor(actor) })))
+
+  router.get('/api/llm', handle(async (_request, _response, actor) => await llmUsage(actor)))
 
   router.get('/api/teams/:teamId', handle(async (request, _response, actor) =>
     await teamView(await teamFor(actor, request.params.teamId))))

@@ -341,6 +341,31 @@ export async function recordLlmUsage (
   }
 }
 
+/**
+ * Daily model usage for a list of dates, for the admin page (SPEC-008).
+ * Counts and token totals only — never prompt or response text.
+ */
+export async function llmUsageForDates (dates: string[]): Promise<Array<{
+  localDate: string, calls: number, inputTokens: number, outputTokens: number, byLabel: Record<string, number>
+}>> {
+  if (dates.length === 0) return []
+  const docs = await db.getAll(...dates.map((date) => db.collection('llmUsage').doc(date)))
+  return docs.map((doc, index) => {
+    const data = (doc.exists ? doc.data() : {}) as Record<string, number | string | undefined>
+    const byLabel: Record<string, number> = {}
+    for (const [key, value] of Object.entries(data)) {
+      if (key.startsWith('calls_')) byLabel[key.slice(6)] = Number(value ?? 0)
+    }
+    return {
+      localDate: dates[index],
+      calls: Number(data.calls ?? 0),
+      inputTokens: Number(data.inputTokens ?? 0),
+      outputTokens: Number(data.outputTokens ?? 0),
+      byLabel
+    }
+  })
+}
+
 /** Today's spend, for the status card and the run report. */
 export async function llmUsageFor (localDate: string): Promise<{
   calls: number, inputTokens: number, outputTokens: number
