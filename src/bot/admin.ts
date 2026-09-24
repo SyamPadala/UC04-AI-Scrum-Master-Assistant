@@ -1,7 +1,7 @@
 import { CardFactory, MessageFactory, type TurnContext } from '@microsoft/agents-hosting'
 import type { TeamConfig } from '../types.js'
 import { adminSetupCard, adminStatusCard } from '../cards/adminCards.js'
-import { getTeam, recordConfigChange, runsForDate, saveTeam } from '../store/firestore.js'
+import { recordConfigChange, runsForDate, saveTeam, teamForMember } from '../store/firestore.js'
 import { localDate } from '../config/time.js'
 import { config } from '../config/env.js'
 import { runJobNow } from '../jobs/tick.js'
@@ -40,12 +40,33 @@ function senderIdOf (context: TurnContext): string {
   return context.activity.from?.aadObjectId ?? context.activity.from?.id ?? ''
 }
 
-export async function handleAdminCommand (command: AdminCommand, context: TurnContext): Promise<void> {
-  const team = await getTeam(config.teams.teamId)
-  if (team === undefined) {
-    await context.sendActivity(MessageFactory.text('No team is configured yet.'))
-    return
+/**
+ * The team this sender belongs to (FR-10).
+ *
+ * Settings and status are always for the sender's own team. Reading a fixed
+ * team id from the server settings let any team's Scrum Master open, and
+ * change, the first team's configuration.
+ */
+async function teamOfSender (context: TurnContext): Promise<TeamConfig | undefined> {
+  try {
+    const team = await teamForMember(senderIdOf(context))
+    if (team === undefined) {
+      await context.sendActivity(MessageFactory.text(
+        'You are not on a team roster I know about. Ask your Scrum Master to add you.'
+      ))
+    }
+    return team
+  } catch {
+    await context.sendActivity(MessageFactory.text(
+      'I could not work out which team you are on. Ask your Scrum Master to check the roster.'
+    ))
+    return undefined
   }
+}
+
+export async function handleAdminCommand (command: AdminCommand, context: TurnContext): Promise<void> {
+  const team = await teamOfSender(context)
+  if (team === undefined) return
 
   if (command === 'help') {
     await context.sendActivity(MessageFactory.text(
@@ -132,11 +153,8 @@ const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
 
 /** Values submitted from the card arrive as strings and are not trusted. */
 export async function handleCardSubmit (value: Record<string, unknown>, context: TurnContext): Promise<void> {
-  const team = await getTeam(config.teams.teamId)
-  if (team === undefined) {
-    await context.sendActivity(MessageFactory.text('No team is configured yet.'))
-    return
-  }
+  const team = await teamOfSender(context)
+  if (team === undefined) return
 
   if (!mayConfigure(team, senderIdOf(context))) {
     await context.sendActivity(MessageFactory.text('Only the Scrum Master can change these settings.'))

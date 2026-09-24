@@ -50,6 +50,19 @@ export async function teamForMember (memberId: string): Promise<TeamConfig | und
   return matches[0]
 }
 
+/**
+ * Finds the team whose stakeholder channel this is (FR-08, FR-10).
+ *
+ * Matched on the configured channel id, so the assistant seeing a message in
+ * some other channel cannot make it that team's summary destination.
+ */
+export async function teamForChannel (channelId: string): Promise<TeamConfig | undefined> {
+  const snapshot = await db.collection('teams').get()
+  return snapshot.docs
+    .map((doc) => doc.data() as TeamConfig)
+    .find((team) => (team.stakeholders.channelId ?? '') === channelId)
+}
+
 export async function getTeam (teamId: string): Promise<TeamConfig | undefined> {
   const doc = await db.collection('teams').doc(teamId).get()
   return doc.exists ? (doc.data() as TeamConfig) : undefined

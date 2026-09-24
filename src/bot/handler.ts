@@ -4,8 +4,7 @@ import type { LlmClient } from '../llm/types.js'
 import type { PmClient } from '../pm/types.js'
 import { LlmBudgetError, LlmOfflineError } from '../llm/types.js'
 import { localDate } from '../config/time.js'
-import { config } from '../config/env.js'
-import { saveChannelRef, saveConversationRef, teamForMember } from '../store/firestore.js'
+import { saveChannelRef, saveConversationRef, teamForChannel, teamForMember } from '../store/firestore.js'
 import { trackerFor } from '../trackers/factory.js'
 import { processUpdate, StandupClosedError } from '../jobs/updateIntake.js'
 import { handleAdminCommand, handleCardSubmit, parseAdminCommand } from './admin.js'
@@ -31,13 +30,26 @@ const CLOSED_NOTICE =
 async function rememberSender (context: TurnContext): Promise<void> {
   const from = context.activity.from
   if (from?.id === undefined) return
+  const memberId = from.aadObjectId ?? from.id
+
+  // Stored against the sender's own team (FR-10). Someone on no roster is not
+  // added to one: joining a team is the Scrum Master's decision, not a side
+  // effect of installing the app. Overlapping rosters are reported by
+  // recordUpdate, so they are only logged here.
+  let team: TeamConfig | undefined
+  try {
+    team = await teamForMember(memberId)
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'team.resolveFailed', memberId, error: String(error) }))
+    return
+  }
+  if (team === undefined) {
+    console.log(JSON.stringify({ event: 'sender.notOnRoster', memberId }))
+    return
+  }
+
   const reference = context.activity.getConversationReference()
-  await saveConversationRef(
-    config.teams.teamId,
-    from.aadObjectId ?? from.id,
-    from.name ?? 'Unknown',
-    JSON.stringify(reference)
-  )
+  await saveConversationRef(team.teamId, memberId, from.name ?? 'Unknown', JSON.stringify(reference))
 }
 
 /**
@@ -49,8 +61,19 @@ async function rememberSender (context: TurnContext): Promise<void> {
  * to go but email.
  */
 async function rememberChannel (context: TurnContext): Promise<void> {
-  if (context.activity.conversation?.conversationType !== 'channel') return
-  await saveChannelRef(config.teams.teamId, JSON.stringify(context.activity.getConversationReference()))
+  const conversation = context.activity.conversation
+  if (conversation?.conversationType !== 'channel') return
+
+  // A reply in a thread carries ';messageid=...' after the channel id.
+  const channelId = conversation.id.split(';')[0]
+  const team = await teamForChannel(channelId)
+  if (team === undefined) {
+    // Not any team's stakeholder channel. Storing it would redirect that
+    // team's summary into a channel its stakeholders may not be in.
+    console.log(JSON.stringify({ event: 'channel.notConfigured', channelId }))
+    return
+  }
+  await saveChannelRef(team.teamId, JSON.stringify(context.activity.getConversationReference()))
 }
 
 /**
