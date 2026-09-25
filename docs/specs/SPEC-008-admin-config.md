@@ -56,8 +56,22 @@ hand to test it. No script, no config file, no redeploy.
      `scripts/link-jira.mjs`. One Jira account cannot be linked to two people.
    - The Scrum Master is marked and cannot be removed.
 6. **Stakeholders** — email addresses, added and removed one at a time; and the
-   stakeholder channel, shown as connected or not connected (the channel
-   reference is captured by the bot, SPEC-006, and cannot be set from here).
+   stakeholder channel, chosen from a list and shown as connected or not
+   connected. *Amended and approved 25 Sep 2026 — was "cannot be set from here".*
+   - The list is every standard channel in every Teams team the app is
+     installed in. The bot notes each such Teams team (name, id, and a
+     conversation reference to it) when it is installed or sees any channel
+     activity there; the channels are read live from Teams through the bot's
+     own connection. No new Microsoft permission is needed.
+   - **Connect** stores the channel id on the team and a conversation reference
+     pointing at that channel, so the summary is posted there as a new post.
+     Nobody has to @mention the bot in the channel.
+   - **Disconnect** clears both. The summary then goes by email only.
+   - The stakeholder channel belongs in a Teams team of its own, not the dev
+     team's (user decision, 24 Sep 2026): a channel in the dev team's Teams team
+     is readable by every developer. The page does not enforce this.
+   - Installing the app into a Teams team, or adding people to one, never
+     changes anyone's personal chat reference. Only a one-to-one chat does.
 7. **Tracker** — choose where updates are written: SharePoint list or Jira
    comments (FR-04). The destination is checked before it is saved (the list
    is reachable; the Jira stand-up issue exists). Updates already recorded
@@ -106,6 +120,8 @@ DELETE /admin/api/teams/:teamId/members/:memberId
 PUT    /admin/api/teams/:teamId/members/:memberId/jira   // { jiraAccountId }
 POST   /admin/api/teams/:teamId/stakeholders // { email }
 DELETE /admin/api/teams/:teamId/stakeholders/:email
+GET    /admin/api/teams/:teamId/channels     // Behaviour 6: channels the bot can post to
+PUT    /admin/api/teams/:teamId/channel      // Behaviour 6 { channelId } — '' disconnects
 POST   /admin/api/teams/:teamId/run/:jobType // Behaviour 8
 GET    /admin/api/llm                        // Behaviour 10a
 ```
@@ -185,3 +201,5 @@ gives.
 | 10 | Every change is in the history | Inspect the Change history section | Screenshot |
 | 11 | `setup` in chat returns the page link | Type `setup` | Screenshot |
 | 12 | Unit tests | Validation, authorization, roster overlap | `npm test` |
+| 13 | Stakeholder channel chosen on the page receives the summary | Install app in the stakeholder Teams team, Connect, Run now → summary | Post in the channel; outcome `success` |
+| 14 | Installing the app in a Teams team leaves personal chats alone | Check the Scrum Master's stored reference after the install | Still `personal` |

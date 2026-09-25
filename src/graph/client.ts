@@ -56,5 +56,8 @@ export async function graphRequest<T> (
   if (response.ok !== true) {
     throw new Error(`Graph ${method} ${path} failed: ${response.status} ${text.slice(0, 300)}`)
   }
+  // sendMail answers 202 with no body. Parsing that threw after the mail had
+  // already gone, and the summary was reported as failed when it had arrived.
+  if (text.trim() === '') return undefined as T
   return JSON.parse(text) as T
 }

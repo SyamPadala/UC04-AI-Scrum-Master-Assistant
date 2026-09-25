@@ -88,6 +88,19 @@ export interface NonResponderFlag {
   flaggedAt: Date
 }
 
+/**
+ * A Teams team the app is installed in (SPEC-008 behaviour 6). Not one of our
+ * scrum teams: the source the stakeholder channel is chosen from.
+ */
+export interface BotTeam {
+  /** The Teams team's thread id, which is also its General channel's id. */
+  teamThreadId: string
+  name: string
+  /** A conversation reference into this Teams team, JSON. */
+  reference: string
+  seenAt: Date
+}
+
 export interface ConfigChange {
   teamId: string
   changedBy: string

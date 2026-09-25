@@ -1,12 +1,14 @@
-import type { JobType, Member, TeamConfig } from '../types.js'
+import type { ConversationReference } from '@microsoft/agents-activity'
+import type { BotTeam, JobType, Member, TeamConfig } from '../types.js'
 import { config } from '../config/env.js'
 import { localDate } from '../config/time.js'
 import { graphRequest } from '../graph/client.js'
 import { JiraClient } from '../pm/jira.js'
 import { runJobNow } from '../jobs/tick.js'
+import { channelReference, listTeamChannels } from '../bot/channels.js'
 import {
-  allTeams, configChangesFor, getChannelRef, getTeam, llmUsageForDates, recordConfigChange, runsForDate, saveTeam,
-  teamForMember
+  allTeams, botTeams, clearChannelRef, configChangesFor, getChannelRef, getTeam, llmUsageForDates, recordConfigChange,
+  runsForDate, saveChannelRef, saveTeam, teamForMember
 } from '../store/firestore.js'
 import { checkSchedule, mayManage, normaliseEmail } from './validate.js'
 
@@ -140,6 +142,7 @@ export async function teamView (team: TeamConfig): Promise<unknown> {
     jiraUsers,
     stakeholders: {
       emails: team.stakeholders.emails,
+      channelId: team.stakeholders.channelId ?? null,
       channelConnected: channelRef !== undefined
     },
     tracker: team.tracker.kind,
@@ -237,6 +240,63 @@ export async function removeStakeholder (team: TeamConfig, rawEmail: string, act
   if (emails.length === team.stakeholders.emails.length) throw new AdminError(404, `${email} is not on the list.`)
   await applyChange(team, { stakeholders: { ...team.stakeholders, emails } }, actor.name)
   return `${email} removed from the summary list.`
+}
+
+export interface ChannelOption { teamName: string, channelId: string, channelName: string }
+
+/**
+ * Behaviour 6: every channel the bot could post the summary to.
+ *
+ * A Teams team the app has since been removed from is left out rather than
+ * failing the list, and reported so the page can say why it is missing.
+ */
+export async function channelOptions (): Promise<{ channels: ChannelOption[], unavailable: string[] }> {
+  const channels: ChannelOption[] = []
+  const unavailable: string[] = []
+  for (const teamsTeam of await botTeams()) {
+    try {
+      for (const c of await listTeamChannels(teamsTeam)) {
+        channels.push({ teamName: teamsTeam.name, channelId: c.channelId, channelName: c.channelName })
+      }
+    } catch (error) {
+      console.error(JSON.stringify({ event: 'admin.channelsFailed', teamThreadId: teamsTeam.teamThreadId, error: String(error) }))
+      unavailable.push(teamsTeam.name)
+    }
+  }
+  channels.sort((a, b) => a.teamName.localeCompare(b.teamName) || a.channelName.localeCompare(b.channelName))
+  return { channels, unavailable }
+}
+
+/** Behaviour 6: connect the stakeholder channel, or disconnect it with ''. */
+export async function setChannel (team: TeamConfig, rawChannelId: unknown, actor: Actor): Promise<string> {
+  const channelId = String(rawChannelId ?? '').trim()
+
+  if (channelId === '') {
+    const { channelId: _previous, ...rest } = team.stakeholders
+    await applyChange(team, { stakeholders: rest }, actor.name)
+    await clearChannelRef(team.teamId)
+    return 'Channel disconnected. The summary goes by email only.'
+  }
+
+  // Only a channel the bot can actually post to is accepted, so a wrong choice
+  // shows up here and not as a failed summary at the end of the day.
+  const found = await findChannel(channelId)
+  if (found === undefined) {
+    throw new AdminError(400, 'That channel is not in any Teams team the assistant is installed in.')
+  }
+
+  await applyChange(team, { stakeholders: { ...team.stakeholders, channelId } }, actor.name)
+  await saveChannelRef(team.teamId, channelReference(JSON.parse(found.holder.reference) as ConversationReference, channelId))
+  return `Connected ${found.holder.name} › ${found.channelName}. The summary will be posted there.`
+}
+
+async function findChannel (channelId: string): Promise<{ holder: BotTeam, channelName: string } | undefined> {
+  for (const holder of await botTeams()) {
+    const channels = await listTeamChannels(holder).catch(() => [])
+    const channel = channels.find((c) => c.channelId === channelId)
+    if (channel !== undefined) return { holder, channelName: channel.channelName }
+  }
+  return undefined
 }
 
 /**

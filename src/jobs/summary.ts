@@ -148,7 +148,7 @@ export async function distributeSummary (
 
   const channelRef = await getChannelRef(team.teamId)
   if (channelRef === undefined) {
-    notes.push('no stakeholder channel reference stored — install the app into the team channel')
+    notes.push('no stakeholder channel connected — choose one on the admin page')
   } else {
     try {
       await sendProactive(channelRef, `**${header}**\n\n${text}`)

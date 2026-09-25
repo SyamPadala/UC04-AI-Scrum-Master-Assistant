@@ -313,8 +313,13 @@ export function adminPage (userName: string): string {
       <div class="card">
         <div class="card-body kv">
           <div class="ic">${icon('channel')}</div>
-          <div style="flex:1"><b>Stakeholder channel in Teams</b><small>The summary is also posted there; everyone in the team can read it.</small></div>
+          <div style="flex:1"><b>Stakeholder channel in Teams</b><small id="channel-hint">The summary is also posted there; everyone in that Teams team can read it.</small></div>
           <span class="badge" id="channel"></span>
+        </div>
+        <div class="card-body inline-add" style="padding-top:0;max-width:none;flex-wrap:wrap">
+          <select id="channel-pick" aria-label="Stakeholder channel" style="flex:1;min-width:0"><option value="">Loading channels…</option></select>
+          <button class="btn" type="button" id="channel-connect">${icon('channel')} Connect</button>
+          <button class="btn ghost" type="button" id="channel-disconnect">Disconnect</button>
         </div>
       </div>
     </section>
@@ -564,7 +569,53 @@ export function adminPage (userName: string): string {
     const channel = $('channel')
     channel.textContent = view.stakeholders.channelConnected ? 'Connected' : 'Not connected'
     channel.className = 'badge ' + (view.stakeholders.channelConnected ? 'ok' : 'warn')
+    $('channel-disconnect').hidden = !view.stakeholders.channelConnected
+    renderChannelPick()
   }
+
+  // Read from Teams only when the Stakeholders tab is opened: it is a live
+  // call per Teams team, and the other tabs have no use for it.
+  let channelList = null
+
+  async function loadChannels () {
+    const pick = $('channel-pick')
+    pick.replaceChildren(new Option('Loading channels…', ''))
+    try {
+      channelList = await api('GET', '/teams/' + teamId + '/channels')
+    } catch (error) {
+      channelList = { channels: [], unavailable: [], error: error.message }
+    }
+    renderChannelPick()
+  }
+
+  function renderChannelPick () {
+    if (channelList === null) return
+    const pick = $('channel-pick')
+    pick.replaceChildren()
+    const current = view.stakeholders.channelId
+    const list = channelList.channels
+    pick.append(new Option(list.length === 0 ? 'No channels — add the app to a Teams team first' : 'Choose a channel…', ''))
+    for (const c of list) pick.append(new Option(c.teamName + ' › ' + c.channelName, c.channelId))
+    pick.value = list.some((c) => c.channelId === current) ? current : ''
+    const connected = list.find((c) => c.channelId === current)
+    const notes = []
+    if (view.stakeholders.channelConnected && connected) notes.push('Posting to ' + connected.teamName + ' › ' + connected.channelName + '.')
+    else notes.push('The summary is also posted there; everyone in that Teams team can read it.')
+    if (channelList.unavailable.length > 0) notes.push('Not reachable: ' + channelList.unavailable.join(', ') + ' (app removed?).')
+    if (channelList.error) notes.push('Could not read channels: ' + channelList.error)
+    $('channel-hint').textContent = notes.join(' ')
+  }
+
+  $('channel-connect').addEventListener('click', (event) => {
+    const channelId = $('channel-pick').value
+    if (!channelId) { toast('Choose a channel first.', true); return }
+    act(event.currentTarget, () => api('PUT', '/teams/' + teamId + '/channel', { channelId })).catch(() => {})
+  })
+
+  $('channel-disconnect').addEventListener('click', (event) => {
+    if (!confirm('Disconnect the stakeholder channel? The summary will go by email only.')) return
+    act(event.currentTarget, () => api('PUT', '/teams/' + teamId + '/channel', { channelId: '' })).catch(() => {})
+  })
 
   function renderSchedule () {
     const s = view.schedule
@@ -719,6 +770,7 @@ export function adminPage (userName: string): string {
     $('subtitle').textContent = subtitle
     $('stats').hidden = tab.dataset.tab === 'llm'
     if (tab.dataset.tab === 'llm') loadLlm().catch((e) => toast(e.message, true))
+    if (tab.dataset.tab === 'stakeholders') loadChannels()
   }))
 
   function addForm (id, path) {

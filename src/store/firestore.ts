@@ -1,7 +1,7 @@
 import { Firestore } from '@google-cloud/firestore'
 import { config } from '../config/env.js'
 import type {
-  ConfigChange, JobType, NonResponderFlag, ParticipationRecord, RunLog, RunOutcome, TeamConfig
+  BotTeam, ConfigChange, JobType, NonResponderFlag, ParticipationRecord, RunLog, RunOutcome, TeamConfig
 } from '../types.js'
 
 /**
@@ -74,7 +74,7 @@ export async function saveTeam (team: TeamConfig): Promise<void> {
 
 /** Stores the reference that lets the app message this person directly. */
 export async function saveConversationRef (
-  teamId: string, memberId: string, displayName: string, reference: string
+  teamId: string, memberId: string, displayName: string | undefined, reference: string
 ): Promise<void> {
   const ref = db.collection('teams').doc(teamId)
   await db.runTransaction(async (tx) => {
@@ -83,10 +83,12 @@ export async function saveConversationRef (
     const team = doc.data() as TeamConfig
     const existing = team.members.find((m) => m.memberId === memberId)
     if (existing === undefined) {
-      team.members.push({ memberId, displayName, conversationRef: reference })
+      team.members.push({ memberId, displayName: displayName ?? 'Unknown', conversationRef: reference })
     } else {
       existing.conversationRef = reference
-      existing.displayName = displayName
+      // Some Teams events carry no sender name; keeping the stored one stops
+      // the roster, alerts and summary showing "Unknown".
+      if (displayName !== undefined && displayName !== '') existing.displayName = displayName
     }
     tx.set(ref, team)
   })
@@ -413,6 +415,27 @@ export async function claimBlockerAlert (
  */
 export async function saveChannelRef (teamId: string, reference: string): Promise<void> {
   await db.collection('teams').doc(teamId).set({ channelRef: reference }, { merge: true })
+}
+
+/** Disconnects the stakeholder channel; the summary then goes by email only. */
+export async function clearChannelRef (teamId: string): Promise<void> {
+  await db.collection('teams').doc(teamId).set({ channelRef: '' }, { merge: true })
+}
+
+/**
+ * Remembers a Teams team the app is installed in (SPEC-008 behaviour 6), so
+ * its channels can be offered on the admin page. Holds no message content.
+ */
+export async function saveBotTeam (team: BotTeam): Promise<void> {
+  await db.collection('botTeams').doc(encodeURIComponent(team.teamThreadId)).set(team)
+}
+
+export async function botTeams (): Promise<BotTeam[]> {
+  const snapshot = await db.collection('botTeams').get()
+  return snapshot.docs.map((doc) => {
+    const data = doc.data() as Omit<BotTeam, 'seenAt'> & { seenAt: { toDate: () => Date } }
+    return { ...data, seenAt: data.seenAt.toDate() }
+  })
 }
 
 export async function getChannelRef (teamId: string): Promise<string | undefined> {

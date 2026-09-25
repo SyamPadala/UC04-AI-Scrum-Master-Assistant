@@ -4,7 +4,8 @@ import type { LlmClient } from '../llm/types.js'
 import type { PmClient } from '../pm/types.js'
 import { LlmBudgetError, LlmOfflineError } from '../llm/types.js'
 import { localDate } from '../config/time.js'
-import { saveChannelRef, saveConversationRef, teamForChannel, teamForMember } from '../store/firestore.js'
+import { saveBotTeam, saveChannelRef, saveConversationRef, teamForChannel, teamForMember } from '../store/firestore.js'
+import { channelReference, teamOfActivity } from './channels.js'
 import { trackerFor } from '../trackers/factory.js'
 import { processUpdate, StandupClosedError } from '../jobs/updateIntake.js'
 import { handleAdminCommand, parseAdminCommand } from './admin.js'
@@ -49,7 +50,7 @@ async function rememberSender (context: TurnContext): Promise<void> {
   }
 
   const reference = context.activity.getConversationReference()
-  await saveConversationRef(team.teamId, memberId, from.name ?? 'Unknown', JSON.stringify(reference))
+  await saveConversationRef(team.teamId, memberId, from.name, JSON.stringify(reference))
 }
 
 /**
@@ -64,6 +65,19 @@ async function rememberChannel (context: TurnContext): Promise<void> {
   const conversation = context.activity.conversation
   if (conversation?.conversationType !== 'channel') return
 
+  // Any activity in a Teams team — the install itself included — makes that
+  // team's channels choosable on the admin page (SPEC-008 behaviour 6).
+  const teamsTeam = teamOfActivity(context.activity.channelData)
+  if (teamsTeam !== undefined) {
+    await saveBotTeam({
+      teamThreadId: teamsTeam.id,
+      name: teamsTeam.name ?? 'Unnamed team',
+      reference: JSON.stringify(context.activity.getConversationReference()),
+      seenAt: new Date()
+    })
+    console.log(JSON.stringify({ event: 'channel.teamSeen', teamThreadId: teamsTeam.id }))
+  }
+
   // A reply in a thread carries ';messageid=...' after the channel id.
   const channelId = conversation.id.split(';')[0]
   const team = await teamForChannel(channelId)
@@ -73,7 +87,7 @@ async function rememberChannel (context: TurnContext): Promise<void> {
     console.log(JSON.stringify({ event: 'channel.notConfigured', channelId }))
     return
   }
-  await saveChannelRef(team.teamId, JSON.stringify(context.activity.getConversationReference()))
+  await saveChannelRef(team.teamId, channelReference(context.activity.getConversationReference(), channelId))
 }
 
 /**
@@ -128,10 +142,19 @@ export class ScrumAssistant extends ActivityHandler {
     })
 
     this.onMembersAdded(async (context: TurnContext, next) => {
+      // In a Teams team the sender is whoever installed the app or added
+      // someone. Storing their reference from here replaced that person's
+      // personal chat with the channel, so their next reminder went to the
+      // whole team. A team install only tells us where the channels are.
+      if (context.activity.conversation?.conversationType === 'channel') {
+        await rememberChannel(context)
+        await next()
+        return
+      }
+
       for (const member of context.activity.membersAdded ?? []) {
         if (member.id !== context.activity.recipient?.id) {
           await rememberSender(context)
-          await rememberChannel(context)
           await context.sendActivity(MessageFactory.text(
             'Scrum Assistant is installed. Send me your status update and I will record it. ' +
             'Type **help** to see what else I can do.'

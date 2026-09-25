@@ -5,8 +5,8 @@ import { authorizeUrl, completeSignIn } from './auth.js'
 import { cookie, readCookie, seal, unseal } from './session.js'
 import { adminPage } from './page.js'
 import {
-  AdminError, addMember, addStakeholder, linkJira, removeMember, removeStakeholder, runNow,
-  llmUsage, setTracker, teamFor, teamsFor, teamView, updateSchedule, type Actor
+  AdminError, addMember, addStakeholder, channelOptions, linkJira, removeMember, removeStakeholder, runNow,
+  llmUsage, setChannel, setTracker, teamFor, teamsFor, teamView, updateSchedule, type Actor
 } from './service.js'
 
 /**
@@ -154,6 +154,14 @@ export function adminRouter (): express.Router {
 
   router.delete('/api/teams/:teamId/stakeholders/:email', handle(async (request, _response, actor) =>
     ({ message: await removeStakeholder(await teamFor(actor, request.params.teamId), request.params.email, actor) })))
+
+  router.get('/api/teams/:teamId/channels', handle(async (request, _response, actor) => {
+    await teamFor(actor, request.params.teamId)
+    return await channelOptions()
+  }))
+
+  router.put('/api/teams/:teamId/channel', handle(async (request, _response, actor) =>
+    ({ message: await setChannel(await teamFor(actor, request.params.teamId), (request.body as { channelId?: unknown }).channelId, actor) })))
 
   router.post('/api/teams/:teamId/run/:jobType', handle(async (request, _response, actor) =>
     ({ message: await runNow(await teamFor(actor, request.params.teamId), request.params.jobType, actor) })))
