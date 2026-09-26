@@ -4,7 +4,9 @@ import type { PmClient, SprintData } from '../pm/types.js'
 import type { Tracker } from '../trackers/types.js'
 import type { SummaryFacts } from '../agents/prompts/summaryBuilder.js'
 import { buildSummaryText } from '../agents/summaryBuilder.js'
-import { sendProactive } from '../bot/adapter.js'
+import type { SummaryOutput } from '../agents/schema.js'
+import { sendProactive, sendProactiveCard } from '../bot/adapter.js'
+import { summaryCard, summaryEmailHtml, summaryPlainText, summaryTitle } from '../cards/summary.js'
 import { sendMail } from '../graph/mail.js'
 import { getChannelRef } from '../store/firestore.js'
 import { config } from '../config/env.js'
@@ -65,6 +67,8 @@ export async function gatherFacts (
   team: TeamConfig, tracker: Tracker, pm: PmClient, localDate: string, now: Date = new Date()
 ): Promise<SummaryFacts> {
   const updates = await tracker.readToday(team.teamId, localDate)
+  // SPEC-006 4a: current impediments from the tracker's current state.
+  const blockers = await tracker.openBlockers(team.teamId)
 
   // Sprint data is optional on purpose: SPEC-006 requires the summary to state
   // the gap rather than omit the section or invent figures.
@@ -75,12 +79,7 @@ export async function gatherFacts (
     console.warn(JSON.stringify({ event: 'summary.sprintUnavailable', teamId: team.teamId, error: String(error) }))
   }
 
-  const blockedKeys = new Set<string>()
-  for (const update of updates) {
-    for (const row of update.rows) {
-      if (row.anyBlocker !== null && row.win !== null) blockedKeys.add(row.win)
-    }
-  }
+  const blockedKeys = new Set(blockers.flatMap((b) => b.workItem === null ? [] : [b.workItem]))
 
   const responders = new Set(updates.map((update) => update.memberName))
   const missing = team.members
@@ -123,6 +122,7 @@ export async function gatherFacts (
       rosterSize: team.members.length,
       missing
     },
+    activeBlockers: blockers,
     atRisk: atRiskItems(sprint, blockedKeys, config.agent2.staleProgressDays, now),
     staleProgressDays: config.agent2.staleProgressDays
   }
@@ -133,13 +133,13 @@ export async function gatherFacts (
  * email fails, and the outcome says which half happened.
  */
 export async function distributeSummary (
-  team: TeamConfig, localDate: string, text: string
+  team: TeamConfig, localDate: string, facts: SummaryFacts, sections: SummaryOutput
 ): Promise<DistributionResult> {
   const notes: string[] = []
   let channel: DistributionResult['channel'] = 'skipped'
   let email: DistributionResult['email'] = 'skipped'
 
-  const header = `Daily sprint summary — ${team.name} — ${localDate}`
+  const header = summaryTitle(facts)
 
   if (config.dryRun) {
     console.log(JSON.stringify({ event: 'summary.dryRun', teamId: team.teamId, localDate }))
@@ -151,7 +151,7 @@ export async function distributeSummary (
     notes.push('no stakeholder channel connected — choose one on the admin page')
   } else {
     try {
-      await sendProactive(channelRef, `**${header}**\n\n${text}`)
+      await sendProactiveCard(channelRef, summaryCard(facts, sections), header)
       channel = 'sent'
     } catch (error) {
       channel = 'failed'
@@ -166,7 +166,7 @@ export async function distributeSummary (
     notes.push('SUMMARY_SENDER_USER_ID is not set, so email was not attempted')
   } else {
     try {
-      await sendMail(config.summary.senderUserId, recipients, header, text)
+      await sendMail(config.summary.senderUserId, recipients, header, summaryEmailHtml(facts, sections), 'HTML')
       email = 'sent'
     } catch (error) {
       email = 'failed'
@@ -218,7 +218,7 @@ export async function runSummary (
     await reportSummaryFailure(team, localDate, error instanceof Error ? error.message : String(error))
     throw error
   }
-  const distribution = await distributeSummary(team, localDate, built.text)
+  const distribution = await distributeSummary(team, localDate, facts, built.sections)
 
   console.log(JSON.stringify({
     event: 'summary.built',
@@ -233,5 +233,5 @@ export async function runSummary (
     email: distribution.email
   }))
 
-  return { text: built.text, distribution, buildMs: built.durationMs }
+  return { text: summaryPlainText(facts, built.sections), distribution, buildMs: built.durationMs }
 }

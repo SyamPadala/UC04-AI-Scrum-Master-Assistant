@@ -31,6 +31,20 @@ then posts it to the stakeholder channel and emails it out.
    | `get_participation(teamId)` | Today's participation figures (SPEC-007) |
 
 4. Output is text (A10 — no velocity trend chart in this POC).
+   *Amended 25 Sep 2026 (user request — plain text arrived as one wall):*
+   Agent 2 returns the five sections as JSON, validated against a schema;
+   invalid output fails the call like any other. Code lays it out: an Adaptive
+   Card in the Teams channel and an HTML email, same sections, same order.
+   The headline figures (reported n of m, points done of committed, blockers,
+   at-risk count) are printed by code from the facts, not by the model.
+4a. **Active blockers** are blockers raised on any day, not only today, that
+    have not been cleared. A blocker on a work item stays active until the same
+    member reports that item again without a blocker. A blocker naming no work
+    item stays active while it is in that member's most recent update. They are
+    read from the tracker's **current state** (`openBlockers`, SPEC-002 4a), not
+    by reading earlier days. Each is shown with the date it was last reported.
+    *Added 25 Sep 2026, user decision; closes KNOWN-DEBT #16. Look-back window
+    replaced by current state 26 Sep 2026.*
 5. **At-risk** items are sprint items that are not done and either carry an
    active blocker or have had no progress mentioned for two or more working
    days (A5).

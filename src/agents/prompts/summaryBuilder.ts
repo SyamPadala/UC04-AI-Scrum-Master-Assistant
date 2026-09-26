@@ -7,13 +7,20 @@
  */
 export const SUMMARY_BUILDER_SYSTEM = `You write the end-of-day stand-up summary that a Scrum Master would otherwise write by hand. Stakeholders read it. They were not in the stand-up and will not read the tracker.
 
-Write plain text with these five sections, in this order, each under a short heading:
+Reply with one JSON object and nothing else, in exactly this shape:
 
-1. Today's updates — what the team reported, grouped by person. One or two lines each.
-2. Active blockers — every blocker, who raised it, and the work item it affects. Write "None reported" if there are none.
-3. Sprint progress — completed points against committed points, as a figure and a percentage, and whether that is on track for the sprint goal.
-4. At risk — sprint items that are not done and either carry a blocker or have not been mentioned in the days given. Write "Nothing flagged" if there is nothing.
-5. Velocity — this sprint's completed points next to the previous sprints given.
+{
+  "updates": [ { "member": "<name>", "lines": ["<one short line per item they reported>"] } ],
+  "blockers": [ { "member": "<who raised it>", "workItem": "<key such as SCRUM-7, or null>", "description": "<the blocker, one line>", "since": "<the date it was last reported, as given>" } ],
+  "progress": "<completed points against committed points, as a figure and a percentage, and whether that is on track for the sprint goal>",
+  "atRisk": [ { "workItem": "<key>", "reason": "<why, one line>" } ],
+  "velocity": "<this sprint's completed points next to the previous sprints given>",
+  "participation": "<how many reported out of the roster, and who did not>"
+}
+
+- "updates": one entry per person who reported, in the order given. Each line starts with the work item key when there is one, then its status and what they said. One line per item, no more than about fifteen words.
+- "blockers": every active blocker given to you, whatever day it was raised. An empty array when there are none.
+- "atRisk": only the at-risk items given to you. An empty array when there are none.
 
 Rules:
 - Use only the figures and text you are given. Never estimate, infer or fill a gap.
@@ -22,7 +29,7 @@ Rules:
 - If participation was partial, name who did not report. Do not imply the team reported in full.
 - Items with no estimate are excluded from the points arithmetic. Say how many were excluded.
 - Be brief and factual. No encouragement, no praise, no advice, no closing remarks.
-- Plain text only. No markdown headings, no bullets with asterisks. Use short lines.`
+- Plain text inside every string. No markdown, no bullets, no line breaks.`
 
 export interface SummaryFacts {
   teamName: string
@@ -37,6 +44,8 @@ export interface SummaryFacts {
     items: Array<{ key: string, title: string, status: string, points: number | null, assignee: string | null }>
   }
   updates: Array<{ member: string, rows: Array<{ win: string | null, status: string, comment: string | null, blocker: string | null }> }>
+  /** SPEC-006 4a: not yet cleared, from any day in the look-back window. */
+  activeBlockers: Array<{ member: string, workItem: string | null, description: string, since: string }>
   participation: { responded: number, rosterSize: number, missing: string[] }
   atRisk: Array<{ key: string, title: string, reason: string }>
   staleProgressDays: number
@@ -104,6 +113,14 @@ export function summaryBuilderUser (facts: SummaryFacts): string {
     }
     lines.push('')
   }
+
+  lines.push(
+    facts.activeBlockers.length === 0
+      ? 'Active blockers: none.'
+      : 'Active blockers (raised on any day and not yet cleared):',
+    ...facts.activeBlockers.map((b) => `  ${b.workItem ?? 'no work item'} — ${b.description} (raised by ${b.member}, last reported ${b.since})`),
+    ''
+  )
 
   lines.push(
     facts.atRisk.length === 0

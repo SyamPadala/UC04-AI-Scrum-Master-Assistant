@@ -32,6 +32,16 @@ This is the riskiest part of the build, so it is built and measured first.
 5. A blocker's affected story is resolved from an explicit id or from a
    description matched against the member's open items; when neither succeeds,
    `storyRef` is `null` and it is reported as "not specified" (A8).
+5a. *Added 25 Sep 2026 (user decision, after "Risk score issue got resolved…"
+   was silently dropped):* Agent 1 is also given the member's **active
+   blockers** (SPEC-006 4a). A message saying a blocker is resolved, cleared,
+   or that they can progress again is an **in-progress** update on that item,
+   which clears the blocker. Informal names ("risk score issue") are matched to
+   open items and active blockers by meaning.
+5b. When a message yields nothing and the model is unsure (`confidence: low`),
+   or it yields nothing for a member who has already reported today, **nothing
+   is written** and the member is asked which work item they mean. The
+   assistant never replies "Recorded" when it recorded nothing.
 6. Code — never the agent — then writes the result to the team's tracker
    (SPEC-002) and, if blockers exist, triggers escalation (SPEC-005).
 7. Further messages from the same member on the same day are re-extracted

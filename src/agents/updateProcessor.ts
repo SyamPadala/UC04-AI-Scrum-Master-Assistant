@@ -56,7 +56,8 @@ export async function extractUpdate (
     system: UPDATE_PROCESSOR_SYSTEM,
     user: updateProcessorUser(
       input.memberName, text,
-      openItems.map((item) => ({ key: item.key, title: item.title, status: item.status }))
+      openItems.map((item) => ({ key: item.key, title: item.title, status: item.status })),
+      input.activeBlockers ?? []
     ),
     tools: storyTools,
     maxToolIterations: options.maxToolIterations,

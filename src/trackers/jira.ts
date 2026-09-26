@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { httpErrorFrom, withRetry } from '../util/retry.js'
-import type { StandupUpdate, Tracker, TrackerRow } from './types.js'
+import type { OpenBlocker, StandupUpdate, Tracker, TrackerRow } from './types.js'
 
 /**
  * Jira comment tracker (SPEC-002, FR-04 destination 3).
@@ -166,6 +166,42 @@ export class JiraCommentTracker implements Tracker {
       byMember.set(property.memberId, entry)
     }
     return [...byMember.values()]
+  }
+
+  /**
+   * SPEC-002 4b: the latest assistant comment per member on each open story
+   * says whether that member is still blocked on it. Stories already done are
+   * not read, and no earlier day is looked up by date.
+   */
+  async openBlockers (teamId: string): Promise<OpenBlocker[]> {
+    const search = searchSchema.parse(await this.request('POST', '/rest/api/3/search/jql', {
+      jql: `project = "${this.options.projectKey}" AND statusCategory != Done`, fields: ['summary'], maxResults: 100
+    }))
+    const keys = new Set([...search.issues.map((issue) => issue.key), this.options.standupIssueKey])
+
+    const blockers: OpenBlocker[] = []
+    for (const issueKey of keys) {
+      const page = commentPageSchema.parse(await this.request(
+        'GET', `/rest/api/3/issue/${encodeURIComponent(issueKey)}/comment?expand=properties&orderBy=-created&maxResults=100`
+      ))
+      const seen = new Set<string>()
+      for (const comment of page.comments) {
+        const parsed = propertySchema.safeParse(comment.properties.find((p) => p.key === PROPERTY_KEY)?.value)
+        if (!parsed.success || parsed.data.teamId !== teamId || seen.has(parsed.data.memberId)) continue
+        seen.add(parsed.data.memberId)
+        for (const row of parsed.data.rows) {
+          if (row.anyBlocker === null) continue
+          blockers.push({
+            memberId: parsed.data.memberId,
+            member: parsed.data.memberName,
+            workItem: row.win,
+            description: row.anyBlocker,
+            since: parsed.data.localDate
+          })
+        }
+      }
+    }
+    return blockers
   }
 
   /**

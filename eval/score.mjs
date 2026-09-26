@@ -61,7 +61,9 @@ for (const testCase of selected) {
         // The linked Jira account, so open items reach the prompt exactly as
         // they would in production. Scoring a different prompt than the one
         // that runs would make the number meaningless.
-        jiraAccountId: process.env.EVAL_JIRA_ACCOUNT_ID ?? ''
+        jiraAccountId: process.env.EVAL_JIRA_ACCOUNT_ID ?? '',
+        // Blockers the member raised earlier, as production passes them (SPEC-004 5a).
+        activeBlockers: testCase.activeBlockers ?? []
       },
       llm, pm, config.agent1
     )

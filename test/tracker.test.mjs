@@ -45,15 +45,17 @@ test('a second message the same day replaces the first (A11)', async (t) => {
   assert.equal(today[0].rows[0].comment, 'second message')
 })
 
-test('yesterday is untouched by today\'s write', async (t) => {
+test('the next day updates the same row in place, not a new one (SPEC-002 2a)', async (t) => {
   const dir = await mkdtemp(path.join(tmpdir(), 'tracker-'))
   t.after(async () => { await rm(dir, { recursive: true, force: true }) })
-  const tracker = new MockTracker(path.join(dir, 'tracker.json'))
+  const file = path.join(dir, 'tracker.json')
+  const tracker = new MockTracker(file)
 
   await tracker.write(update('Madhavi Andoju', '2026-09-20', 'yesterday'))
   await tracker.write(update('Madhavi Andoju', '2026-09-21', 'today'))
 
-  assert.equal((await tracker.readToday('team-1', '2026-09-20'))[0].rows[0].comment, 'yesterday')
+  assert.equal(JSON.parse(await readFile(file, 'utf8')).length, 1, 'one row per member + item')
+  assert.deepEqual(await tracker.readToday('team-1', '2026-09-20'), [], 'the row now carries its last-updated date')
   assert.equal((await tracker.readToday('team-1', '2026-09-21'))[0].rows[0].comment, 'today')
 })
 
@@ -78,7 +80,7 @@ test('the original message is not kept alongside the rows', async (t) => {
   await tracker.write(update('Madhavi Andoju', '2026-09-21', 'the rows carry this'))
   const stored = JSON.parse(await readFile(file, 'utf8'))
 
-  assert.equal(stored[0].rawText, '', 'rawText is dropped; only rows are stored')
+  assert.equal(stored[0].rawText, undefined, 'rawText is dropped; only rows are stored')
 })
 
 test('another team\'s rows are not returned', async (t) => {

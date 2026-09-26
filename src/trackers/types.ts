@@ -26,8 +26,26 @@ export interface StandupUpdate {
   capturedAt: Date
 }
 
+/** A blocker not yet cleared, whatever day it was raised (SPEC-002 4a). */
+export interface OpenBlocker {
+  /** Empty where the tracker only knows the member by name (SharePoint). */
+  memberId: string
+  member: string
+  workItem: string | null
+  description: string
+  /** 'YYYY-MM-DD' the blocker was last reported. */
+  since: string
+}
+
 export interface Tracker {
-  /** Upsert on member + date: that member's rows for the day are replaced, not appended (A11). */
+  /**
+   * Records the member's rows for the day (A11: `rows` is the whole day,
+   * already merged by the caller). SharePoint updates one row per member +
+   * work item in place; Jira replaces that member's comments for the day.
+   */
   write: (update: StandupUpdate) => Promise<void>
+  /** Rows reported on this date. */
   readToday: (teamId: string, localDate: string) => Promise<StandupUpdate[]>
+  /** The team's current impediments, read from current state — never from earlier days. */
+  openBlockers: (teamId: string) => Promise<OpenBlocker[]>
 }

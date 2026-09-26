@@ -8,17 +8,17 @@ import { graphRequest } from './client.js'
  * from. That permission is already consented (checklist item 8).
  */
 export async function sendMail (
-  senderUserId: string, recipients: string[], subject: string, body: string
+  senderUserId: string, recipients: string[], subject: string, body: string,
+  contentType: 'Text' | 'HTML' = 'Text'
 ): Promise<void> {
   if (recipients.length === 0) return
 
   await graphRequest('POST', `/users/${encodeURIComponent(senderUserId)}/sendMail`, {
     message: {
       subject,
-      // Plain text, because that is what Agent 2 produces. Declaring it as HTML
-      // would collapse every line break and the summary would arrive as one
-      // unreadable paragraph.
-      body: { contentType: 'Text', content: body },
+      // HTML only when the caller built HTML: plain text declared as HTML
+      // collapses every line break into one paragraph.
+      body: { contentType, content: body },
       toRecipients: recipients.map((address) => ({ emailAddress: { address } }))
     },
     saveToSentItems: true

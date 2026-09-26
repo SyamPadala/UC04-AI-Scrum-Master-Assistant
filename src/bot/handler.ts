@@ -199,6 +199,14 @@ export class ScrumAssistant extends ActivityHandler {
         tracker: trackerFor(team)
       })
 
+      if (!result.understood) {
+        await context.sendActivity(MessageFactory.text(
+          "I couldn't tell which work item that is about, so I haven't changed anything. " +
+          'Could you name the item? For example: *SCRUM-21 is unblocked and back in progress*.'
+        ))
+        return
+      }
+
       const parts = [`Recorded your update, ${memberName}.`]
       // Says what this message added *and* what the day now holds, so a member
       // adding a forgotten ticket can see their earlier rows are still there.

@@ -4,7 +4,7 @@ Deviations from `docs/rules/coding-rules.md` and `process-rules.md`, recorded
 deliberately, to be fixed when the user decides. Not a backlog of ideas — every
 item is a rule the repo already binds itself to.
 
-**Last reviewed:** 21 Sep 2026, after the LLM build (Agents 1 and 2).
+**Last reviewed:** 25 Sep 2026, after the LLM-call review.
 
 ## Open
 
@@ -22,9 +22,10 @@ item is a rule the repo already binds itself to.
 | 12 | 24 — secrets come from Secret Manager | Three secrets, soon four with the Gemini key, sit in plain text in the Cloud Run configuration. | Cloud Run config |
 | 13 | Success metric — participation is measured *within the grace period* | Everyone who replied is recorded as `withinGrace: true` without the arrival time ever being checked. A member chased at the cut-off and replying two hours later is recorded as punctual, so the metric cannot be reported. | `jobs/participation.ts` |
 | 14 | FR-09 — participation reflects who reported that day | Who replied is derived from the tracker at the moment the count runs, and tracker rows carry a date but no time. A reply that lands after the count is in the tracker yet recorded as missed, so the tracker, the summary and the participation record can disagree about the same day. | `jobs/participation.ts`, `trackers/sharepoint.ts` |
-| 16 | FR-07 — the summary lists **active** blockers | Blockers are taken from today's tracker rows only, so a blocker raised yesterday and still unresolved disappears from the summary at midnight. The at-risk section inherits the same limit. Raised by the user, 23 Sep 2026. | `jobs/summary.ts` |
-| 17 | FR-07/FR-08 — the summary is read by stakeholders | Agent 2 is told to write plain text with no headings or bullets, because the same text is sent as a plain-text email. Posted into a Teams channel it reads as a wall of text. Needs simple formatting for Teams and an HTML body for mail. Raised by the user, 23 Sep 2026. | `agents/prompts/summaryBuilder.ts`, `graph/mail.ts` |
-| 18 | A member's name is their own | Every incoming message overwrites the stored display name, so a message that carries no name replaces a real name with "Unknown". That is how Tiwari Satyam is recorded. | `bot/handler.ts` |
+| 19 | LLM calls — cost and reliability (review 25 Sep 2026, fix after the demo) | Gemini is only *asked* for JSON in the prompt; `responseMimeType: application/json` with a response schema is not used, so malformed output costs a retry. | `llm/gemini.ts` |
+| 20 | LLM calls — retries | Two retry layers multiply: 2 HTTP attempts × 3 agent attempts = up to 6 calls per update. Agent attempts retry every error, including a 401 that cannot succeed (the expired Jira token, 24 Sep). Should retry only timeouts, 429/5xx and invalid output. | `agents/updateProcessor.ts`, `agents/summaryBuilder.ts` |
+| 21 | LLM calls — tool round-trips | Agent 1 is offered the story tool even when the member's open items are already in the prompt. Each tool round-trip resends the whole conversation, roughly doubling that update's tokens. | `agents/updateProcessor.ts` |
+| 22 | LLM calls — thinking tokens | No `thinkingConfig` is set. If `gemini-3.5-flash-lite` thinks by default, simple extraction is billed and slowed for it. Check the default first. | `llm/gemini.ts` |
 
 ## Closed since 19 Sep
 
@@ -34,6 +35,9 @@ item is a rule the repo already binds itself to.
 | 7 | 8 — one source per setting | The message handler now resolves the team from the sender's roster and takes the tracker from that team's record. `trackers/factory.ts` is the single place a tracker is built. This was the item with a live failure mode. |
 | — | FR-02 — updates are collected in one-to-one Teams chat | Channel messages were being recorded as stand-up updates, and a channel message also replaced the sender's personal chat reference, which would have sent their next reminder to the whole team. Channel activity is now used for one thing only: learning where to post the summary. Found and fixed 23 Sep 2026. |
 | 15 | FR-10 — configuration is per team | Every place that used the single team id from the server settings now resolves the team from the sender: their conversation reference is stored on their own team (and nobody is added to a roster by messaging the assistant), a channel is stored only as the summary channel of the team that configured it, and `setup` / `status` / `pause` / `resume` / `run` act on the sender's own team. Closed 24 Sep 2026. |
+| 16 | FR-07 — the summary lists **active** blockers | A blocker stays in the summary, whatever day it was raised, until the same member reports that item again without one (SPEC-006 4a, `BLOCKER_LOOKBACK_DAYS`). Closed 25 Sep 2026. |
+| 17 | FR-07/FR-08 — the summary is read by stakeholders | Agent 2 returns the sections as validated JSON; code lays them out as an Adaptive Card in the channel and an HTML email. Closed 25 Sep 2026. |
+| 18 | A member's name is their own | A Teams event with no sender name no longer overwrites the stored name. Closed 25 Sep 2026. |
 
 ## Notes on the open items
 

@@ -1,19 +1,19 @@
 {
-  "runAt": "2026-09-21T15:57:49.600Z",
+  "runAt": "2026-09-26T10:58:08.887Z",
   "provider": "gemini",
   "model": "gemini-3.5-flash-lite",
   "subset": "full",
-  "cases": 40,
-  "accuracy": 92.5,
+  "cases": 47,
+  "accuracy": 80.85106382978722,
   "byField": {
-    "completed": 95,
-    "inProgress": 95,
-    "blockers": 97.5,
-    "confidence": 90
+    "completed": 93.61702127659575,
+    "inProgress": 87.2340425531915,
+    "blockers": 95.74468085106383,
+    "confidence": 89.36170212765957
   },
-  "latencyMeanMs": 3150,
-  "latencyWorstMs": 7766,
-  "billedCalls": 32,
+  "latencyMeanMs": 2813,
+  "latencyWorstMs": 4833,
+  "billedCalls": 47,
   "results": [
     {
       "id": "e01",
@@ -22,19 +22,19 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 1319,
-      "cached": true,
+      "ms": 4833,
+      "cached": false,
       "note": "plain three-part update, all keys named"
     },
     {
       "id": "e02",
-      "completed": true,
-      "inProgress": true,
+      "completed": false,
+      "inProgress": false,
       "blockers": true,
       "confidence": true,
-      "pass": true,
-      "ms": 961,
-      "cached": true,
+      "pass": false,
+      "ms": 1941,
+      "cached": false,
       "note": "no keys, but both descriptions name open sprint items (A8)"
     },
     {
@@ -44,8 +44,8 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 667,
-      "cached": true,
+      "ms": 1980,
+      "cached": false,
       "note": "nothing to report"
     },
     {
@@ -53,10 +53,10 @@
       "completed": true,
       "inProgress": true,
       "blockers": true,
-      "confidence": true,
+      "confidence": false,
       "pass": true,
-      "ms": 674,
-      "cached": true,
+      "ms": 1807,
+      "cached": false,
       "note": "not a status update at all"
     },
     {
@@ -66,8 +66,8 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 726,
-      "cached": true,
+      "ms": 1626,
+      "cached": false,
       "note": "blocker with no work item"
     },
     {
@@ -77,8 +77,8 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 759,
-      "cached": true,
+      "ms": 3810,
+      "cached": false,
       "note": "two completed items in one sentence"
     },
     {
@@ -88,8 +88,8 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 743,
-      "cached": true,
+      "ms": 2977,
+      "cached": false,
       "note": "same item both in progress and blocked"
     },
     {
@@ -99,8 +99,8 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 818,
-      "cached": true,
+      "ms": 3372,
+      "cached": false,
       "note": "invented key that does not exist in Jira"
     },
     {
@@ -110,7 +110,7 @@
       "blockers": false,
       "confidence": true,
       "pass": false,
-      "ms": 7766,
+      "ms": 3083,
       "cached": false,
       "note": "two separate blockers"
     },
@@ -121,7 +121,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3767,
+      "ms": 3043,
       "cached": false,
       "note": "terse, key only"
     },
@@ -132,7 +132,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 4326,
+      "ms": 2724,
       "cached": false,
       "note": "lowercase key"
     },
@@ -143,18 +143,18 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 2401,
+      "ms": 1656,
       "cached": false,
       "note": "future tense only"
     },
     {
       "id": "e13",
       "completed": true,
-      "inProgress": true,
+      "inProgress": false,
       "blockers": true,
-      "confidence": true,
-      "pass": true,
-      "ms": 4424,
+      "confidence": false,
+      "pass": false,
+      "ms": 1902,
       "cached": false,
       "note": "\"the screening service\" is SCRUM-20 by description (A8)"
     },
@@ -165,18 +165,18 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3920,
+      "ms": 3386,
       "cached": false,
       "note": "blocker phrased as waiting on a person"
     },
     {
       "id": "e15",
       "completed": true,
-      "inProgress": true,
+      "inProgress": false,
       "blockers": true,
       "confidence": true,
-      "pass": true,
-      "ms": 4051,
+      "pass": false,
+      "ms": 3858,
       "cached": false,
       "note": "long, rambling, three items"
     },
@@ -187,7 +187,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 2483,
+      "ms": 1510,
       "cached": false,
       "note": "greeting only"
     },
@@ -198,7 +198,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 5468,
+      "ms": 3504,
       "cached": false,
       "note": "typos and missing punctuation"
     },
@@ -209,7 +209,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3715,
+      "ms": 2780,
       "cached": false,
       "note": "blocker resolved, so not a blocker"
     },
@@ -220,7 +220,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 2327,
+      "ms": 1752,
       "cached": false,
       "note": "on leave"
     },
@@ -231,7 +231,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3821,
+      "ms": 3046,
       "cached": false,
       "note": "numbered list format"
     },
@@ -242,7 +242,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 4840,
+      "ms": 3184,
       "cached": false,
       "note": "key written with a space"
     },
@@ -253,7 +253,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3629,
+      "ms": 3650,
       "cached": false,
       "note": "blocker on an item not mentioned elsewhere"
     },
@@ -264,7 +264,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 2550,
+      "ms": 3315,
       "cached": false,
       "note": "partial work, not complete"
     },
@@ -275,7 +275,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 2158,
+      "ms": 1668,
       "cached": false,
       "note": "question rather than an update"
     },
@@ -286,7 +286,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3809,
+      "ms": 3513,
       "cached": false,
       "note": "three completed, nothing in progress"
     },
@@ -297,7 +297,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3740,
+      "ms": 3047,
       "cached": false,
       "note": "blocker described without the word blocked"
     },
@@ -308,7 +308,7 @@
       "blockers": true,
       "confidence": false,
       "pass": true,
-      "ms": 2062,
+      "ms": 1695,
       "cached": false,
       "note": "very short with a blocker"
     },
@@ -319,7 +319,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3744,
+      "ms": 3889,
       "cached": false,
       "note": "mixed English and Hindi"
     },
@@ -327,10 +327,10 @@
       "id": "e29",
       "completed": true,
       "inProgress": true,
-      "blockers": true,
+      "blockers": false,
       "confidence": true,
-      "pass": true,
-      "ms": 3360,
+      "pass": false,
+      "ms": 3266,
       "cached": false,
       "note": "reporting someone else's blocker"
     },
@@ -341,7 +341,7 @@
       "blockers": true,
       "confidence": true,
       "pass": false,
-      "ms": 2547,
+      "ms": 1681,
       "cached": false,
       "note": "code review work with no key"
     },
@@ -350,9 +350,9 @@
       "completed": true,
       "inProgress": true,
       "blockers": true,
-      "confidence": false,
+      "confidence": true,
       "pass": true,
-      "ms": 2839,
+      "ms": 1819,
       "cached": false,
       "note": "emoji only"
     },
@@ -363,29 +363,29 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3891,
+      "ms": 3185,
       "cached": false,
       "note": "blocker with a dependency on another team"
     },
     {
       "id": "e33",
       "completed": true,
-      "inProgress": true,
+      "inProgress": false,
       "blockers": true,
       "confidence": true,
-      "pass": true,
-      "ms": 5691,
+      "pass": false,
+      "ms": 3591,
       "cached": false,
       "note": "two items, one done one blocked"
     },
     {
       "id": "e34",
       "completed": false,
-      "inProgress": false,
+      "inProgress": true,
       "blockers": true,
       "confidence": false,
       "pass": false,
-      "ms": 3961,
+      "ms": 2916,
       "cached": false,
       "note": "hedged completion"
     },
@@ -396,7 +396,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3848,
+      "ms": 2849,
       "cached": false,
       "note": "meeting-heavy day"
     },
@@ -407,7 +407,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3596,
+      "ms": 3192,
       "cached": false,
       "note": "bug found, reported as a blocker"
     },
@@ -418,7 +418,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3414,
+      "ms": 3273,
       "cached": false,
       "note": "one item completed, another started, blocker on neither"
     },
@@ -429,7 +429,7 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 4997,
+      "ms": 3455,
       "cached": false,
       "note": "all three sections, explicit labels"
     },
@@ -440,20 +440,97 @@
       "blockers": true,
       "confidence": false,
       "pass": true,
-      "ms": 2061,
+      "ms": 1750,
       "cached": false,
       "note": "key mentioned only as context, no work claimed"
     },
     {
       "id": "e40",
       "completed": true,
+      "inProgress": false,
+      "blockers": true,
+      "confidence": true,
+      "pass": false,
+      "ms": 3901,
+      "cached": false,
+      "note": "two in progress, one blocked, one done"
+    },
+    {
+      "id": "e41",
+      "completed": true,
       "inProgress": true,
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 4117,
+      "ms": 3075,
       "cached": false,
-      "note": "two in progress, one blocked, one done"
+      "note": "blocker resolved, informal name (the 25 Sep miss)"
+    },
+    {
+      "id": "e42",
+      "completed": true,
+      "inProgress": true,
+      "blockers": true,
+      "confidence": true,
+      "pass": true,
+      "ms": 3136,
+      "cached": false,
+      "note": "blocker resolved, cause named not the item"
+    },
+    {
+      "id": "e43",
+      "completed": true,
+      "inProgress": true,
+      "blockers": true,
+      "confidence": true,
+      "pass": true,
+      "ms": 2868,
+      "cached": false,
+      "note": "blocker cleared, short"
+    },
+    {
+      "id": "e44",
+      "completed": true,
+      "inProgress": true,
+      "blockers": true,
+      "confidence": true,
+      "pass": true,
+      "ms": 3196,
+      "cached": false,
+      "note": "resolved without the word blocker"
+    },
+    {
+      "id": "e45",
+      "completed": true,
+      "inProgress": true,
+      "blockers": true,
+      "confidence": true,
+      "pass": true,
+      "ms": 3161,
+      "cached": false,
+      "note": "unblocked, different wording"
+    },
+    {
+      "id": "e46",
+      "completed": true,
+      "inProgress": true,
+      "blockers": true,
+      "confidence": true,
+      "pass": true,
+      "ms": 1608,
+      "cached": false,
+      "note": "greeting with an open blocker is still not an update"
+    },
+    {
+      "id": "e47",
+      "completed": true,
+      "inProgress": true,
+      "blockers": true,
+      "confidence": true,
+      "pass": true,
+      "ms": 1717,
+      "cached": false,
+      "note": "nothing to report with an open blocker"
     }
   ]
 }

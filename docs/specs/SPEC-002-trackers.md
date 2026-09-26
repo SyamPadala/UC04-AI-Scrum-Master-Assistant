@@ -38,6 +38,34 @@ This is also where the update *lives*. We deliberately keep no copy of it.
    member+date over a *set* of rows, not a single row.
 4. `readToday(teamId)` returns all of today's recorded updates for that team.
    This is how Agent 2 gets its material (SPEC-006) without us storing anything.
+
+> **Amended 26 Sep 2026 (user decision) — SharePoint list: one row per work item
+> per member, updated in place.** Items 2–3 above described one set of rows per
+> member per day, so the list grew every day and knowing a blocker from an
+> earlier day meant reading earlier days. That dependency is removed:
+>
+> 2a. **Row identity** is *member + work item*. A reply updates that row in
+>     place — `Comment` (the latest update only; earlier values stay in
+>     SharePoint's version history), `Status`, `AnyBlocker`, and `Date`, which
+>     now means **last updated** (the team's local date). A new work item gets a
+>     new row. The list grows only when new work items appear.
+> 2b. Updates naming **no work item** ("nothing to report", "on leave", a
+>     blocker on nothing in particular) go to one **General** row per member
+>     (`WIN` empty).
+> 2c. **Items a message does not mention are left as they are** — status,
+>     comment and blocker unchanged. Several messages in one day: the latest
+>     wins for the items it mentions.
+> 2d. **A blocker stays** in `AnyBlocker` until the member reports that item
+>     again without one; then it is cleared and `Status` set from the report.
+> 2e. **Two members on one story** have one row each (identity includes the
+>     member), so neither overwrites the other.
+> 4a. `readToday` returns the rows whose `Date` (last updated) is today.
+>     `openBlockers(teamId)` returns every row whose `AnyBlocker` is set — the
+>     team's current impediments, whatever day they were raised — with the date
+>     last reported. No earlier day is ever read.
+> 4b. Jira comments are unchanged: a comment per story per day is how Jira keeps
+>     history. `openBlockers` there reads the latest assistant comment per
+>     member on each open story in the project.
 5. A tracker failure is reported to the caller and recorded, but never loses the
    member's message — the reply is acknowledged in Teams regardless.
 6. The `mock` tracker writes to a local JSON file and is fully functional, so

@@ -556,5 +556,141 @@
       ],
       "confidence": "high"
     }
+  },
+  {
+    "id": "e41",
+    "note": "blocker resolved, informal name (the 25 Sep miss)",
+    "text": "Risk score issue got resolved and we are able to progress further",
+    "activeBlockers": [
+      {
+        "workItem": "SCRUM-21",
+        "description": "Risk score business logic was not yet given by client. Unable to move forward",
+        "since": "2026-09-24"
+      }
+    ],
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-21"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e42",
+    "note": "blocker resolved, cause named not the item",
+    "text": "The client finally shared the business logic, so I am unblocked now",
+    "activeBlockers": [
+      {
+        "workItem": "SCRUM-21",
+        "description": "Risk score business logic was not yet given by client. Unable to move forward",
+        "since": "2026-09-24"
+      }
+    ],
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-21"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e43",
+    "note": "blocker cleared, short",
+    "text": "risk scoring blocker is cleared, continuing",
+    "activeBlockers": [
+      {
+        "workItem": "SCRUM-21",
+        "description": "Risk score business logic was not yet given by client. Unable to move forward",
+        "since": "2026-09-24"
+      }
+    ],
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-21"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e44",
+    "note": "resolved without the word blocker",
+    "text": "Sorted out the risk score problem, moving ahead",
+    "activeBlockers": [
+      {
+        "workItem": "SCRUM-21",
+        "description": "Risk score business logic was not yet given by client. Unable to move forward",
+        "since": "2026-09-24"
+      }
+    ],
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-21"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e45",
+    "note": "unblocked, different wording",
+    "text": "Got what I needed from the client for the scoring rules, back on it",
+    "activeBlockers": [
+      {
+        "workItem": "SCRUM-21",
+        "description": "Risk score business logic was not yet given by client. Unable to move forward",
+        "since": "2026-09-24"
+      }
+    ],
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-21"
+      ],
+      "blockers": [],
+      "confidence": "high"
+    }
+  },
+  {
+    "id": "e46",
+    "note": "greeting with an open blocker is still not an update",
+    "text": "hi",
+    "activeBlockers": [
+      {
+        "workItem": "SCRUM-21",
+        "description": "Risk score business logic was not yet given by client. Unable to move forward",
+        "since": "2026-09-24"
+      }
+    ],
+    "expect": {
+      "completed": [],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "low"
+    }
+  },
+  {
+    "id": "e47",
+    "note": "nothing to report with an open blocker",
+    "text": "Nothing new to report today",
+    "activeBlockers": [
+      {
+        "workItem": "SCRUM-21",
+        "description": "Risk score business logic was not yet given by client. Unable to move forward",
+        "since": "2026-09-24"
+      }
+    ],
+    "expect": {
+      "completed": [],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "high"
+    }
   }
 ]

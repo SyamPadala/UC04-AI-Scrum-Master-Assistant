@@ -17,6 +17,8 @@ import { config } from '../config/env.js'
  */
 
 export interface IntakeResult {
+  /** False when nothing could be taken from the message and nothing was written (SPEC-004 5b). */
+  understood: boolean
   /** Rows the member now has for the day, after merging (A11). */
   rows: number
   /** Rows this particular message contributed. */
@@ -199,13 +201,23 @@ export async function processUpdate (
   const closed = await (deps.summaryHasRun ?? summaryHasRun)(team.teamId, localDate)
   if (closed) throw new StandupClosedError(localDate)
 
+  // Read back from the tracker rather than from Firestore, because the tracker
+  // is the only place update content lives (Privacy NFR). Today's rows are
+  // merged into below; the member's open blockers go to the model so "that
+  // issue is resolved" has something to attach to (SPEC-004 5a).
+  const today = await deps.tracker.readToday(team.teamId, localDate)
+  // SharePoint knows members by name only, so match on either.
+  const openBlockers = (await deps.tracker.openBlockers(team.teamId))
+    .filter((b) => b.memberId === memberId || b.member === memberName)
+
   const extraction = await extractUpdate(
     {
       text,
       memberId,
       memberName,
       teamId: team.teamId,
-      jiraAccountId: member?.jiraAccountId ?? ''
+      jiraAccountId: member?.jiraAccountId ?? '',
+      activeBlockers: openBlockers
     },
     deps.llm,
     deps.pm,
@@ -215,20 +227,36 @@ export async function processUpdate (
   const stories = await resolveStories(extraction.output, deps.pm, extraction.openItems)
 
   // What this message adds, merged into what the member already said today.
-  // Read back from the tracker rather than from Firestore, because the tracker
-  // is the only place update content lives (Privacy NFR).
-  const existing = (await deps.tracker.readToday(team.teamId, localDate))
-    .find((update) => update.memberName === memberName)?.rows ?? []
+  const existing = today.find((update) => update.memberName === memberName)?.rows ?? []
 
   const output = extraction.output
   const saidSomething =
     output.completed.length + output.inProgress.length + output.blockers.length > 0
 
+  // SPEC-004 5b: nothing found, and either the model was unsure or the member
+  // has already reported today. Nothing is written and they are asked which
+  // item they mean — replying "Recorded" here silently lost their update.
+  if (!saidSomething && (output.confidence === 'low' || existing.length > 0)) {
+    console.log(JSON.stringify({
+      event: 'update.notUnderstood', teamId: team.teamId, memberId, confidence: output.confidence,
+      extractionMs: extraction.durationMs
+    }))
+    return {
+      understood: false,
+      rows: existing.length,
+      added: 0,
+      blockers: 0,
+      alertSent: false,
+      extractionMs: extraction.durationMs,
+      totalMs: Date.now() - receivedAt.getTime(),
+      truncated: extraction.truncated,
+      confidence: output.confidence
+    }
+  }
+
   // "Nothing to report" from someone who has already reported adds nothing —
   // it must not overwrite the morning's rows with an empty placeholder.
-  const incoming = saidSomething || existing.length === 0
-    ? toTrackerRows(output, memberName, text, stories)
-    : []
+  const incoming = toTrackerRows(output, memberName, text, stories)
 
   const rows = mergeRows(existing, incoming)
 
@@ -275,6 +303,7 @@ export async function processUpdate (
   }))
 
   return {
+    understood: true,
     rows: rows.length,
     added: incoming.length,
     blockers: extraction.output.blockers.length,

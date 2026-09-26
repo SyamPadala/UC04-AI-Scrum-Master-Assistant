@@ -16,6 +16,8 @@ import { MockTracker } from '../dist/trackers/mock.js'
 import { trackerFor } from '../dist/trackers/factory.js'
 import { gatherFacts } from '../dist/jobs/summary.js'
 import { buildSummaryText } from '../dist/agents/summaryBuilder.js'
+import fs from 'node:fs'
+import { summaryCard, summaryEmailHtml, summaryPlainText } from '../dist/cards/summary.js'
 import { getTeam } from '../dist/store/firestore.js'
 import { localDate } from '../dist/config/time.js'
 
@@ -52,6 +54,14 @@ console.log('')
 
 const built = await buildSummaryText(facts, createLlm(), config.agent2)
 console.log('─'.repeat(70))
-console.log(built.text)
+console.log(summaryPlainText(facts, built.sections))
 console.log('─'.repeat(70))
+// --out <dir> writes the email and the Teams card, to look at before sending.
+const outAt = process.argv.indexOf('--out')
+if (outAt !== -1) {
+  const dir = process.argv[outAt + 1]
+  fs.writeFileSync(`${dir}/summary-email.html`, summaryEmailHtml(facts, built.sections))
+  fs.writeFileSync(`${dir}/summary-card.json`, JSON.stringify(summaryCard(facts, built.sections), null, 2))
+  console.log(`wrote ${dir}/summary-email.html and summary-card.json`)
+}
 console.log(`built in ${built.durationMs}ms, ${built.attempts} attempt(s). Not sent.`)
