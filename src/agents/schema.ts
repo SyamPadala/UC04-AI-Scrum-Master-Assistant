@@ -43,13 +43,21 @@ export interface ExtractionInput {
 /**
  * Pulls the JSON object out of a model reply.
  *
- * Models sometimes wrap JSON in a fenced code block even when asked not to.
+ * Models sometimes wrap JSON in a fenced code block even when asked not to, or
+ * after a tool call prefix it with a stray "json" (seen from Gemini, 26 Sep).
  * Tolerating that is not repairing the output — the content is unchanged, only
- * the wrapper is discarded.
+ * the wrapper around the outermost object is discarded.
  */
-export function parseExtraction (raw: string): ExtractionOutput {
+export function jsonObjectIn (raw: string): string {
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
-  const candidate = (fenced?.[1] ?? raw).trim()
+  const text = (fenced?.[1] ?? raw).trim()
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  return start === -1 || end < start ? text : text.slice(start, end + 1)
+}
+
+export function parseExtraction (raw: string): ExtractionOutput {
+  const candidate = jsonObjectIn(raw)
 
   let parsed: unknown
   try {
@@ -88,8 +96,7 @@ export const summarySchema = z.object({
 export type SummaryOutput = z.infer<typeof summarySchema>
 
 export function parseSummary (raw: string): SummaryOutput {
-  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
-  const candidate = (fenced?.[1] ?? raw).trim()
+  const candidate = jsonObjectIn(raw)
 
   let parsed: unknown
   try {

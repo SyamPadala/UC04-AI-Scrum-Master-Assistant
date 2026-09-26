@@ -152,12 +152,12 @@
   },
   {
     "id": "e12",
-    "note": "future tense only",
+    "note": "future tense only; \"notification templates\" matches SCRUM-22 Notification Service by title (A8) now that open stories are supplied",
     "text": "I'll be starting on the notification templates after lunch.",
     "expect": {
       "completed": [],
       "inProgress": [
-        null
+        "SCRUM-22"
       ],
       "blockers": [],
       "confidence": "high"

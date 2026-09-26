@@ -24,7 +24,7 @@ const smoke = process.argv.includes('--smoke')
 const selected = smoke ? cases.slice(0, 8) : cases
 
 const llm = createLlm()
-const pm = new JiraClient({
+const jira = new JiraClient({
   baseUrl: config.jira.baseUrl,
   email: config.jira.email,
   apiToken: config.jira.apiToken,
@@ -32,6 +32,16 @@ const pm = new JiraClient({
   storyPointsField: config.jira.storyPointsField,
   boardId: config.jira.boardId
 })
+
+// The member's open stories reach the prompt exactly as in production. The
+// labelled cases name stories across the whole sprint, so the eval member is
+// given every open story in the sprint rather than one person's — which
+// depends on who happens to be assigned today and made the number drift.
+const sprint = await jira.getSprintData()
+const openStories = (sprint?.items ?? []).filter((item) => item.statusCategory !== 'Done')
+const pm = { ...jira, lookupStory: (key) => jira.lookupStory(key), getMemberOpenItems: async () => openStories }
+console.log(`open stories given to the model: ${openStories.map((s) => s.key).join(', ') || 'none'}
+`)
 
 /** Story keys in a bucket, order-insensitive, nulls kept — null is a real answer. */
 const keysOf = (items, field = 'storyRef') =>
@@ -58,10 +68,7 @@ for (const testCase of selected) {
         memberId: 'eval-member',
         memberName: 'Eval Member',
         teamId: 'eval',
-        // The linked Jira account, so open items reach the prompt exactly as
-        // they would in production. Scoring a different prompt than the one
-        // that runs would make the number meaningless.
-        jiraAccountId: process.env.EVAL_JIRA_ACCOUNT_ID ?? '',
+        jiraAccountId: 'eval',
         // Blockers the member raised earlier, as production passes them (SPEC-004 5a).
         activeBlockers: testCase.activeBlockers ?? []
       },
@@ -85,7 +92,9 @@ for (const testCase of selected) {
       pass: completed && inProgress && blockers,
       ms: extraction.durationMs,
       cached: extraction.roundTrips === 0,
-      note: testCase.note
+      note: testCase.note,
+      // Keys only, so a miss can be diagnosed from the output alone.
+      got: { completed: keysOf(output.completed), inProgress: keysOf(output.inProgress), blockers: keysOf(output.blockers.map((b) => ({ storyRef: b.storyRef }))) }
     }
   } catch (error) {
     row = {
@@ -107,7 +116,9 @@ for (const testCase of selected) {
   ].filter((field) => field !== '')
   console.log(
     `${row.id}  ${mark}  ${String(row.ms).padStart(6)}ms  ${row.cached ? 'cached' : 'live  '}  ` +
-    `${fields.length === 0 ? '' : 'wrong: ' + fields.join(', ')}${row.error === undefined ? '' : ' ERROR: ' + row.error}`
+    `${fields.length === 0 ? '' : 'wrong: ' + fields.join(', ')}${row.error === undefined ? '' : ' ERROR: ' + row.error}` +
+    (row.pass || row.got === undefined ? '' : `
+      got ${JSON.stringify(row.got)}`)
   )
 }
 

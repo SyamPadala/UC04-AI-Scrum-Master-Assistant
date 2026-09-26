@@ -1,41 +1,62 @@
 {
-  "runAt": "2026-09-26T10:58:08.887Z",
+  "runAt": "2026-09-26T11:28:02.209Z",
   "provider": "gemini",
   "model": "gemini-3.5-flash-lite",
   "subset": "full",
   "cases": 47,
-  "accuracy": 80.85106382978722,
+  "accuracy": 89.36170212765957,
   "byField": {
-    "completed": 93.61702127659575,
-    "inProgress": 87.2340425531915,
+    "completed": 100,
+    "inProgress": 93.61702127659575,
     "blockers": 95.74468085106383,
-    "confidence": 89.36170212765957
+    "confidence": 93.61702127659575
   },
-  "latencyMeanMs": 2813,
-  "latencyWorstMs": 4833,
+  "latencyMeanMs": 2077,
+  "latencyWorstMs": 4015,
   "billedCalls": 47,
   "results": [
     {
       "id": "e01",
       "completed": true,
-      "inProgress": true,
-      "blockers": true,
-      "confidence": true,
-      "pass": true,
-      "ms": 4833,
-      "cached": false,
-      "note": "plain three-part update, all keys named"
-    },
-    {
-      "id": "e02",
-      "completed": false,
       "inProgress": false,
       "blockers": true,
       "confidence": true,
       "pass": false,
-      "ms": 1941,
+      "ms": 2983,
       "cached": false,
-      "note": "no keys, but both descriptions name open sprint items (A8)"
+      "note": "plain three-part update, all keys named",
+      "got": {
+        "completed": [
+          "SCRUM-7"
+        ],
+        "inProgress": [
+          "SCRUM-6",
+          "SCRUM-6"
+        ],
+        "blockers": [
+          "SCRUM-6"
+        ]
+      }
+    },
+    {
+      "id": "e02",
+      "completed": true,
+      "inProgress": true,
+      "blockers": true,
+      "confidence": true,
+      "pass": true,
+      "ms": 1875,
+      "cached": false,
+      "note": "no keys, but both descriptions name open sprint items (A8)",
+      "got": {
+        "completed": [
+          "SCRUM-20"
+        ],
+        "inProgress": [
+          "SCRUM-21"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e03",
@@ -44,9 +65,14 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 1980,
+      "ms": 1702,
       "cached": false,
-      "note": "nothing to report"
+      "note": "nothing to report",
+      "got": {
+        "completed": [],
+        "inProgress": [],
+        "blockers": []
+      }
     },
     {
       "id": "e04",
@@ -55,9 +81,14 @@
       "blockers": true,
       "confidence": false,
       "pass": true,
-      "ms": 1807,
+      "ms": 1913,
       "cached": false,
-      "note": "not a status update at all"
+      "note": "not a status update at all",
+      "got": {
+        "completed": [],
+        "inProgress": [],
+        "blockers": []
+      }
     },
     {
       "id": "e05",
@@ -66,9 +97,16 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 1626,
+      "ms": 1784,
       "cached": false,
-      "note": "blocker with no work item"
+      "note": "blocker with no work item",
+      "got": {
+        "completed": [],
+        "inProgress": [],
+        "blockers": [
+          null
+        ]
+      }
     },
     {
       "id": "e06",
@@ -77,9 +115,17 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3810,
+      "ms": 2028,
       "cached": false,
-      "note": "two completed items in one sentence"
+      "note": "two completed items in one sentence",
+      "got": {
+        "completed": [
+          "SCRUM-22",
+          "SCRUM-7"
+        ],
+        "inProgress": [],
+        "blockers": []
+      }
     },
     {
       "id": "e07",
@@ -88,9 +134,18 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 2977,
+      "ms": 1928,
       "cached": false,
-      "note": "same item both in progress and blocked"
+      "note": "same item both in progress and blocked",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-20"
+        ],
+        "blockers": [
+          "SCRUM-20"
+        ]
+      }
     },
     {
       "id": "e08",
@@ -99,9 +154,16 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3372,
+      "ms": 3365,
       "cached": false,
-      "note": "invented key that does not exist in Jira"
+      "note": "invented key that does not exist in Jira",
+      "got": {
+        "completed": [
+          null
+        ],
+        "inProgress": [],
+        "blockers": []
+      }
     },
     {
       "id": "e09",
@@ -110,9 +172,19 @@
       "blockers": false,
       "confidence": true,
       "pass": false,
-      "ms": 3083,
+      "ms": 2482,
       "cached": false,
-      "note": "two separate blockers"
+      "note": "two separate blockers",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-21"
+        ],
+        "blockers": [
+          null,
+          "SCRUM-21"
+        ]
+      }
     },
     {
       "id": "e10",
@@ -121,9 +193,16 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3043,
+      "ms": 1810,
       "cached": false,
-      "note": "terse, key only"
+      "note": "terse, key only",
+      "got": {
+        "completed": [
+          "SCRUM-6"
+        ],
+        "inProgress": [],
+        "blockers": []
+      }
     },
     {
       "id": "e11",
@@ -132,9 +211,16 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 2724,
+      "ms": 2946,
       "cached": false,
-      "note": "lowercase key"
+      "note": "lowercase key",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-5"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e12",
@@ -143,20 +229,34 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 1656,
+      "ms": 1813,
       "cached": false,
-      "note": "future tense only"
+      "note": "future tense only; \"notification templates\" matches SCRUM-22 Notification Service by title (A8) now that open stories are supplied",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-22"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e13",
       "completed": true,
-      "inProgress": false,
+      "inProgress": true,
       "blockers": true,
-      "confidence": false,
-      "pass": false,
-      "ms": 1902,
+      "confidence": true,
+      "pass": true,
+      "ms": 1543,
       "cached": false,
-      "note": "\"the screening service\" is SCRUM-20 by description (A8)"
+      "note": "\"the screening service\" is SCRUM-20 by description (A8)",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-20"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e14",
@@ -165,9 +265,18 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3386,
+      "ms": 2007,
       "cached": false,
-      "note": "blocker phrased as waiting on a person"
+      "note": "blocker phrased as waiting on a person",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-21"
+        ],
+        "blockers": [
+          "SCRUM-21"
+        ]
+      }
     },
     {
       "id": "e15",
@@ -176,9 +285,20 @@
       "blockers": true,
       "confidence": true,
       "pass": false,
-      "ms": 3858,
+      "ms": 1883,
       "cached": false,
-      "note": "long, rambling, three items"
+      "note": "long, rambling, three items",
+      "got": {
+        "completed": [
+          "SCRUM-22"
+        ],
+        "inProgress": [
+          null,
+          "SCRUM-20",
+          "SCRUM-5"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e16",
@@ -187,9 +307,14 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 1510,
+      "ms": 1760,
       "cached": false,
-      "note": "greeting only"
+      "note": "greeting only",
+      "got": {
+        "completed": [],
+        "inProgress": [],
+        "blockers": []
+      }
     },
     {
       "id": "e17",
@@ -198,9 +323,18 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3504,
+      "ms": 4015,
       "cached": false,
-      "note": "typos and missing punctuation"
+      "note": "typos and missing punctuation",
+      "got": {
+        "completed": [
+          "SCRUM-7"
+        ],
+        "inProgress": [
+          "SCRUM-6"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e18",
@@ -209,9 +343,16 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 2780,
+      "ms": 1520,
       "cached": false,
-      "note": "blocker resolved, so not a blocker"
+      "note": "blocker resolved, so not a blocker",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-6"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e19",
@@ -220,9 +361,14 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 1752,
+      "ms": 1754,
       "cached": false,
-      "note": "on leave"
+      "note": "on leave",
+      "got": {
+        "completed": [],
+        "inProgress": [],
+        "blockers": []
+      }
     },
     {
       "id": "e20",
@@ -231,9 +377,18 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3046,
+      "ms": 1711,
       "cached": false,
-      "note": "numbered list format"
+      "note": "numbered list format",
+      "got": {
+        "completed": [
+          "SCRUM-7"
+        ],
+        "inProgress": [
+          "SCRUM-20"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e21",
@@ -242,9 +397,18 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3184,
+      "ms": 3845,
       "cached": false,
-      "note": "key written with a space"
+      "note": "key written with a space",
+      "got": {
+        "completed": [
+          "SCRUM-22"
+        ],
+        "inProgress": [
+          "SCRUM-21"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e22",
@@ -253,9 +417,18 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3650,
+      "ms": 1821,
       "cached": false,
-      "note": "blocker on an item not mentioned elsewhere"
+      "note": "blocker on an item not mentioned elsewhere",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-6"
+        ],
+        "blockers": [
+          "SCRUM-5"
+        ]
+      }
     },
     {
       "id": "e23",
@@ -264,20 +437,32 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3315,
+      "ms": 1601,
       "cached": false,
-      "note": "partial work, not complete"
+      "note": "partial work, not complete",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-20"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e24",
       "completed": true,
       "inProgress": true,
       "blockers": true,
-      "confidence": true,
+      "confidence": false,
       "pass": true,
-      "ms": 1668,
+      "ms": 1616,
       "cached": false,
-      "note": "question rather than an update"
+      "note": "question rather than an update",
+      "got": {
+        "completed": [],
+        "inProgress": [],
+        "blockers": []
+      }
     },
     {
       "id": "e25",
@@ -286,9 +471,18 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3513,
+      "ms": 1734,
       "cached": false,
-      "note": "three completed, nothing in progress"
+      "note": "three completed, nothing in progress",
+      "got": {
+        "completed": [
+          null,
+          "SCRUM-22",
+          "SCRUM-7"
+        ],
+        "inProgress": [],
+        "blockers": []
+      }
     },
     {
       "id": "e26",
@@ -297,20 +491,36 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3047,
+      "ms": 2028,
       "cached": false,
-      "note": "blocker described without the word blocked"
+      "note": "blocker described without the word blocked",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-21"
+        ],
+        "blockers": [
+          "SCRUM-21"
+        ]
+      }
     },
     {
       "id": "e27",
       "completed": true,
       "inProgress": true,
       "blockers": true,
-      "confidence": false,
+      "confidence": true,
       "pass": true,
-      "ms": 1695,
+      "ms": 1689,
       "cached": false,
-      "note": "very short with a blocker"
+      "note": "very short with a blocker",
+      "got": {
+        "completed": [],
+        "inProgress": [],
+        "blockers": [
+          null
+        ]
+      }
     },
     {
       "id": "e28",
@@ -319,31 +529,58 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3889,
+      "ms": 1858,
       "cached": false,
-      "note": "mixed English and Hindi"
+      "note": "mixed English and Hindi",
+      "got": {
+        "completed": [
+          "SCRUM-6"
+        ],
+        "inProgress": [
+          "SCRUM-20"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e29",
       "completed": true,
       "inProgress": true,
-      "blockers": false,
+      "blockers": true,
       "confidence": true,
-      "pass": false,
-      "ms": 3266,
+      "pass": true,
+      "ms": 1684,
       "cached": false,
-      "note": "reporting someone else's blocker"
+      "note": "reporting someone else's blocker",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-5"
+        ],
+        "blockers": [
+          null
+        ]
+      }
     },
     {
       "id": "e30",
-      "completed": false,
-      "inProgress": false,
+      "completed": true,
+      "inProgress": true,
       "blockers": true,
       "confidence": true,
-      "pass": false,
-      "ms": 1681,
+      "pass": true,
+      "ms": 1803,
       "cached": false,
-      "note": "code review work with no key"
+      "note": "code review work with no key",
+      "got": {
+        "completed": [
+          null
+        ],
+        "inProgress": [
+          null
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e31",
@@ -352,9 +589,14 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 1819,
+      "ms": 1417,
       "cached": false,
-      "note": "emoji only"
+      "note": "emoji only",
+      "got": {
+        "completed": [],
+        "inProgress": [],
+        "blockers": []
+      }
     },
     {
       "id": "e32",
@@ -363,42 +605,75 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3185,
+      "ms": 1748,
       "cached": false,
-      "note": "blocker with a dependency on another team"
+      "note": "blocker with a dependency on another team",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-20"
+        ],
+        "blockers": [
+          "SCRUM-20"
+        ]
+      }
     },
     {
       "id": "e33",
-      "completed": true,
-      "inProgress": false,
-      "blockers": true,
-      "confidence": true,
-      "pass": false,
-      "ms": 3591,
-      "cached": false,
-      "note": "two items, one done one blocked"
-    },
-    {
-      "id": "e34",
-      "completed": false,
-      "inProgress": true,
-      "blockers": true,
-      "confidence": false,
-      "pass": false,
-      "ms": 2916,
-      "cached": false,
-      "note": "hedged completion"
-    },
-    {
-      "id": "e35",
       "completed": true,
       "inProgress": true,
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 2849,
+      "ms": 1851,
       "cached": false,
-      "note": "meeting-heavy day"
+      "note": "two items, one done one blocked",
+      "got": {
+        "completed": [
+          "SCRUM-22"
+        ],
+        "inProgress": [],
+        "blockers": [
+          "SCRUM-5"
+        ]
+      }
+    },
+    {
+      "id": "e34",
+      "completed": true,
+      "inProgress": true,
+      "blockers": true,
+      "confidence": false,
+      "pass": true,
+      "ms": 1835,
+      "cached": false,
+      "note": "hedged completion",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-7"
+        ],
+        "blockers": []
+      }
+    },
+    {
+      "id": "e35",
+      "completed": true,
+      "inProgress": false,
+      "blockers": true,
+      "confidence": true,
+      "pass": false,
+      "ms": 1921,
+      "cached": false,
+      "note": "meeting-heavy day",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          null,
+          "SCRUM-6"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e36",
@@ -407,20 +682,38 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3192,
+      "ms": 1948,
       "cached": false,
-      "note": "bug found, reported as a blocker"
+      "note": "bug found, reported as a blocker",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-21"
+        ],
+        "blockers": [
+          "SCRUM-21"
+        ]
+      }
     },
     {
       "id": "e37",
       "completed": true,
       "inProgress": true,
-      "blockers": true,
+      "blockers": false,
       "confidence": true,
-      "pass": true,
-      "ms": 3273,
+      "pass": false,
+      "ms": 1696,
       "cached": false,
-      "note": "one item completed, another started, blocker on neither"
+      "note": "one item completed, another started, blocker on neither",
+      "got": {
+        "completed": [
+          "SCRUM-22"
+        ],
+        "inProgress": [
+          "SCRUM-20"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e38",
@@ -429,31 +722,57 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3455,
+      "ms": 1598,
       "cached": false,
-      "note": "all three sections, explicit labels"
+      "note": "all three sections, explicit labels",
+      "got": {
+        "completed": [
+          "SCRUM-7"
+        ],
+        "inProgress": [
+          "SCRUM-6"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e39",
       "completed": true,
       "inProgress": true,
       "blockers": true,
-      "confidence": false,
+      "confidence": true,
       "pass": true,
-      "ms": 1750,
+      "ms": 1385,
       "cached": false,
-      "note": "key mentioned only as context, no work claimed"
+      "note": "key mentioned only as context, no work claimed",
+      "got": {
+        "completed": [],
+        "inProgress": [],
+        "blockers": []
+      }
     },
     {
       "id": "e40",
       "completed": true,
-      "inProgress": false,
+      "inProgress": true,
       "blockers": true,
       "confidence": true,
-      "pass": false,
-      "ms": 3901,
+      "pass": true,
+      "ms": 1694,
       "cached": false,
-      "note": "two in progress, one blocked, one done"
+      "note": "two in progress, one blocked, one done",
+      "got": {
+        "completed": [
+          "SCRUM-7"
+        ],
+        "inProgress": [
+          "SCRUM-20",
+          "SCRUM-21"
+        ],
+        "blockers": [
+          "SCRUM-20"
+        ]
+      }
     },
     {
       "id": "e41",
@@ -462,9 +781,16 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3075,
+      "ms": 3500,
       "cached": false,
-      "note": "blocker resolved, informal name (the 25 Sep miss)"
+      "note": "blocker resolved, informal name (the 25 Sep miss)",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-21"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e42",
@@ -473,9 +799,16 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3136,
+      "ms": 3249,
       "cached": false,
-      "note": "blocker resolved, cause named not the item"
+      "note": "blocker resolved, cause named not the item",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-21"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e43",
@@ -484,9 +817,16 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 2868,
+      "ms": 3151,
       "cached": false,
-      "note": "blocker cleared, short"
+      "note": "blocker cleared, short",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-21"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e44",
@@ -495,9 +835,16 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3196,
+      "ms": 2947,
       "cached": false,
-      "note": "resolved without the word blocker"
+      "note": "resolved without the word blocker",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-21"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e45",
@@ -506,9 +853,16 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 3161,
+      "ms": 1543,
       "cached": false,
-      "note": "unblocked, different wording"
+      "note": "unblocked, different wording",
+      "got": {
+        "completed": [],
+        "inProgress": [
+          "SCRUM-21"
+        ],
+        "blockers": []
+      }
     },
     {
       "id": "e46",
@@ -517,9 +871,14 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 1608,
+      "ms": 1769,
       "cached": false,
-      "note": "greeting with an open blocker is still not an update"
+      "note": "greeting with an open blocker is still not an update",
+      "got": {
+        "completed": [],
+        "inProgress": [],
+        "blockers": []
+      }
     },
     {
       "id": "e47",
@@ -528,9 +887,14 @@
       "blockers": true,
       "confidence": true,
       "pass": true,
-      "ms": 1717,
+      "ms": 1870,
       "cached": false,
-      "note": "nothing to report with an open blocker"
+      "note": "nothing to report with an open blocker",
+      "got": {
+        "completed": [],
+        "inProgress": [],
+        "blockers": []
+      }
     }
   ]
 }

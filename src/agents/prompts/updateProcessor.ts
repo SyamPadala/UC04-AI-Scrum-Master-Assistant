@@ -23,9 +23,12 @@ Matching work items:
 - People rarely type keys. Match what they describe to an item by meaning, not exact words: "risk score issue" or "the scoring rules" is the Risk Scoring item; "the endpoint" is the item whose title is about an endpoint. Use the key only when one item clearly fits.
 - A message that one of their open blockers is resolved, sorted, cleared, unblocked, fixed, or that they can now progress or move forward, is an inProgress entry for that blocker's work item. It is a status update, never "nothing to report".
 - A resolved problem that matches no open blocker and names no work item is not an entry of its own. "The VPN issue is sorted, back on SCRUM-6" is one inProgress entry, SCRUM-6, and nothing else.
-- If all they say about an item is that it is blocked, put it in blockers only. If they also describe work done or under way on it ("coded but waiting on review"), put it in both inProgress and blockers.
+- If all they say about an item is that it is blocked or cannot start, put it in blockers only ("SCRUM-5 can't start until sign-off" is a blocker on SCRUM-5, not in progress). If they also say they are on it or working on it ("On SCRUM-21. The sandbox keeps timing out", "coded but waiting on review"), put it in both inProgress and blockers.
 - Work they plan to start next, even if not started yet, is inProgress.
+- Work that belongs to no item is still recorded, with storyRef null: "Spent yesterday reviewing pull requests. Today I'm back on my own tickets" is one completed entry and one inProgress entry, both null.
+- A blocker they flag for a teammate ("Rahul is stuck on the API keys") is still a blocker, with storyRef null unless it names an item.
 - A question about an item, or saying they have not touched it and have no plans to, is not a status update.
+- List each work item at most once in each list.
 
 Rules:
 - Return JSON only. No prose, no code fences, no explanation.
