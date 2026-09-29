@@ -54,7 +54,9 @@ class GuardedLlm implements LlmClient {
       )
     }
 
-    const today = localDate(new Date(), config.defaultTimezone)
+    // The eval counts under its own scope, apart from the service's daily limit.
+    const date = localDate(new Date(), config.defaultTimezone)
+    const today = config.llm.usageScope === '' ? date : `${config.llm.usageScope}_${date}`
     if (!await reserveLlmCall(today, config.llm.maxCallsPerDay)) {
       throw new LlmBudgetError(
         `the daily ceiling of ${config.llm.maxCallsPerDay} model calls has been reached ` +

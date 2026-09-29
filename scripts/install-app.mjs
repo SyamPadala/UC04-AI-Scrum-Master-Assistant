@@ -1,5 +1,6 @@
 /**
- * Installs the Scrum Assistant for every member of the team. Run by hand.
+ * Installs the Scrum Assistant for every roster member and Scrum Master of
+ * every team. Run by hand.
  *
  *   node scripts/install-app.mjs
  *
@@ -11,8 +12,12 @@
  * message someone. Without it that member is silently skipped at reminder time,
  * which is the most common reason a demo half-works.
  *
- * Needs Graph application permissions AppCatalog.Read.All and
- * TeamsAppInstallation.ReadWriteSelfForUser.All, both admin-consented.
+ * Two app registrations, two jobs (found 29 Sep 2026: installing with the Graph
+ * app always failed with 403, because a "self" install permission only lets an
+ * app install itself):
+ *   - Graph app (GRAPH_CLIENT_ID): reads the catalogue — AppCatalog.Read.All.
+ *   - Bot app (BOT_APP_ID): installs — TeamsAppInstallation.ReadWriteForUser.All
+ *     (or …SelfForUser.All), admin-consented on the bot's own registration.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -25,21 +30,22 @@ const env = Object.fromEntries(
     .map((l) => { const i = l.indexOf('='); return [l.slice(0, i), l.slice(i + 1).trim()] })
 )
 
-const tokenResponse = await (await fetch(`https://login.microsoftonline.com/${env.M365_TENANT_ID}/oauth2/v2.0/token`, {
-  method: 'POST',
-  headers: { 'content-type': 'application/x-www-form-urlencoded' },
-  body: new URLSearchParams({
-    client_id: env.GRAPH_CLIENT_ID, client_secret: env.GRAPH_CLIENT_SECRET,
-    scope: 'https://graph.microsoft.com/.default', grant_type: 'client_credentials'
-  })
-})).json()
-if (tokenResponse.access_token === undefined) throw new Error('Graph token failed')
-const headers = { authorization: `Bearer ${tokenResponse.access_token}`, 'content-type': 'application/json' }
+async function graphToken (clientId, secret, label) {
+  const response = await (await fetch(`https://login.microsoftonline.com/${env.M365_TENANT_ID}/oauth2/v2.0/token`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ client_id: clientId, client_secret: secret, scope: 'https://graph.microsoft.com/.default', grant_type: 'client_credentials' })
+  })).json()
+  if (response.access_token === undefined) throw new Error(`${label} token failed: ${response.error_description ?? response.error}`)
+  return { authorization: `Bearer ${response.access_token}`, 'content-type': 'application/json' }
+}
+const graphHeaders = await graphToken(env.GRAPH_CLIENT_ID, env.GRAPH_CLIENT_SECRET, 'Graph app')
+const botHeaders = await graphToken(env.BOT_APP_ID, env.BOT_APP_PASSWORD, 'Bot app')
 
 // 1. find the app in the organisation's catalogue, matched on the bot's app id
 const catalogue = await (await fetch(
   `https://graph.microsoft.com/v1.0/appCatalogs/teamsApps?$filter=externalId eq '${env.BOT_APP_ID}'`,
-  { headers }
+  { headers: graphHeaders }
 )).json()
 const app = (catalogue.value ?? [])[0]
 if (app === undefined) {
@@ -47,40 +53,43 @@ if (app === undefined) {
 }
 console.log(`catalogue app: ${app.displayName} (${app.distributionMethod})\n`)
 
-// 2. the roster is whatever the service will actually message
+// 2. everyone the service messages: every team's roster and its Scrum Master
 const db = new Firestore({
   projectId: env.GCP_PROJECT_ID,
   databaseId: env.FIRESTORE_DATABASE,
   keyFilename: env.GOOGLE_APPLICATION_CREDENTIALS
 })
-const team = (await db.collection('teams').doc(env.TEAMS_TEAM_ID).get()).data()
-if (team === undefined) throw new Error('team config not found — run scripts/seed-team.mjs first')
+const people = new Map()
+for (const doc of (await db.collection('teams').get()).docs) {
+  const team = doc.data()
+  for (const member of team.members) people.set(member.memberId, `${member.displayName} (${team.name})`)
+  if (team.scrumMasterId) people.set(team.scrumMasterId, people.get(team.scrumMasterId) ?? `${team.scrumMasterName ?? 'Scrum Master'} (Scrum Master, ${team.name})`)
+}
 
-for (const member of team.members) {
+for (const [userId, label] of people) {
   const installs = await (await fetch(
-    `https://graph.microsoft.com/v1.0/users/${member.memberId}/teamwork/installedApps?$expand=teamsApp&$filter=teamsApp/externalId eq '${env.BOT_APP_ID}'`,
-    { headers }
+    `https://graph.microsoft.com/v1.0/users/${userId}/teamwork/installedApps?$expand=teamsApp&$filter=teamsApp/externalId eq '${env.BOT_APP_ID}'`,
+    { headers: botHeaders }
   )).json()
 
   if ((installs.value ?? []).length > 0) {
-    console.log(`${member.displayName.padEnd(20)} already installed`)
+    console.log(`${label.padEnd(40)} already installed`)
     continue
   }
 
-  const response = await fetch(`https://graph.microsoft.com/v1.0/users/${member.memberId}/teamwork/installedApps`, {
+  const response = await fetch(`https://graph.microsoft.com/v1.0/users/${userId}/teamwork/installedApps`, {
     method: 'POST',
-    headers,
+    headers: botHeaders,
     body: JSON.stringify({ 'teamsApp@odata.bind': `https://graph.microsoft.com/v1.0/appCatalogs/teamsApps/${app.id}` })
   })
 
   if (response.status === 201) {
-    console.log(`${member.displayName.padEnd(20)} installed`)
+    console.log(`${label.padEnd(40)} installed`)
   } else {
     const error = await response.json()
-    console.log(`${member.displayName.padEnd(20)} FAILED ${response.status} ${(error.error?.message ?? '').slice(0, 120)}`)
+    console.log(`${label.padEnd(40)} FAILED ${response.status} ${(error.error?.message ?? '').slice(0, 120)}`)
   }
 }
 
-console.log('\nInstalling does not by itself create the conversation reference — the app')
-console.log('captures that when it receives the install event. Re-run scripts/check-reach.mjs')
-console.log('in a minute to see who became reachable.')
+console.log('\nThe app saves each chat when it receives the install event. Check the')
+console.log('admin page (Dev team, or Readiness) in a minute to see who can be messaged.')

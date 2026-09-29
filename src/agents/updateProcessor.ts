@@ -59,6 +59,65 @@ export function restrictToKnownKeys (output: ExtractionOutput, offered: Set<stri
 }
 
 /**
+ * Words that say nothing about which story is meant (SPEC-004 item 27): "the
+ * service work", "my task", "implemented the piece". They appear in almost any
+ * update or title, so they are never evidence of a match.
+ */
+const VAGUE = new Set([
+  'work', 'task', 'tasks', 'story', 'stories', 'ticket', 'tickets', 'item', 'items', 'piece', 'part', 'stuff', 'thing', 'things',
+  'done', 'finish', 'finished', 'complete', 'completed', 'working', 'worked', 'start', 'started', 'starting', 'continue', 'continuing',
+  'today', 'yesterday', 'tomorrow', 'currently', 'will', 'have', 'been', 'with', 'from', 'that', 'this', 'then', 'also', 'just', 'some',
+  'more', 'still', 'again', 'implement', 'implemented', 'implementing', 'implementation', 'build', 'built', 'building',
+  'service', 'services', 'application', 'system', 'feature', 'module', 'component', 'code', 'coding', 'test', 'testing', 'tests',
+  'deploy', 'deployed', 'deployment', 'auth'
+])
+
+/** The stems (first four letters) of an item's meaningful words. */
+function stems (text: string): Set<string> {
+  return new Set(text.toLowerCase().split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 4 && !VAGUE.has(w))
+    .map((w) => w.slice(0, 4)))
+}
+
+/**
+ * SPEC-004 item 27: a story the member did not name by key is accepted only if
+ * their words for it share a meaningful word with its title, or with the text
+ * of an open blocker on it. Otherwise nothing is guessed: an item becomes a
+ * "Which story is this?" question offering that story; a blocker loses its
+ * story and is alerted as a blocker with no work item.
+ */
+export function requireEvidence (
+  output: ExtractionOutput,
+  stories: Map<string, Story>,
+  typed: Set<string>,
+  activeBlockers: Array<{ workItem: string | null, description: string }> = []
+): ExtractionOutput {
+  const evidence = (key: string, words: string): boolean => {
+    if (typed.has(key)) return true
+    const story = stories.get(key)
+    // A typed key outside the sprint has no title here; only typed keys get that far.
+    if (story === undefined) return false
+    const known = stems([story.title, ...activeBlockers.filter((b) => b.workItem === key).map((b) => b.description)].join(' '))
+    return [...stems(words)].some((stem) => known.has(stem))
+  }
+  const item = (entry: ExtractionOutput['completed'][number]): ExtractionOutput['completed'][number] => {
+    if (entry.storyRef === null || evidence(entry.storyRef, entry.comment)) return entry
+    console.log(JSON.stringify({ event: 'agent1.unsupportedMatch', key: entry.storyRef }))
+    return { ...entry, storyRef: null, alternatives: [entry.storyRef, ...entry.alternatives.filter((k) => k !== entry.storyRef)].slice(0, 3) }
+  }
+  const completed = output.completed.map(item)
+  const inProgress = output.inProgress.map(item)
+  // A blocker on a story the same message already names (with evidence) is supported by it.
+  const supported = new Set([...completed, ...inProgress].map((e) => e.storyRef).filter((k): k is string => k !== null))
+  const blockers = output.blockers.map((b) => {
+    if (b.storyRef === null || supported.has(b.storyRef) || evidence(b.storyRef, b.description)) return b
+    console.log(JSON.stringify({ event: 'agent1.unsupportedMatch', key: b.storyRef, blocker: true }))
+    return { ...b, storyRef: null }
+  })
+  return { ...output, completed, inProgress, blockers }
+}
+
+/**
  * Agent 1 — the update processor (SPEC-004, FR-03 and FR-06 detection).
  *
  * Takes typed input, returns typed output, and knows nothing about Teams,
@@ -137,7 +196,11 @@ export async function extractUpdate (
     try {
       const response = await llm.complete(request, executeTool)
       return {
-        output: restrictToKnownKeys(parseExtraction(response.text), new Set(candidates.map((s) => s.key)), typed),
+        // Items 23 and 27: only offered or typed keys, and only with evidence in the words.
+        output: requireEvidence(
+          restrictToKnownKeys(parseExtraction(response.text), new Set(candidates.map((s) => s.key)), typed),
+          new Map(candidates.map((s) => [s.key, s])), typed, input.activeBlockers ?? []
+        ),
         openItems,
         candidates,
         durationMs: Date.now() - startedAt,

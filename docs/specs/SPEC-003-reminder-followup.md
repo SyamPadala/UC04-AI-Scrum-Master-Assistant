@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | Draft — item 9 (working days) approved 29 Sep 2026 |
 | **Delivers** | FR-01, FR-05 |
 | **Assumptions** | A2 (cut-off = stand-up time + grace period, default 2 h) |
 | **Depends on** | SPEC-001 |
@@ -34,6 +34,10 @@ chased.
 7. Both jobs are claimed before sending, so a repeated heartbeat never sends a
    second reminder (SPEC-001 behaviour 4).
 8. Both jobs record per-member outcome counts: sent, skipped, failed.
+9. *Added 29 Sep 2026 (user decision).* **Working days.** Each team has
+   `workingDays` (default Monday–Friday), set on the admin page's Schedule tab.
+   On any other day, in the team's timezone, no scheduled job runs: no
+   reminder, follow-up, summary or participation count. Run now still works.
 
 ## Interface
 
@@ -78,8 +82,8 @@ install events, and stored per member (SPEC-001).
   members rather than restarting the batch.
 - **Service was down at stand-up time.** SPEC-001 runs it late; the card wording
   does not claim a time, so a late reminder still reads correctly.
-- **Weekend or holiday.** Not handled in this POC — jobs run every day. Recorded
-  as a known limitation.
+- **Weekend.** Handled by `workingDays` (item 9). **Public holidays** are not
+  handled — recorded as a known limitation.
 
 ## Out of scope
 
@@ -97,3 +101,4 @@ habitual non-responder (SPEC-007). Changing the schedule from Teams (SPEC-008).
 | 5 | Repeated heartbeat sends nothing twice | Live repeat of `/tick` | `RunLog` showing `skipped` |
 | 6 | Cards render on Teams desktop and mobile | Manual check | Screenshots (Accessibility NFR) |
 | 7 | Full cycle runs with `DRY_RUN` and no tenant | Local run | Log output |
+| 8 | No scheduled job runs on a non-working day | Unit test over fixed clocks (Saturday, Monday) | Test output |

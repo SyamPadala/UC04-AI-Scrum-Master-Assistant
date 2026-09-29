@@ -430,12 +430,10 @@
   },
   {
     "id": "e30",
-    "note": "code review work with no key",
+    "note": "code review work with no key (relabelled 29 Sep 2026, SPEC-004 item 30: a PR review is an activity, left out; 'my own tickets' is vague)",
     "text": "Spent yesterday reviewing pull requests. Today I'm back on my own tickets.",
     "expect": {
-      "completed": [
-        null
-      ],
+      "completed": [],
       "inProgress": [
         null
       ],
@@ -881,6 +879,34 @@
       "inProgress": [
         "SCRUM-33"
       ],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e58",
+    "text": "Finished my task",
+    "note": "item 27: vague words point to no story — ask, do not guess (live test 8, 29 Sep 2026)",
+    "expect": {
+      "completed": [
+        null
+      ],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e59",
+    "text": "Wrapped up the service work",
+    "note": "item 27: 'service' fits several titles and names none — ask, do not guess",
+    "expect": {
+      "completed": [
+        null
+      ],
+      "inProgress": [],
       "blockers": [],
       "confidence": "high",
       "kind": "update"

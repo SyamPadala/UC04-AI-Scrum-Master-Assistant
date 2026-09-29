@@ -13,9 +13,13 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { config } from '../dist/config/env.js'
-import { createLlm } from '../dist/llm/index.js'
-import { extractUpdate } from '../dist/agents/updateProcessor.js'
+
+// The eval's calls are counted apart from the service's daily limit (user
+// decision, 29 Sep 2026). Set before the config module reads the environment.
+process.env.LLM_USAGE_SCOPE ??= 'eval'
+const { config } = await import('../dist/config/env.js')
+const { createLlm } = await import('../dist/llm/index.js')
+const { extractUpdate } = await import('../dist/agents/updateProcessor.js')
 
 const root = path.resolve(import.meta.dirname, '..')
 const cases = JSON.parse(fs.readFileSync(path.join(root, 'eval/dataset.json'), 'utf8'))
@@ -147,7 +151,8 @@ for (const testCase of selected) {
 const passed = results.filter((row) => row.pass).length
 const accuracy = (passed / results.length) * 100
 const fieldScore = (field) => (results.filter((row) => row[field]).length / results.length) * 100
-const liveCalls = results.filter((row) => !row.cached).length
+// A case refused because live calls are off reached no model and cost nothing.
+const liveCalls = results.filter((row) => !row.cached && !/LLM_LIVE is off/.test(row.error ?? '')).length
 
 console.log('')
 console.log(`cases          : ${results.length}${smoke ? ' (smoke subset)' : ''}`)
@@ -184,7 +189,14 @@ const report = {
   billedCalls: liveCalls,
   results
 }
-fs.writeFileSync(path.join(root, 'eval/last-run.json'), JSON.stringify(report, null, 2))
-console.log('\nwritten: eval/last-run.json')
+// A run where the model was never reached measures nothing, and must not
+// replace the last real report (it did once, 29 Sep 2026).
+const offline = results.filter((row) => /LLM_LIVE is off/.test(row.error ?? '')).length
+if (offline > 0) {
+  console.log(`\nNOT written: ${offline} case(s) never reached the model (live calls off, nothing recorded); eval/last-run.json kept`)
+} else {
+  fs.writeFileSync(path.join(root, 'eval/last-run.json'), JSON.stringify(report, null, 2))
+  console.log('\nwritten: eval/last-run.json')
+}
 
 process.exit(accuracy >= 90 ? 0 : 1)

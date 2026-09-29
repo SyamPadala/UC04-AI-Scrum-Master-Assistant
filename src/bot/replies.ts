@@ -35,10 +35,10 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
         ? `✔ ${item.win}${title} — ${item.status}`
         : `⚠ ${item.win}${title} — Blocked: ${item.blocker}`)
     }
-  } else {
-    lines.push((result.pending.length > 0 || result.ambiguous.length > 0) && result.refused.length === 0
-      ? 'Nothing recorded yet:'
-      : "I haven't recorded anything from that message:")
+  } else if (result.refused.length > 0 || result.unlinkedBlockers.length > 0) {
+    // Item 29: a heading only when something was turned down; a question
+    // waiting on a card speaks for itself.
+    lines.push("I haven't recorded anything from that message:")
   }
 
   for (const refusal of result.refused) {
@@ -54,12 +54,12 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
 
   // Item 14a: the card that follows this reply asks them to confirm.
   for (const item of result.pending) {
-    lines.push(`? ${item.key} is assigned to ${item.owner}, not you. Confirm below if you still want it recorded.`)
+    lines.push(`${item.key} is assigned to ${item.owner}, not you. Please confirm below if you still want it recorded.`)
   }
 
   // Item 24: the card that follows asks which story they meant.
   for (const item of result.ambiguous) {
-    lines.push(`? Which story is "${item.words}"? Choose below.`)
+    lines.push(`Which story is "${item.words}"? Please choose below.`)
   }
 
   // A blocker already alerted earlier today is one the Scrum Master has heard.
@@ -76,5 +76,7 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
       : '→ I could not reach your Scrum Master about the blocker; it is recorded in the tracker.')
   }
   if (result.truncated) lines.push('Your message was long, so only the first part was read.')
-  return lines.join('\n')
+  // Teams joins lines split by a single newline into one paragraph (seen live,
+  // 29 Sep 2026), so each line is its own paragraph (item 29).
+  return lines.join('\n\n')
 }

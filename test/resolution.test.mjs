@@ -126,7 +126,7 @@ test('item 24: unsure words become a "Which story is this?" question, never a gu
   assert.deepEqual(stored, [])
   assert.deepEqual(result.refused, [], 'not reported as "no work item"')
   assert.deepEqual(result.ambiguous[0].options.map((o) => o.key), ['SCRUM-24', 'SCRUM-26'])
-  assert.match(reply, /\? Which story is "finished the integration work"\? Choose below\./)
+  assert.match(reply, /^Which story is "finished the integration work"\? Please choose below\./)
 })
 
 test('item 24: no alternatives still means "no work item found"', async () => {
@@ -145,6 +145,7 @@ test('item 24: the picker has one button per story plus "None of these"', () => 
   const card = storyPickerCard(AMBIGUOUS, 'team-1', '2026-09-29', 'm1')
   assert.deepEqual(card.actions.map((a) => a.title), ['SCRUM-27', 'SCRUM-26', 'None of these'])
   assert.equal(card.actions[0].data.action, STORY_PICK_ACTION)
+  assert.match(JSON.stringify(card.body), /Will be recorded as: Completed/, 'item 29a: the status is shown before anything is written')
 })
 
 async function pick (data) {

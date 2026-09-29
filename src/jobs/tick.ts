@@ -1,6 +1,6 @@
 import type { JobType, RunOutcome, TeamConfig } from '../types.js'
 import { activeTeams, claimRun, completeRun, logManualRun, releaseRun } from '../store/firestore.js'
-import { isDue } from './schedule.js'
+import { isDue, isWorkingDay } from './schedule.js'
 import { localDate } from '../config/time.js'
 import { sendFollowUps, sendReminders } from './reminder.js'
 import { flagHabitualNonResponders, recordParticipation } from './participation.js'
@@ -55,6 +55,9 @@ export async function runTick (
 
   for (const team of teams) {
     const today = localDate(now, team.timezone)
+    // SPEC-003 item 9: nothing scheduled runs on a day the team does not work.
+    // Run now is unaffected (runJobNow).
+    if (!isWorkingDay(team, now)) continue
 
     for (const jobType of JOBS) {
       if (!isDue(team, jobType, now)) continue

@@ -49,6 +49,11 @@ export interface TeamConfig {
   gracePeriodMinutes: number
   /** 'HH:mm' local (A4). */
   summaryTime: string
+  /**
+   * Days the scheduled jobs run, 0 = Sunday … 6 = Saturday, in the team's
+   * timezone (SPEC-003 item 9). Absent means Monday to Friday.
+   */
+  workingDays?: number[]
   members: Member[]
   /**
    * The Scrum Master is a role, not a roster entry (SPEC-008 10f, 29 Sep 2026).

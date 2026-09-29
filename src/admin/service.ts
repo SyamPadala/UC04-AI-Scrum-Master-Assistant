@@ -6,6 +6,7 @@ import { localDate } from '../config/time.js'
 import { graphRequest } from '../graph/client.js'
 import { JiraClient } from '../pm/jira.js'
 import { runJobNow } from '../jobs/tick.js'
+import { DEFAULT_WORKING_DAYS } from '../jobs/schedule.js'
 import { channelReference, listTeamChannels } from '../bot/channels.js'
 import { chatState } from '../bot/reachability.js'
 import { trackerFor } from '../trackers/factory.js'
@@ -140,7 +141,8 @@ export async function teamView (team: TeamConfig, actor: Actor): Promise<unknown
       gracePeriodMinutes: team.gracePeriodMinutes,
       habitualThreshold: team.habitualThreshold,
       habitualWindowDays: team.habitualWindowDays,
-      active: team.active
+      active: team.active,
+      workingDays: team.workingDays ?? DEFAULT_WORKING_DAYS
     },
     members: team.members.map((member, index) => ({
       memberId: member.memberId,
@@ -298,6 +300,7 @@ export async function createTeam (actor: Actor, raw: Record<string, unknown>): P
     standupTime: '09:30',
     gracePeriodMinutes: 120,
     summaryTime: '18:00',
+    workingDays: DEFAULT_WORKING_DAYS,
     // The Scrum Master is a role, not a member (SPEC-008 10f): the roster starts empty.
     members: [],
     scrumMasterId: user.id,

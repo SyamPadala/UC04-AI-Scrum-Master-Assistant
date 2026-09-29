@@ -12,6 +12,17 @@ function toMinutes (hhmm: string): number {
   return hours * 60 + minutes
 }
 
+/** Monday to Friday: the default when a team has not chosen its days (SPEC-003 item 9). */
+export const DEFAULT_WORKING_DAYS = [1, 2, 3, 4, 5]
+
+const WEEKDAY = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 } as const
+
+/** Whether this instant falls on one of the team's working days, in its own timezone. */
+export function isWorkingDay (team: TeamConfig, at: Date): boolean {
+  const name = new Intl.DateTimeFormat('en-US', { timeZone: team.timezone, weekday: 'short' }).format(at) as keyof typeof WEEKDAY
+  return (team.workingDays ?? DEFAULT_WORKING_DAYS).includes(WEEKDAY[name])
+}
+
 /** The local time each job is scheduled for, in minutes past local midnight. */
 export function scheduledMinutes (team: TeamConfig, jobType: JobType): number {
   switch (jobType) {

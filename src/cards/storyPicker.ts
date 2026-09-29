@@ -32,6 +32,9 @@ export function storyPickerCard (item: AmbiguousItem, teamId: string, localDate:
     body: [
       { type: 'TextBlock', text: 'Which story is this?', weight: 'Bolder', wrap: true },
       { type: 'TextBlock', text: `"${item.words}"`, spacing: 'Small', wrap: true },
+      // SPEC-004 item 24: the status is shown before anything is written, so a
+      // wrong reading is caught by the member, not found later in the tracker.
+      { type: 'TextBlock', text: `Will be recorded as: ${item.status}`, isSubtle: true, size: 'Small', spacing: 'Small', wrap: true },
       ...item.options.map((option) => ({
         type: 'TextBlock',
         text: `**${option.key}** ${option.title} (${owner(option.owner)})`,

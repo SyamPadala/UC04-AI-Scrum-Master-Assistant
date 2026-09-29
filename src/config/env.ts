@@ -148,7 +148,14 @@ export const config = {
      * Cloud Run restart. Billing alerts lag 24-48 hours, which is far too slow
      * to catch a runaway loop; this is the control that acts in time.
      */
-    maxCallsPerDay: numeric('LLM_MAX_CALLS_PER_DAY', 200)
+    maxCallsPerDay: numeric('LLM_MAX_CALLS_PER_DAY', 200),
+
+    /**
+     * Whose calls these are, for the daily counter. Empty for the service; the
+     * eval sets 'eval', so testing can never use up the service's daily limit
+     * (user decision, 29 Sep 2026).
+     */
+    usageScope: optional('LLM_USAGE_SCOPE', '')
   },
 
   agent1: {

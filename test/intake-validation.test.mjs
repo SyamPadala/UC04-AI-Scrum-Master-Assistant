@@ -63,7 +63,13 @@ async function run (output, { memberId = 'm1', sprint = true } = {}) {
   const tracker = new MockTracker(file)
   const s = stubs(output, { sprint })
   const name = TEAM.members.find((m) => m.memberId === memberId).displayName
-  const result = await processUpdate(TEAM, memberId, name, 'message', '2026-09-28', {
+  // The member's message names the keys the stubbed model returns, as a real
+  // one would: a key nobody typed and nothing in the words supports is refused
+  // by the evidence guard (SPEC-004 item 27), which resolution.test.mjs covers.
+  const keys = [...output.completed ?? [], ...output.inProgress ?? [], ...output.blockers ?? []]
+    .map((entry) => entry.storyRef).filter((key) => key != null)
+  const text = keys.length === 0 ? 'message' : `update on ${keys.join(' and ')}`
+  const result = await processUpdate(TEAM, memberId, name, text, '2026-09-28', {
     llm: s.llm, pm: s.pm, tracker, summaryHasRun: async () => false, alertNoSprint: s.alertNoSprint
   })
   const stored = await tracker.readToday('team-1', '2026-09-28')
@@ -115,7 +121,8 @@ test("item 14: an unassigned work item is refused; 14a: someone else's is held f
     key: 'SCRUM-25', title: 'Build Core Architecture', owner: 'Pravallika', status: 'Completed', comment: 'finished', blocker: null
   }])
   assert.match(reply, /SCRUM-28 is not assigned to you, so it can't be updated\. Please reach out to your Scrum Master\./)
-  assert.match(reply, /\? SCRUM-25 is assigned to Pravallika, not you\. Confirm below/)
+  assert.match(reply, /SCRUM-25 is assigned to Pravallika, not you\. Please confirm below/)
+  assert.doesNotMatch(reply, /\? SCRUM-25/, 'no stray question mark (item 29)')
 })
 
 test('item 18: a mixed message records the verified item and refuses the rest', async () => {
@@ -126,7 +133,7 @@ test('item 18: a mixed message records the verified item and refuses the rest', 
   assert.equal(result.outcome, 'recorded')
   assert.deepEqual(stored[0].rows.map((r) => r.win), ['SCRUM-27'])
   assert.match(reply, /✔ SCRUM-27 Enforce Transport Security — Completed/)
-  assert.match(reply, /\? SCRUM-25 is assigned to Pravallika/)
+  assert.match(reply, /SCRUM-25 is assigned to Pravallika, not you/)
   assert.equal(result.pending.length, 1, 'the other person\'s item waits for the card')
 })
 

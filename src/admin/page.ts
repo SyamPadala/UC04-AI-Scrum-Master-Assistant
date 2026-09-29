@@ -247,6 +247,8 @@ export function adminPage (userName: string): string {
   dialog::backdrop { background: rgba(15,18,30,.45); }
   dialog form { padding: 22px 24px; display: grid; gap: 14px; }
   dialog h2 { margin: 0; font-size: 18px; }
+  .days { display: flex; flex-wrap: wrap; gap: 6px 12px; padding-top: 6px; }
+  .day { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; cursor: pointer; }
   .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
 </style>
 </head>
@@ -366,6 +368,10 @@ export function adminPage (userName: string): string {
             <div class="field"><label for="summaryTime">Daily summary</label><input id="summaryTime" name="summaryTime" type="time" required><small>Sent to stakeholders; closes the stand-up</small></div>
             <div class="field"><label for="timezone">Timezone</label><input id="timezone" name="timezone" required><small>For example Asia/Kolkata</small></div>
             <div class="field"><label for="habitualThreshold">Flag non-responders after</label><input id="habitualThreshold" name="habitualThreshold" type="number" min="1" required><small id="threshold-hint">Missed days</small></div>
+            <div class="field"><label>Working days</label>
+              <div class="days" id="working-days" role="group" aria-label="Working days"></div>
+              <small>No reminders, follow-ups or summaries on other days</small>
+            </div>
             <div class="field"><label>&nbsp;</label>
               <label class="switch" for="active"><input type="checkbox" id="active" name="active"><span><b id="active-label">Running</b><small>Reminders, follow-ups and summaries</small></span></label>
             </div>
@@ -685,6 +691,19 @@ export function adminPage (userName: string): string {
     $('threshold-hint').textContent = 'Missed days within ' + s.habitualWindowDays + ' working days'
     $('active').checked = s.active
     $('active-label').textContent = s.active ? 'Running' : 'Paused'
+    // SPEC-003 item 9: Monday first, as a working week reads.
+    const days = $('working-days')
+    days.replaceChildren()
+    for (const [value, label] of [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [0, 'Sun']]) {
+      const box = document.createElement('label')
+      box.className = 'day'
+      const input = document.createElement('input')
+      input.type = 'checkbox'
+      input.value = String(value)
+      input.checked = s.workingDays.includes(value)
+      box.append(input, document.createTextNode(' ' + label))
+      days.append(box)
+    }
     renderTracker()
   }
 
@@ -859,7 +878,8 @@ export function adminPage (userName: string): string {
       timezone: f.timezone.value.trim(),
       gracePeriodMinutes: Number(f.gracePeriodMinutes.value),
       habitualThreshold: Number(f.habitualThreshold.value),
-      active: f.active.checked
+      active: f.active.checked,
+      workingDays: [...document.querySelectorAll('#working-days input:checked')].map((i) => Number(i.value))
     })).catch(() => {})
   })
 

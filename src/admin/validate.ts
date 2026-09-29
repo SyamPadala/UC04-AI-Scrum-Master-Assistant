@@ -19,6 +19,8 @@ export interface ScheduleInput {
   gracePeriodMinutes: number
   habitualThreshold: number
   active: boolean
+  /** 0 = Sunday … 6 = Saturday (SPEC-003 item 9). Absent keeps the team's current days. */
+  workingDays?: number[]
 }
 
 export type Checked<T> = { ok: true, value: T } | { ok: false, problems: string[] }
@@ -45,6 +47,9 @@ export function checkSchedule (raw: Record<string, unknown>, habitualWindowDays:
   const grace = Number(raw.gracePeriodMinutes)
   const threshold = Number(raw.habitualThreshold)
   const active = raw.active === true || raw.active === 'true'
+  const workingDays = raw.workingDays === undefined
+    ? undefined
+    : Array.isArray(raw.workingDays) ? [...new Set(raw.workingDays.map(Number))].sort((a, b) => a - b) : []
 
   const problems: string[] = []
   if (!TIME_PATTERN.test(standupTime)) problems.push('Stand-up time must look like 09:00.')
@@ -58,6 +63,9 @@ export function checkSchedule (raw: Record<string, unknown>, habitualWindowDays:
   if (!Number.isInteger(threshold) || threshold < 1 || threshold > habitualWindowDays) {
     problems.push(`Non-responder threshold must be a whole number from 1 to ${habitualWindowDays}.`)
   }
+  if (workingDays !== undefined && (workingDays.length === 0 || workingDays.some((d) => !Number.isInteger(d) || d < 0 || d > 6))) {
+    problems.push('Choose at least one working day.')
+  }
 
   // The follow-up chases people before the day closes; one scheduled after the
   // summary would chase them for a stand-up that is already shut (A14).
@@ -68,7 +76,7 @@ export function checkSchedule (raw: Record<string, unknown>, habitualWindowDays:
   if (problems.length > 0) return { ok: false, problems }
   return {
     ok: true,
-    value: { standupTime, summaryTime, timezone, gracePeriodMinutes: grace, habitualThreshold: threshold, active }
+    value: { standupTime, summaryTime, timezone, gracePeriodMinutes: grace, habitualThreshold: threshold, active, ...(workingDays === undefined ? {} : { workingDays }) }
   }
 }
 

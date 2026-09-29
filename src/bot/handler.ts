@@ -297,13 +297,16 @@ export class ScrumAssistant extends ActivityHandler {
       await this.reportFailure(context, memberId, error)
       return
     }
-    // Replace the card, so its buttons can't be pressed again. Best effort:
-    // the reply below says the same thing if Teams refuses the update.
+    // Replace the card with the outcome, so its buttons can't be pressed again.
+    // SPEC-004 item 28: one reply per press — a separate message only when Teams
+    // refuses the replacement (sending both showed every outcome twice).
     const cardId = context.activity.replyToId
+    let replaced = false
     if (cardId !== undefined && cardId !== '') {
-      await context.updateActivity(Activity.fromObject({ type: 'message', id: cardId, text: reply })).catch(() => {})
+      replaced = await context.updateActivity(Activity.fromObject({ type: 'message', id: cardId, text: reply }))
+        .then(() => true, () => false)
     }
-    await context.sendActivity(MessageFactory.text(reply))
+    if (!replaced) await context.sendActivity(MessageFactory.text(reply))
   }
 
   /**

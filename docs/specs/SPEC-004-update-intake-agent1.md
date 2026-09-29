@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026 |
+| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026 |
 | **Delivers** | FR-02, FR-03, NFR Latency |
 | **Assumptions** | A8 (story resolution), A11 (messages combined per member per day) |
 | **Depends on** | SPEC-001, SPEC-002 |
@@ -178,6 +178,51 @@ Agent 1 owns reading the words.
 **Not in this amendment** (later, by the user's decision): a Jira board per
 team; matching work outside the active sprint by words; a member on two
 teams.
+
+### Amendment 29 Sep 2026 (evening) — fixes from the live test (approved by the user, 29 Sep 2026)
+
+27. **Vague words are asked about, even with one story** (user: "ask"). Agent
+    1 is told not to prefer the member's own stories, and that vague words
+    ("the service work", "my task", "the ticket") point to no story. **Code
+    guard:** a key the member did not type is accepted only if their words
+    for that item share at least one meaningful word with the story's title
+    (or with an open blocker's text on that story). Otherwise it becomes a
+    "Which story is this?" question (item 24) offering that story; for a
+    blocker, it becomes a blocker with no work item (item 19). *(Live test 8:
+    "Finished the service work" was filed as Completed on SCRUM-28.)*
+28. **One reply per card press.** The card is replaced with the outcome; a
+    separate message is sent only if Teams refuses the replacement.
+    *(Every press was answered twice.)*
+29. **Clearer wording.** The someone-else's-story line reads *"SCRUM-26 is
+    assigned to sailaja, not you. Please confirm below if you still want it
+    recorded."* and the unsure line *"Which story is '<words>'? Please choose
+    below."* — no leading "?". Lines are separated so Teams shows them on
+    their own lines.
+29a. *Added 29 Sep 2026 (user decision, option A, after eval case e59).*
+    **Status does not depend on knowing the story.** "Wrapped up", "finished",
+    "done" are completed even when the story is unclear; a finished step with
+    more to come stays in progress. The "Which story is this?" card shows
+    *"Will be recorded as: <status>"* before anything is written.
+30. **Meetings and similar are left out** (user decision). Meetings, reviews
+    (code or design), ceremonies, training and leave are not work items and
+    produce no entry, so the member gets no "couldn't find a work item" line
+    for them. Real work that matches no story still gets item 13's reply.
+    Rule "work that belongs to no item is still recorded with storyRef null"
+    is withdrawn: since item 11 such entries are never written.
+    *Eval relabel:* **e30** — "Spent yesterday reviewing pull requests. Today
+    I'm back on my own tickets." — completed becomes empty (PR review is an
+    activity); in progress stays one entry with no story ("my own tickets" is
+    vague). Added: e58 "Finished my task" and e59 "Wrapped up the service
+    work" (vague → no key).
+
+**Also in this round, outside SPEC-004:** working days per team (SPEC-003
+item 9, SPEC-008 Schedule); the eval's own usage counter (below);
+`scripts/install-app.mjs` installs with the bot's registration.
+
+**Eval budget** (user decision). The eval counts its calls under its own
+scope (`LLM_USAGE_SCOPE=eval`), so it can never use up the service's daily
+limit. A separate Gemini key for testing is recommended as a later step for
+the user.
 
 ## Interface
 
