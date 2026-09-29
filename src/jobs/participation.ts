@@ -3,7 +3,7 @@ import type {
 } from '../types.js'
 import type { Tracker } from '../trackers/types.js'
 import {
-  alreadyFlagged, recentParticipation, saveFlag, saveParticipation
+  alreadyFlagged, recentParticipation, saveFlag, saveParticipation, scrumMasterOf
 } from '../store/firestore.js'
 import { sendProactive } from '../bot/adapter.js'
 
@@ -118,7 +118,7 @@ export function streaksToFlag (
 }
 
 async function notifyScrumMaster (team: TeamConfig, flags: NonResponderFlag[]): Promise<void> {
-  const scrumMaster = team.members.find((m) => m.memberId === team.scrumMasterId)
+  const scrumMaster = await scrumMasterOf(team)
   if (scrumMaster?.conversationRef === undefined || scrumMaster.conversationRef === '') {
     console.error('cannot flag non-responders: the Scrum Master is not reachable')
     return

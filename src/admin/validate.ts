@@ -81,3 +81,30 @@ export function normaliseEmail (raw: unknown): string | undefined {
 export function mayManage (team: TeamConfig, userId: string, adminIds: readonly string[]): boolean {
   return userId !== '' && (userId === team.scrumMasterId || adminIds.includes(userId))
 }
+
+/**
+ * SPEC-008 roles (29 Sep 2026): only an admin creates teams and sets Scrum
+ * Masters. A Scrum Master manages their own teams through mayManage.
+ */
+export function mayAdminister (userId: string, adminIds: readonly string[]): boolean {
+  return userId !== '' && adminIds.includes(userId)
+}
+
+/**
+ * SPEC-008 10h: Scrum Masters and roster members don't overlap. Returns the
+ * refusal to show, or undefined when the change is allowed.
+ */
+export function overlapProblem (
+  change: 'addMember' | 'makeScrumMaster', personId: string, personName: string, teams: readonly TeamConfig[]
+): string | undefined {
+  if (change === 'addMember') {
+    const runs = teams.filter((t) => t.scrumMasterId === personId)
+    return runs.length === 0
+      ? undefined
+      : `${personName} is the Scrum Master of ${runs.map((t) => t.name).join(', ')}. Scrum Masters are not on a roster and don't send stand-up updates.`
+  }
+  const onRoster = teams.find((t) => t.members.some((m) => m.memberId === personId && m.memberId !== t.scrumMasterId))
+  return onRoster === undefined
+    ? undefined
+    : `${personName} is a member of ${onRoster.name}. Remove them from that roster first: a Scrum Master doesn't send stand-up updates.`
+}

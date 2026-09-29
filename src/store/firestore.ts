@@ -1,7 +1,7 @@
 import { Firestore } from '@google-cloud/firestore'
 import { config } from '../config/env.js'
 import type {
-  BotTeam, ConfigChange, JobType, NonResponderFlag, ParticipationRecord, RunLog, RunOutcome, TeamConfig
+  BotTeam, ConfigChange, JobType, NonResponderFlag, ParticipationRecord, RunLog, RunOutcome, ScrumMaster, TeamConfig
 } from '../types.js'
 
 /**
@@ -90,6 +90,72 @@ export async function saveConversationRef (
       // the roster, alerts and summary showing "Unknown".
       if (displayName !== undefined && displayName !== '') existing.displayName = displayName
     }
+    tx.set(ref, team)
+  })
+}
+
+/**
+ * The team's Scrum Master and their chat (SPEC-008 10f–10g).
+ *
+ * The chat is stored once per person in `scrumMasters/`, because one person
+ * may run several teams. A team migrated from the old model may still have its
+ * Scrum Master on the roster; that entry is used when nothing else is stored.
+ */
+export async function scrumMasterOf (team: TeamConfig): Promise<ScrumMaster | undefined> {
+  if ((team.scrumMasterId ?? '') === '') return undefined
+  const doc = await db.collection('scrumMasters').doc(team.scrumMasterId).get()
+  const stored = doc.exists ? doc.data() as Partial<ScrumMaster> : undefined
+  const legacy = team.members.find((m) => m.memberId === team.scrumMasterId)
+  const reference = (stored?.conversationRef ?? '') !== '' ? stored?.conversationRef : legacy?.conversationRef
+  const email = stored?.email ?? team.scrumMasterEmail ?? legacy?.email
+  const scrumMaster: ScrumMaster = {
+    memberId: team.scrumMasterId,
+    displayName: stored?.displayName ?? team.scrumMasterName ?? legacy?.displayName ?? 'Scrum Master'
+  }
+  if (email !== undefined) scrumMaster.email = email
+  if (reference !== undefined && reference !== '') scrumMaster.conversationRef = reference
+  return scrumMaster
+}
+
+/** Stores a Scrum Master's chat, for every team they run (10g). No update content. */
+export async function saveScrumMasterRef (memberId: string, displayName: string | undefined, reference: string): Promise<void> {
+  await db.collection('scrumMasters').doc(memberId).set({
+    memberId,
+    ...(displayName === undefined || displayName === '' ? {} : { displayName }),
+    conversationRef: reference,
+    seenAt: new Date()
+  }, { merge: true })
+}
+
+/** Forgets a Scrum Master's chat after Teams says it is gone (10e), wherever it was kept. */
+export async function forgetScrumMasterChat (team: TeamConfig): Promise<void> {
+  await db.collection('scrumMasters').doc(team.scrumMasterId).set({ conversationRef: '' }, { merge: true })
+  await clearConversationRef(team.teamId, team.scrumMasterId)
+}
+
+/** Every team this person is Scrum Master of (10g). */
+export async function teamsRunBy (memberId: string): Promise<TeamConfig[]> {
+  if (memberId === '') return []
+  const snapshot = await db.collection('teams').where('scrumMasterId', '==', memberId).get()
+  return snapshot.docs.map((doc) => doc.data() as TeamConfig)
+}
+
+/**
+ * Forgets a member's chat after Teams says it no longer exists (SPEC-008 10e).
+ *
+ * Keeping a dead reference made every send to that person fail quietly while
+ * the page still said "Can be messaged". Cleared, the page says App not
+ * installed, and their next message to the assistant stores a fresh one.
+ */
+export async function clearConversationRef (teamId: string, memberId: string): Promise<void> {
+  const ref = db.collection('teams').doc(teamId)
+  await db.runTransaction(async (tx) => {
+    const doc = await tx.get(ref)
+    if (!doc.exists) return
+    const team = doc.data() as TeamConfig
+    const member = team.members.find((m) => m.memberId === memberId)
+    if (member === undefined || (member.conversationRef ?? '') === '') return
+    delete member.conversationRef
     tx.set(ref, team)
   })
 }
@@ -398,6 +464,20 @@ export async function claimBlockerAlert (
       if (doc.exists) throw new Error('already-alerted')
       tx.create(ref, { teamId, memberId, localDate, blockerHash, alertedAt: new Date() })
     })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Claims a once-a-day notice for a team, such as "no active sprint" (SPEC-004
+ * item 12). Idempotent on teamId + date + kind: true only for the first caller.
+ */
+export async function claimDailyNotice (teamId: string, localDate: string, kind: string): Promise<boolean> {
+  const ref = db.collection('notices').doc(`${teamId}_${localDate}_${kind}`)
+  try {
+    await ref.create({ teamId, localDate, kind, sentAt: new Date() })
     return true
   } catch {
     return false

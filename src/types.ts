@@ -23,6 +23,14 @@ export interface Member {
   conversationRef?: string
 }
 
+/** A team's Scrum Master as the jobs need them: who, and how to reach them. */
+export interface ScrumMaster {
+  memberId: string
+  displayName: string
+  email?: string
+  conversationRef?: string
+}
+
 export type TrackerConfig =
   | { kind: 'sharepoint', siteId: string, listId: string }
   | { kind: 'mock', path: string }
@@ -42,7 +50,14 @@ export interface TeamConfig {
   /** 'HH:mm' local (A4). */
   summaryTime: string
   members: Member[]
+  /**
+   * The Scrum Master is a role, not a roster entry (SPEC-008 10f, 29 Sep 2026).
+   * One person may run several teams; their chat lives in `scrumMasters/`.
+   */
   scrumMasterId: string
+  /** Shown on the page; kept here so a team reads without a Graph call. */
+  scrumMasterName?: string
+  scrumMasterEmail?: string
   /** A3: missed days inside the rolling window before a member is flagged. */
   habitualThreshold: number
   habitualWindowDays: number

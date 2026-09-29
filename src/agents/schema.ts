@@ -24,7 +24,14 @@ export const extractionSchema = z.object({
   completed: z.array(itemSchema).default([]),
   inProgress: z.array(itemSchema).default([]),
   blockers: z.array(blockerSchema).default([]),
-  confidence: z.enum(['high', 'low']).default('high')
+  confidence: z.enum(['high', 'low']).default('high'),
+  /**
+   * What sort of message this is (SPEC-004 items 15–16). The model judges the
+   * language; code decides what happens. An omitted value reads as 'update',
+   * which with empty lists asks the member which item they meant — the one
+   * reading that can never file anything by mistake.
+   */
+  kind: z.enum(['update', 'nothing', 'not_update']).default('update')
 })
 
 export type ExtractionOutput = z.infer<typeof extractionSchema>

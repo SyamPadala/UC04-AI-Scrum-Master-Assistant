@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026 |
 | **Delivers** | FR-02, FR-03, NFR Latency |
 | **Assumptions** | A8 (story resolution), A11 (messages combined per member per day) |
 | **Depends on** | SPEC-001, SPEC-002 |
@@ -58,6 +58,58 @@ This is the riskiest part of the build, so it is built and measured first.
 10. A failed call may be **retried** against the same model (a retry is the same
     source; a fallback is a different one). Retries are capped and recorded.
 
+### Amendment 28 Sep 2026 — no silent outcomes (user decisions)
+
+*Why:* in the 28 Sep demo the sprint had not been started, so every update was
+filed with no work item and nobody was told. Each case below was silent before.
+Code decides and acts in every case; Agent 1 only reads the message.
+
+11. **Only items with a verified work item are recorded.** A tracker row is
+    written for an item only when its `storyRef` exists in Jira **and** is
+    assigned to the sender (checked by code against the member's linked
+    `jiraAccountId`). Everything else is reported back to the member (12–16)
+    and not written. This replaces the General row (SPEC-002 2b) for new
+    writes.
+12. **No active sprint.** Nothing is recorded. The member is told: *"There is no
+    active sprint, so I couldn't link your update to a work item and haven't
+    recorded it. Your Scrum Master has been told."* The Scrum Master gets one
+    alert per team per day: *"No active sprint in <project>. Stand-up updates
+    can't be matched to work items."* The alert is idempotent on
+    `teamId + date + 'noSprint'`.
+13. **Sprint active, no work item found for an item.** That item is not
+    recorded. The member is told: *"I couldn't find a work item for: '<their
+    words>'. Your open items: SCRUM-27 <title>, …. Which one is it?"*
+14. **Work item assigned to someone else, or unassigned.** Not recorded. The
+    member is told: *"SCRUM-25 is not assigned to you, so it can't be updated.
+    Please reach out to your Scrum Master."* No confirmation card.
+15. **Not a stand-up update** (e.g. *"asdf lol"*, *"thanks!"*). Agent 1 labels
+    the message `kind: 'not_update'`. Nothing is recorded; the member is told:
+    *"This doesn't look like a stand-up update, so it isn't counted as a
+    response."* They remain a non-responder (follow-up and flag apply).
+16. **"Nothing to report today."** Agent 1 labels it `kind: 'nothing'`. No row
+    is written and, for now, the member counts as a **non-responder**. The
+    member is told: *"Nothing recorded. A stand-up update needs at least one
+    work item, so this isn't counted as a response."* *Parked: the user will
+    revisit whether this should count as a response.*
+17. **Confirmation lists what was recorded.** Plain text, no card, one line per
+    recorded item — WIN, Jira title, status — plus the blocker line when the
+    Scrum Master was alerted. Items not recorded (12–14) follow in the same
+    reply with their reason. The reply never says "Recorded" when nothing was.
+18. **Mixed messages** are handled item by item: verified items are recorded
+    and listed; the others get their reason in the same reply.
+
+19. **Blocker with no work item** (*"my laptop is broken"*). Not written to the
+    tracker, but the Scrum Master **is still alerted** (FR-06), and the member
+    is told: *"Your Scrum Master has been told about: '<blocker>'. It isn't
+    linked to a work item, so it hasn't gone into the tracker."* *User
+    decision, 28 Sep 2026.*
+
+20. **Member not linked to Jira.** Ownership (item 14) can't be checked, so
+    nothing is recorded. The member is told: *"Your account isn't linked to
+    Jira yet. Please ask your Scrum Master."* The readiness panel (SPEC-008
+    10d) shows the missing link before the day starts. Checked before the
+    model is called, so no LLM call is spent. *User decision, 28 Sep 2026.*
+
 ## Interface
 
 ```ts
@@ -71,6 +123,7 @@ interface ExtractionOutput {
   inProgress: { storyRef: string | null; comment: string }[];
   blockers: { description: string; storyRef: string | null }[];
   confidence: 'high' | 'low';
+  kind: 'update' | 'nothing' | 'not_update';   // added 28 Sep 2026 (items 15–16)
   // no `degraded` flag: output either came from the model or the call failed
 }
 
@@ -132,13 +185,12 @@ evidence that the model works.
 
 ## Edge cases
 
-- **"Nothing to report" / "same as yesterday".** Valid update, empty arrays,
-  recorded as participation.
-- **Message that is clearly not an update** ("thanks!", an emoji). Low
-  confidence, empty arrays, still filed — the Scrum Master reviews (PRD risk:
-  LLM misclassification).
-- **Story id mentioned that does not exist.** Tool returns not found; retained
-  as free text, `storyRef` stays `null`.
+- **"Nothing to report" / "same as yesterday".** *Superseded 28 Sep 2026 by
+  item 16:* not recorded, counts as non-responder for now.
+- **Message that is clearly not an update** ("thanks!", an emoji). *Superseded
+  28 Sep 2026 by item 15:* not filed, member told, non-responder.
+- **Story id mentioned that does not exist.** Tool returns not found;
+  `storyRef` stays `null`, and item 13 applies (member told, not recorded).
 - **Several blockers in one message.** All captured, each with its own story
   reference or `null`.
 - **Message from someone not on any roster.** Politely ignored, logged, not
@@ -170,3 +222,8 @@ Counting participation (SPEC-007). Voice input (A10, not built).
 | 6 | Invalid agent JSON never reaches the tracker | Unit test with malformed output | Test output |
 | 7 | Two messages same day produce one record | Live repeat | Tracker state (A11) |
 | 8 | Agents hold no write or send tools | Code review of `agents/tools/` | Review note |
+| 9 | No active sprint: nothing written, member told, one SM alert per day | Unit test + live with sprint not started | Test output; Teams screenshots |
+| 10 | Unknown item, other person's item, unassigned item each refused with reason | Unit tests on the intake with a fake PM client | Test output |
+| 11 | Garbage and "nothing to report" not written, member told, stays non-responder | Unit test + eval cases labelled with `kind` | Test output; eval report |
+| 12 | Confirmation lists WIN, title, status per recorded item | Unit test on the reply text + live | Test output; screenshot |
+| 13 | Accuracy stays ≥ 90% with the new `kind` field | `eval/` run — **live LLM, ask the user first** | Accuracy report |

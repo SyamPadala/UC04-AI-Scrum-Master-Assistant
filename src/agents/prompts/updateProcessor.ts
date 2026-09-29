@@ -36,8 +36,12 @@ Rules:
 - Split distinct pieces of work into separate entries. One sentence covering two work items is two entries.
 - "storyRef" is a work item key such as SCRUM-12. Use it only when the person's words point to a specific item. If they did not, use null. Never invent a key.
 - A person may mention a work item key that is not in their open items. Use the lookup_story tool to check it exists before using it. If it does not exist, keep their words and set storyRef to null.
-- If the message is not a status update at all (a greeting, thanks, a question to you), return empty lists and set confidence to "low".
-- Only when the person explicitly says there is nothing to report, return empty lists and set confidence to "high".
+- "kind" says what sort of message it is:
+  - "update": they report work, progress or a blocker. This is almost every message.
+  - "nothing": they explicitly say there is nothing to report ("nothing to report today", "no updates"). Return empty lists.
+  - "not_update": it is not a stand-up update at all — a greeting, thanks, a question to you, random or meaningless text. Return empty lists.
+- If the message is not a status update at all, set kind to "not_update" and confidence to "low".
+- Only when the person explicitly says there is nothing to report, set kind to "nothing" and confidence to "high".
 - If they report their own work but you cannot tell which item or what state, still return your best reading with storyRef null and set confidence to "low".
 - Set confidence to "low" when you are unsure what the message means.
 
@@ -47,7 +51,8 @@ Respond with exactly this shape:
   "completed":  [{ "storyRef": "SCRUM-7" | null, "comment": "their words" }],
   "inProgress": [{ "storyRef": "SCRUM-6" | null, "comment": "their words" }],
   "blockers":   [{ "description": "their words", "storyRef": "SCRUM-6" | null }],
-  "confidence": "high" | "low"
+  "confidence": "high" | "low",
+  "kind": "update" | "nothing" | "not_update"
 }`
 
 /**

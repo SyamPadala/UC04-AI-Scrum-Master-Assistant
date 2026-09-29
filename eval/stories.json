@@ -1,0 +1,8 @@
+[
+  { "key": "SCRUM-5", "title": "Implement application state machine in Onboarding Orchestrator", "status": "In Progress" },
+  { "key": "SCRUM-6", "title": "Expose create application endpoint", "status": "In Progress" },
+  { "key": "SCRUM-7", "title": "Expose submit application endpoint", "status": "In Progress" },
+  { "key": "SCRUM-20", "title": "Implement asynchronous screening service with HMAC-validated webhook callbacks and manual review routing", "status": "In Progress" },
+  { "key": "SCRUM-21", "title": "Build Risk Scoring Service with configurable weights and LOW/MEDIUM/HIGH banding", "status": "In Progress" },
+  { "key": "SCRUM-22", "title": "Implement Notification Service", "status": "In Progress" }
+]

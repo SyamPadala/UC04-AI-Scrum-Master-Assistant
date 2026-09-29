@@ -13,7 +13,8 @@
       "blockers": [
         "SCRUM-6"
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -28,7 +29,8 @@
         "SCRUM-21"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -39,7 +41,8 @@
       "completed": [],
       "inProgress": [],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "nothing"
     }
   },
   {
@@ -50,7 +53,8 @@
       "completed": [],
       "inProgress": [],
       "blockers": [],
-      "confidence": "low"
+      "confidence": "low",
+      "kind": "not_update"
     }
   },
   {
@@ -63,7 +67,8 @@
       "blockers": [
         null
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -77,7 +82,8 @@
       ],
       "inProgress": [],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -92,7 +98,8 @@
       "blockers": [
         "SCRUM-20"
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -105,7 +112,8 @@
       ],
       "inProgress": [],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -121,7 +129,8 @@
         null,
         null
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -134,7 +143,8 @@
       ],
       "inProgress": [],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -147,7 +157,8 @@
         "SCRUM-5"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -160,7 +171,8 @@
         "SCRUM-22"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -173,7 +185,8 @@
         "SCRUM-20"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -188,7 +201,8 @@
       "blockers": [
         "SCRUM-21"
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -204,7 +218,8 @@
         "SCRUM-5"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -215,7 +230,8 @@
       "completed": [],
       "inProgress": [],
       "blockers": [],
-      "confidence": "low"
+      "confidence": "low",
+      "kind": "not_update"
     }
   },
   {
@@ -230,7 +246,8 @@
         "SCRUM-6"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -243,7 +260,8 @@
         "SCRUM-6"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -254,7 +272,8 @@
       "completed": [],
       "inProgress": [],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "nothing"
     }
   },
   {
@@ -269,7 +288,8 @@
         "SCRUM-20"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -284,7 +304,8 @@
         "SCRUM-21"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -299,7 +320,8 @@
       "blockers": [
         "SCRUM-5"
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -312,7 +334,8 @@
         "SCRUM-20"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -323,7 +346,8 @@
       "completed": [],
       "inProgress": [],
       "blockers": [],
-      "confidence": "low"
+      "confidence": "low",
+      "kind": "not_update"
     }
   },
   {
@@ -338,7 +362,8 @@
       ],
       "inProgress": [],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -353,7 +378,8 @@
       "blockers": [
         "SCRUM-21"
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -366,7 +392,8 @@
       "blockers": [
         null
       ],
-      "confidence": "low"
+      "confidence": "low",
+      "kind": "update"
     }
   },
   {
@@ -381,7 +408,8 @@
         "SCRUM-20"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -396,7 +424,8 @@
       "blockers": [
         null
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -411,7 +440,8 @@
         null
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -422,7 +452,8 @@
       "completed": [],
       "inProgress": [],
       "blockers": [],
-      "confidence": "low"
+      "confidence": "low",
+      "kind": "not_update"
     }
   },
   {
@@ -437,7 +468,8 @@
       "blockers": [
         "SCRUM-20"
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -452,7 +484,8 @@
       "blockers": [
         "SCRUM-5"
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -465,7 +498,8 @@
         "SCRUM-7"
       ],
       "blockers": [],
-      "confidence": "low"
+      "confidence": "low",
+      "kind": "update"
     }
   },
   {
@@ -478,7 +512,8 @@
         "SCRUM-6"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -493,7 +528,8 @@
       "blockers": [
         "SCRUM-21"
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -510,7 +546,8 @@
       "blockers": [
         null
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -525,7 +562,8 @@
         "SCRUM-6"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -536,7 +574,8 @@
       "completed": [],
       "inProgress": [],
       "blockers": [],
-      "confidence": "low"
+      "confidence": "low",
+      "kind": "not_update"
     }
   },
   {
@@ -554,7 +593,8 @@
       "blockers": [
         "SCRUM-20"
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -574,7 +614,8 @@
         "SCRUM-21"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -594,7 +635,8 @@
         "SCRUM-21"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -614,7 +656,8 @@
         "SCRUM-21"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -634,7 +677,8 @@
         "SCRUM-21"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -654,7 +698,8 @@
         "SCRUM-21"
       ],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "update"
     }
   },
   {
@@ -672,7 +717,8 @@
       "completed": [],
       "inProgress": [],
       "blockers": [],
-      "confidence": "low"
+      "confidence": "low",
+      "kind": "not_update"
     }
   },
   {
@@ -690,7 +736,8 @@
       "completed": [],
       "inProgress": [],
       "blockers": [],
-      "confidence": "high"
+      "confidence": "high",
+      "kind": "nothing"
     }
   }
 ]

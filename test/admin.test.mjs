@@ -54,6 +54,28 @@ test('only the Scrum Master or an admin may manage a team', () => {
   assert.equal(mayManage(team, '', ['']), false, 'no identity is never a match')
 })
 
+test('only an admin may create teams or set Scrum Masters (SPEC-008 roles)', async () => {
+  const { mayAdminister } = await import('../dist/admin/validate.js')
+  assert.equal(mayAdminister('admin-1', ['admin-1']), true)
+  assert.equal(mayAdminister('sm-1', ['admin-1']), false, 'a Scrum Master who is not an admin may not')
+  assert.equal(mayAdminister('', ['']), false)
+})
+
+test('Scrum Masters and roster members do not overlap, in either direction (10h)', async () => {
+  const { overlapProblem } = await import('../dist/admin/validate.js')
+  const teams = [
+    { name: 'Alpha', scrumMasterId: 'syam', members: [{ memberId: 'madhavi' }] },
+    { name: 'Beta', scrumMasterId: 'syam', members: [] }
+  ]
+  assert.match(overlapProblem('addMember', 'syam', 'Syam', teams), /Scrum Master of Alpha, Beta/)
+  assert.match(overlapProblem('makeScrumMaster', 'madhavi', 'Madhavi', teams), /member of Alpha/)
+  assert.equal(overlapProblem('makeScrumMaster', 'syam', 'Syam', teams), undefined, 'one person may run several teams')
+  assert.equal(overlapProblem('addMember', 'new', 'New', teams), undefined)
+  // The old model: a Scrum Master still on their own roster may run another team.
+  const legacy = [{ name: 'Alpha', scrumMasterId: 'syam', members: [{ memberId: 'syam' }] }]
+  assert.equal(overlapProblem('makeScrumMaster', 'syam', 'Syam', legacy), undefined)
+})
+
 test('a sealed session round-trips and a tampered one is rejected', () => {
   const sealed = seal({ oid: 'sm-1', name: 'Syam', exp: Date.now() + 60_000 }, 'secret')
   assert.equal(unseal(sealed, 'secret').oid, 'sm-1')

@@ -1,6 +1,7 @@
 import type { TeamConfig } from '../types.js'
 import type { Tracker } from '../trackers/types.js'
-import { sendProactive } from '../bot/adapter.js'
+import { isConversationGone, sendProactive } from '../bot/adapter.js'
+import { clearConversationRef } from '../store/firestore.js'
 
 export interface JobResult {
   sent: number
@@ -40,8 +41,16 @@ export async function sendFollowUps (
   return await messageMembers(team, pending.map((m) => m.memberId), FOLLOWUP_TEXT)
 }
 
-async function messageMembers (
-  team: TeamConfig, memberIds: string[], text: string
+/** The two side effects of a send, injectable so a test can fake Teams (coding rule 9). */
+export interface SendDeps {
+  send: (reference: string, text: string) => Promise<void>
+  forget: (teamId: string, memberId: string) => Promise<void>
+}
+
+const realSend: SendDeps = { send: sendProactive, forget: clearConversationRef }
+
+export async function messageMembers (
+  team: TeamConfig, memberIds: string[], text: string, deps: SendDeps = realSend
 ): Promise<JobResult> {
   let sent = 0
   let failed = 0
@@ -59,9 +68,18 @@ async function messageMembers (
     }
 
     try {
-      await sendProactive(member.conversationRef, text)
+      await deps.send(member.conversationRef, text)
       sent++
     } catch (error) {
+      // SPEC-008 10e: a chat Teams has deleted is not a passing failure. It is
+      // forgotten, so the page shows App not installed and the run names them.
+      if (isConversationGone(error)) {
+        await deps.forget(team.teamId, member.memberId).catch((clearError: unknown) =>
+          console.error(JSON.stringify({ event: 'conversationRef.clearFailed', memberId, error: String(clearError) })))
+        console.log(JSON.stringify({ event: 'conversation.gone', teamId: team.teamId, memberId }))
+        unreachable.push(member.displayName)
+        continue
+      }
       failed++
       console.error(`send failed for ${member.displayName}`, error)
     }

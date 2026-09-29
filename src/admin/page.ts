@@ -23,6 +23,7 @@ const ICONS: Record<string, string> = {
   chart: '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
   trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
   plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+  check: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>',
   channel: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
   cpu: '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/>',
   db: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>'
@@ -239,9 +240,31 @@ export function adminPage (userName: string): string {
     .hide-sm { display: none; }
     th, td { padding-left: 14px; padding-right: 14px; }
   }
+  .btn.small { padding: 6px 12px; font-size: 13px; margin-top: 10px; }
+  .btn.text { background: none; border: 0; box-shadow: none; color: var(--brand); padding: 4px 8px; font-size: 13px; }
+  .btn.text:hover { text-decoration: underline; box-shadow: none; }
+  dialog { border: 1px solid var(--line); border-radius: 16px; padding: 0; width: min(460px, calc(100% - 32px)); background: var(--surface); color: var(--text); box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+  dialog::backdrop { background: rgba(15,18,30,.45); }
+  dialog form { padding: 22px 24px; display: grid; gap: 14px; }
+  dialog h2 { margin: 0; font-size: 18px; }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
 </style>
 </head>
 <body>
+<dialog id="new-team" aria-labelledby="new-team-title">
+  <form id="new-team-form" method="dialog">
+    <h2 id="new-team-title">New team</h2>
+    <p class="muted">The team starts Paused with an empty roster. The Scrum Master runs it but is not on the roster. Nothing is sent until you switch it to Running.</p>
+    <div class="field"><label for="nt-name">Team name</label><input id="nt-name" name="name" required maxlength="60" placeholder="Scrum Team Beta"></div>
+    <div class="field"><label for="nt-tz">Timezone</label><input id="nt-tz" name="timezone" value="Asia/Kolkata" required></div>
+    <div class="field"><label for="nt-sm">Scrum Master email</label><input id="nt-sm" name="scrumMasterEmail" type="email" placeholder="Leave empty to be the Scrum Master yourself"><small>May already run other teams, but must not be on any team's roster.</small></div>
+    <p class="error" id="nt-error" role="alert" hidden style="color:var(--bad);margin:0"></p>
+    <div class="dialog-actions">
+      <button class="btn ghost" type="button" id="nt-cancel">Cancel</button>
+      <button class="btn" type="submit" id="nt-create">${icon('plus')} Create team</button>
+    </div>
+  </form>
+</dialog>
 <div class="app">
   <aside>
     <div class="brand">
@@ -252,11 +275,13 @@ export function adminPage (userName: string): string {
       <label for="team">Team</label>
       <select id="team" hidden></select>
       <div class="team-name" id="team-name">&nbsp;</div>
+      <button class="btn ghost small" type="button" id="new-team-btn" hidden>${icon('plus')} New team</button>
     </div>
     <nav role="tablist">
       <button role="tab" data-tab="team" aria-selected="true">${icon('team')} Dev team</button>
       <button role="tab" data-tab="stakeholders">${icon('mail')} Stakeholders</button>
       <button role="tab" data-tab="schedule">${icon('clock')} Schedule</button>
+      <button role="tab" data-tab="readiness">${icon('check')} Readiness</button>
       <button role="tab" data-tab="run">${icon('play')} Run now</button>
       <button role="tab" data-tab="activity">${icon('activity')} Activity</button>
       <button role="tab" data-tab="llm">${icon('cpu')} LLM usage</button>
@@ -284,6 +309,13 @@ export function adminPage (userName: string): string {
     </div>
 
     <section id="tab-team" class="active">
+      <div class="card">
+        <div class="card-head">
+          <div><h2>Scrum Master</h2><p>Runs the team and receives blocker alerts. Not on the roster: no reminders, no stand-up updates.</p></div>
+          <button class="btn ghost" type="button" id="change-sm" hidden>Change</button>
+        </div>
+        <div class="card-body" id="sm-row"></div>
+      </div>
       <div class="card">
         <div class="card-head">
           <div><h2>Members</h2><p>A member can be messaged once the Teams app is installed for them.</p></div>
@@ -350,6 +382,14 @@ export function adminPage (userName: string): string {
       </div>
     </section>
 
+    <section id="tab-readiness">
+      <div class="card">
+        <div class="card-head"><div><h2>Is everything ready?</h2><p>Checks Jira, Teams chats, the tracker and today's schedule. Read-only: it sends nothing, changes nothing and makes no model calls.</p></div>
+          <button class="btn" type="button" id="readiness-btn">${icon('check')} Check readiness</button></div>
+        <table><tbody id="readiness-rows"><tr><td class="empty">Press Check readiness before a demo or at the start of the day.</td></tr></tbody></table>
+      </div>
+    </section>
+
     <section id="tab-run">
       <div class="card">
         <div class="card-head"><div><h2>Run a job now</h2><p>For testing or a demo. It does not use up today's scheduled run and does not close the stand-up.</p></div></div>
@@ -408,6 +448,7 @@ export function adminPage (userName: string): string {
     team: ['Dev team', 'Who receives the stand-up reminders and sends updates.'],
     stakeholders: ['Stakeholders', 'Who receives the daily sprint summary.'],
     schedule: ['Schedule', 'When the assistant runs each part of the day.'],
+    readiness: ['Readiness', 'Everything the day depends on, checked in one go.'],
     run: ['Run now', 'Trigger any job immediately.'],
     activity: ['Activity', 'What ran today and what changed.'],
     llm: ['LLM usage', 'How often the language model is called, and what it consumes.']
@@ -510,6 +551,28 @@ export function adminPage (userName: string): string {
     state.className = 'badge ' + (view.schedule.active ? 'ok' : 'warn')
   }
 
+  // SPEC-008 10f/10j: the Scrum Master is shown apart from the roster; only an
+  // admin sees New team and Change (the server refuses them to anyone else).
+  function renderScrumMaster () {
+    $('new-team-btn').hidden = !view.meIsAdmin
+    $('change-sm').hidden = !view.meIsAdmin
+    const row = $('sm-row')
+    row.replaceChildren()
+    if (view.scrumMaster === null) { row.append(el('span', 'No Scrum Master is set.', 'muted')); return }
+    const line = el('div')
+    line.style.display = 'flex'; line.style.alignItems = 'center'; line.style.gap = '12px'; line.style.flexWrap = 'wrap'
+    line.append(person(view.scrumMaster.name, view.scrumMaster.email || ''))
+    line.append(view.scrumMaster.reachable ? badge('Can be messaged', 'ok') : badge('App not installed', 'warn'))
+    row.append(line)
+  }
+
+  $('change-sm').addEventListener('click', (event) => {
+    const email = prompt('Email of the new Scrum Master for ' + view.name + '. They may already run other teams, but must not be on any roster.')
+    if (email === null || email.trim() === '') return
+    act(event.currentTarget, () => api('PUT', '/teams/' + teamId + '/scrum-master', { email: email.trim() }))
+      .then(() => loadTeams(teamId)).catch(() => {})
+  })
+
   function renderMembers () {
     const body = $('members')
     body.replaceChildren()
@@ -540,12 +603,10 @@ export function adminPage (userName: string): string {
       tr.append(jiraCell)
 
       const actions = el('td', null, 'right')
-      if (!m.isScrumMaster) {
-        actions.append(removeButton('Remove ' + m.displayName, (event) => {
-          if (!confirm('Remove ' + m.displayName + ' from the team? They will stop receiving reminders.')) return
-          act(event.currentTarget, () => api('DELETE', '/teams/' + teamId + '/members/' + encodeURIComponent(m.memberId))).catch(() => {})
-        }))
-      }
+      actions.append(removeButton('Remove ' + m.displayName, (event) => {
+        if (!confirm('Remove ' + m.displayName + ' from the roster? They will stop receiving reminders.')) return
+        act(event.currentTarget, () => api('DELETE', '/teams/' + teamId + '/members/' + encodeURIComponent(m.memberId))).catch(() => {})
+      }))
       tr.append(actions)
       body.append(tr)
     }
@@ -759,7 +820,7 @@ export function adminPage (userName: string): string {
   async function load () {
     if (!teamId) return
     view = await api('GET', '/teams/' + teamId)
-    renderStats(); renderMembers(); renderStakeholders(); renderSchedule(); renderActivity()
+    renderStats(); renderScrumMaster(); renderMembers(); renderStakeholders(); renderSchedule(); renderActivity()
   }
 
   document.querySelectorAll('nav button').forEach((tab) => tab.addEventListener('click', () => {
@@ -802,6 +863,30 @@ export function adminPage (userName: string): string {
     })).catch(() => {})
   })
 
+  // SPEC-008 10d: one row per check, green or red, with the fix in words.
+  $('readiness-btn').addEventListener('click', () => {
+    const button = $('readiness-btn')
+    const rows = $('readiness-rows')
+    button.disabled = true
+    rows.replaceChildren()
+    const waiting = el('tr'); waiting.append(el('td', 'Checking…', 'empty')); rows.append(waiting)
+    api('GET', '/teams/' + teamId + '/readiness').then((result) => {
+      rows.replaceChildren()
+      for (const r of result.rows) {
+        const tr = el('tr')
+        const name = el('td'); name.append(el('b', r.check)); tr.append(name)
+        const state = el('td'); state.append(badge(r.ok ? 'Ready' : 'Fix', r.ok ? 'ok' : 'bad')); tr.append(state)
+        tr.append(el('td', r.detail))
+        rows.append(tr)
+      }
+      const red = result.rows.filter((r) => !r.ok).length
+      toast(red === 0 ? 'Everything is ready.' : red + (red === 1 ? ' thing needs' : ' things need') + ' fixing.', red > 0)
+    }).catch((e) => {
+      rows.replaceChildren()
+      const tr = el('tr'); tr.append(el('td', e.message, 'empty')); rows.append(tr)
+    }).finally(() => { button.disabled = false })
+  })
+
   document.querySelectorAll('[data-job]').forEach((b) => b.addEventListener('click', () => {
     const job = b.dataset.job
     const box = $('run-result')
@@ -833,21 +918,49 @@ export function adminPage (userName: string): string {
     location.href = '/admin/login'
   })
 
-  api('GET', '/teams').then(({ teams }) => {
+  async function loadTeams (selectId) {
+    const { teams, isAdmin } = await api('GET', '/teams')
+    // Known before any team loads, so an admin can create the first team.
+    $('new-team-btn').hidden = !isAdmin
     if (teams.length === 0) {
       $('nothing').hidden = false
       $('stats').hidden = true
       document.querySelector('nav').hidden = true
-      document.querySelectorAll('main section').forEach((s) => s.remove())
+      document.querySelectorAll('main section').forEach((s) => { s.hidden = true })
       $('team-name').textContent = '—'
       return
     }
-    for (const t of teams) $('team').append(new Option(t.name, t.teamId))
-    if (teams.length > 1) { $('team').hidden = false; $('team-name').hidden = true }
-    $('team-name').textContent = teams[0].name
-    teamId = teams[0].teamId
+    const pick = $('team')
+    pick.replaceChildren(...teams.map((t) => new Option(t.name, t.teamId)))
+    pick.hidden = teams.length < 2
+    $('team-name').hidden = teams.length > 1
+    const chosen = teams.find((t) => t.teamId === (selectId ?? teamId)) ?? teams[0]
+    pick.value = chosen.teamId
+    $('team-name').textContent = chosen.name
+    teamId = chosen.teamId
     return load()
-  }).catch((e) => { if (e.message !== 'signed out') toast(e.message, true) })
+  }
+
+  const dialog = $('new-team')
+  $('new-team-btn').addEventListener('click', () => { $('new-team-form').reset(); $('nt-tz').value = 'Asia/Kolkata'; $('nt-error').hidden = true; dialog.showModal() })
+  $('nt-cancel').addEventListener('click', () => dialog.close())
+  $('new-team-form').addEventListener('submit', (event) => {
+    event.preventDefault()
+    // Read by id: on a form, f.name is the form's own name attribute, not the
+    // "name" input, which sent every team without a name (found 28 Sep 2026).
+    const body = { name: $('nt-name').value, timezone: $('nt-tz').value, scrumMasterEmail: $('nt-sm').value }
+    const button = $('nt-create')
+    const error = $('nt-error')
+    error.hidden = true
+    button.disabled = true
+    api('POST', '/teams', body)
+      .then((result) => { dialog.close(); toast(result.message); return loadTeams(result.teamId) })
+      // Shown inside the dialog: a toast sits behind a modal and is never seen.
+      .catch((e) => { if (e.message !== 'signed out') { error.textContent = e.message; error.hidden = false } })
+      .finally(() => { button.disabled = false })
+  })
+
+  loadTeams().catch((e) => { if (e.message !== 'signed out') toast(e.message, true) })
 })()
 </script>
 </body>

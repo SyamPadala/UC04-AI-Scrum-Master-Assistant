@@ -14,7 +14,7 @@ const TEAM = {
   name: 'Alpha',
   timezone: 'Asia/Kolkata',
   members: [{ memberId: 'm1', displayName: 'Syam Padala', jiraAccountId: 'j1', conversationRef: 'ref' }],
-  scrumMasterId: 'other'
+  scrumMasterId: ''
 }
 
 function stubs (outputs) {
@@ -26,15 +26,16 @@ function stubs (outputs) {
     }
   }
   const pm = {
+    getActiveSprint: async () => ({ id: 1, name: 'Sprint 1', goal: '', startDate: null, endDate: null }),
     getSprintData: async () => undefined,
-    lookupStory: async (key) => ({ key, title: 'Risk Scoring Service', status: 'In Progress', statusCategory: 'In Progress', points: 3, assignee: null, assigneeAccountId: null, url: '', updated: new Date() }),
+    lookupStory: async (key) => ({ key, title: 'Risk Scoring Service', status: 'In Progress', statusCategory: 'In Progress', points: 3, assignee: 'Syam Padala', assigneeAccountId: 'j1', url: '', updated: new Date() }),
     getMemberOpenItems: async () => []
   }
   return { llm, pm, prompts }
 }
 
 const empty = (confidence) => ({ completed: [], inProgress: [], blockers: [], confidence })
-const deps = (s, tracker) => ({ llm: s.llm, pm: s.pm, tracker, summaryHasRun: async () => false })
+const deps = (s, tracker) => ({ llm: s.llm, pm: s.pm, tracker, summaryHasRun: async () => false, alertNoSprint: async () => ({ sent: true }) })
 
 async function freshTracker (name) {
   const file = path.join(tmpdir(), `uc04-${name}-${Date.now()}.json`)

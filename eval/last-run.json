@@ -1,18 +1,19 @@
 {
-  "runAt": "2026-09-26T11:28:02.209Z",
+  "runAt": "2026-09-28T17:06:47.791Z",
   "provider": "gemini",
   "model": "gemini-3.5-flash-lite",
   "subset": "full",
   "cases": 47,
-  "accuracy": 89.36170212765957,
+  "accuracy": 91.48936170212765,
   "byField": {
     "completed": 100,
-    "inProgress": 93.61702127659575,
+    "inProgress": 95.74468085106383,
     "blockers": 95.74468085106383,
-    "confidence": 93.61702127659575
+    "kind": 100,
+    "confidence": 95.74468085106383
   },
-  "latencyMeanMs": 2077,
-  "latencyWorstMs": 4015,
+  "latencyMeanMs": 2439,
+  "latencyWorstMs": 7661,
   "billedCalls": 47,
   "results": [
     {
@@ -21,11 +22,13 @@
       "inProgress": false,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": false,
-      "ms": 2983,
+      "ms": 7661,
       "cached": false,
       "note": "plain three-part update, all keys named",
       "got": {
+        "kind": "update",
         "completed": [
           "SCRUM-7"
         ],
@@ -44,11 +47,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1875,
+      "ms": 1941,
       "cached": false,
       "note": "no keys, but both descriptions name open sprint items (A8)",
       "got": {
+        "kind": "update",
         "completed": [
           "SCRUM-20"
         ],
@@ -64,11 +69,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1702,
+      "ms": 2140,
       "cached": false,
       "note": "nothing to report",
       "got": {
+        "kind": "nothing",
         "completed": [],
         "inProgress": [],
         "blockers": []
@@ -79,12 +86,14 @@
       "completed": true,
       "inProgress": true,
       "blockers": true,
-      "confidence": false,
+      "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1913,
+      "ms": 2188,
       "cached": false,
       "note": "not a status update at all",
       "got": {
+        "kind": "not_update",
         "completed": [],
         "inProgress": [],
         "blockers": []
@@ -96,11 +105,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1784,
+      "ms": 3524,
       "cached": false,
       "note": "blocker with no work item",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [],
         "blockers": [
@@ -114,11 +125,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 2028,
+      "ms": 2434,
       "cached": false,
       "note": "two completed items in one sentence",
       "got": {
+        "kind": "update",
         "completed": [
           "SCRUM-22",
           "SCRUM-7"
@@ -133,11 +146,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1928,
+      "ms": 2043,
       "cached": false,
       "note": "same item both in progress and blocked",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-20"
@@ -153,11 +168,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 3365,
+      "ms": 3442,
       "cached": false,
       "note": "invented key that does not exist in Jira",
       "got": {
+        "kind": "update",
         "completed": [
           null
         ],
@@ -171,11 +188,13 @@
       "inProgress": true,
       "blockers": false,
       "confidence": true,
+      "kind": true,
       "pass": false,
-      "ms": 2482,
+      "ms": 2491,
       "cached": false,
       "note": "two separate blockers",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-21"
@@ -192,11 +211,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1810,
+      "ms": 2058,
       "cached": false,
       "note": "terse, key only",
       "got": {
+        "kind": "update",
         "completed": [
           "SCRUM-6"
         ],
@@ -210,11 +231,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 2946,
+      "ms": 2486,
       "cached": false,
       "note": "lowercase key",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-5"
@@ -228,11 +251,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1813,
+      "ms": 2410,
       "cached": false,
       "note": "future tense only; \"notification templates\" matches SCRUM-22 Notification Service by title (A8) now that open stories are supplied",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-22"
@@ -246,11 +271,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1543,
+      "ms": 2203,
       "cached": false,
       "note": "\"the screening service\" is SCRUM-20 by description (A8)",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-20"
@@ -264,11 +291,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 2007,
+      "ms": 3740,
       "cached": false,
       "note": "blocker phrased as waiting on a person",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-21"
@@ -281,19 +310,20 @@
     {
       "id": "e15",
       "completed": true,
-      "inProgress": false,
+      "inProgress": true,
       "blockers": true,
       "confidence": true,
-      "pass": false,
-      "ms": 1883,
+      "kind": true,
+      "pass": true,
+      "ms": 2611,
       "cached": false,
       "note": "long, rambling, three items",
       "got": {
+        "kind": "update",
         "completed": [
           "SCRUM-22"
         ],
         "inProgress": [
-          null,
           "SCRUM-20",
           "SCRUM-5"
         ],
@@ -306,11 +336,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1760,
+      "ms": 1805,
       "cached": false,
       "note": "greeting only",
       "got": {
+        "kind": "not_update",
         "completed": [],
         "inProgress": [],
         "blockers": []
@@ -322,11 +354,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 4015,
+      "ms": 3563,
       "cached": false,
       "note": "typos and missing punctuation",
       "got": {
+        "kind": "update",
         "completed": [
           "SCRUM-7"
         ],
@@ -342,11 +376,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1520,
+      "ms": 2371,
       "cached": false,
       "note": "blocker resolved, so not a blocker",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-6"
@@ -360,11 +396,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1754,
+      "ms": 1600,
       "cached": false,
       "note": "on leave",
       "got": {
+        "kind": "nothing",
         "completed": [],
         "inProgress": [],
         "blockers": []
@@ -376,11 +414,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1711,
+      "ms": 2079,
       "cached": false,
       "note": "numbered list format",
       "got": {
+        "kind": "update",
         "completed": [
           "SCRUM-7"
         ],
@@ -396,11 +436,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 3845,
+      "ms": 4280,
       "cached": false,
       "note": "key written with a space",
       "got": {
+        "kind": "update",
         "completed": [
           "SCRUM-22"
         ],
@@ -416,11 +458,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1821,
+      "ms": 1980,
       "cached": false,
       "note": "blocker on an item not mentioned elsewhere",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-6"
@@ -436,11 +480,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1601,
+      "ms": 1890,
       "cached": false,
       "note": "partial work, not complete",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-20"
@@ -453,12 +499,14 @@
       "completed": true,
       "inProgress": true,
       "blockers": true,
-      "confidence": false,
+      "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1616,
+      "ms": 2526,
       "cached": false,
       "note": "question rather than an update",
       "got": {
+        "kind": "not_update",
         "completed": [],
         "inProgress": [],
         "blockers": []
@@ -470,11 +518,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1734,
+      "ms": 1794,
       "cached": false,
       "note": "three completed, nothing in progress",
       "got": {
+        "kind": "update",
         "completed": [
           null,
           "SCRUM-22",
@@ -490,11 +540,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 2028,
+      "ms": 3038,
       "cached": false,
       "note": "blocker described without the word blocked",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-21"
@@ -510,11 +562,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1689,
+      "ms": 1814,
       "cached": false,
       "note": "very short with a blocker",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [],
         "blockers": [
@@ -528,11 +582,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1858,
+      "ms": 1910,
       "cached": false,
       "note": "mixed English and Hindi",
       "got": {
+        "kind": "update",
         "completed": [
           "SCRUM-6"
         ],
@@ -548,11 +604,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1684,
+      "ms": 1722,
       "cached": false,
       "note": "reporting someone else's blocker",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-5"
@@ -568,11 +626,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1803,
+      "ms": 1650,
       "cached": false,
       "note": "code review work with no key",
       "got": {
+        "kind": "update",
         "completed": [
           null
         ],
@@ -588,11 +648,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1417,
+      "ms": 1729,
       "cached": false,
       "note": "emoji only",
       "got": {
+        "kind": "not_update",
         "completed": [],
         "inProgress": [],
         "blockers": []
@@ -604,11 +666,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1748,
+      "ms": 1879,
       "cached": false,
       "note": "blocker with a dependency on another team",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-20"
@@ -624,11 +688,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1851,
+      "ms": 1712,
       "cached": false,
       "note": "two items, one done one blocked",
       "got": {
+        "kind": "update",
         "completed": [
           "SCRUM-22"
         ],
@@ -644,11 +710,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": false,
+      "kind": true,
       "pass": true,
-      "ms": 1835,
+      "ms": 1626,
       "cached": false,
       "note": "hedged completion",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-7"
@@ -662,11 +730,13 @@
       "inProgress": false,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": false,
-      "ms": 1921,
+      "ms": 2063,
       "cached": false,
       "note": "meeting-heavy day",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           null,
@@ -681,11 +751,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1948,
+      "ms": 1825,
       "cached": false,
       "note": "bug found, reported as a blocker",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-21"
@@ -701,11 +773,13 @@
       "inProgress": true,
       "blockers": false,
       "confidence": true,
+      "kind": true,
       "pass": false,
-      "ms": 1696,
+      "ms": 2414,
       "cached": false,
       "note": "one item completed, another started, blocker on neither",
       "got": {
+        "kind": "update",
         "completed": [
           "SCRUM-22"
         ],
@@ -721,11 +795,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1598,
+      "ms": 1635,
       "cached": false,
       "note": "all three sections, explicit labels",
       "got": {
+        "kind": "update",
         "completed": [
           "SCRUM-7"
         ],
@@ -740,12 +816,14 @@
       "completed": true,
       "inProgress": true,
       "blockers": true,
-      "confidence": true,
+      "confidence": false,
+      "kind": true,
       "pass": true,
-      "ms": 1385,
+      "ms": 1886,
       "cached": false,
       "note": "key mentioned only as context, no work claimed",
       "got": {
+        "kind": "not_update",
         "completed": [],
         "inProgress": [],
         "blockers": []
@@ -757,11 +835,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1694,
+      "ms": 4539,
       "cached": false,
       "note": "two in progress, one blocked, one done",
       "got": {
+        "kind": "update",
         "completed": [
           "SCRUM-7"
         ],
@@ -780,11 +860,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 3500,
+      "ms": 1979,
       "cached": false,
       "note": "blocker resolved, informal name (the 25 Sep miss)",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-21"
@@ -798,11 +880,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 3249,
+      "ms": 2192,
       "cached": false,
       "note": "blocker resolved, cause named not the item",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-21"
@@ -816,11 +900,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 3151,
+      "ms": 3340,
       "cached": false,
       "note": "blocker cleared, short",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-21"
@@ -834,11 +920,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 2947,
+      "ms": 2508,
       "cached": false,
       "note": "resolved without the word blocker",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-21"
@@ -852,11 +940,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1543,
+      "ms": 1723,
       "cached": false,
       "note": "unblocked, different wording",
       "got": {
+        "kind": "update",
         "completed": [],
         "inProgress": [
           "SCRUM-21"
@@ -870,11 +960,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1769,
+      "ms": 2459,
       "cached": false,
       "note": "greeting with an open blocker is still not an update",
       "got": {
+        "kind": "not_update",
         "completed": [],
         "inProgress": [],
         "blockers": []
@@ -886,11 +978,13 @@
       "inProgress": true,
       "blockers": true,
       "confidence": true,
+      "kind": true,
       "pass": true,
-      "ms": 1870,
+      "ms": 1711,
       "cached": false,
       "note": "nothing to report with an open blocker",
       "got": {
+        "kind": "nothing",
         "completed": [],
         "inProgress": [],
         "blockers": []

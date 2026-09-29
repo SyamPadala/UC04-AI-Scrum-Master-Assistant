@@ -34,6 +34,19 @@ const { adapter, headerPropagation } = createCloudAdapter(agent, authConfig)
 export { adapter, headerPropagation }
 
 /**
+ * True when Teams says the stored chat no longer exists (SPEC-008 10e).
+ *
+ * Happens when the person removes or blocks the app: every later send to that
+ * reference fails with 404 ConversationNotFound. The SDK's HttpError carries
+ * the status, and the connector's error code in its message.
+ */
+export function isConversationGone (error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  const status = (error as Error & { status?: unknown }).status
+  return /ConversationNotFound/i.test(error.message) || (status === 404 && /conversation/i.test(error.message))
+}
+
+/**
  * Sends a message to someone the app is not currently talking to.
  *
  * Only possible with a stored conversation reference, which exists only once

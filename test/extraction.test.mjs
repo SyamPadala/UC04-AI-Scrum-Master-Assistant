@@ -53,7 +53,7 @@ test('completed and in-progress items become their own rows', () => {
     inProgress: [{ storyRef: null, comment: 'reviewing' }],
     blockers: [],
     confidence: 'high'
-  }, 'Madhavi Andoju', 'raw', stories)
+  }, 'Madhavi Andoju', stories)
 
   assert.equal(rows.length, 2)
   assert.equal(rows[0].status, 'Completed')
@@ -68,7 +68,7 @@ test('a blocker on a listed item attaches to that row instead of adding one', ()
     inProgress: [{ storyRef: 'SCRUM-6', comment: 'working on it' }],
     blockers: [{ description: 'sandbox times out', storyRef: 'SCRUM-6' }],
     confidence: 'high'
-  }, 'Madhavi Andoju', 'raw', stories)
+  }, 'Madhavi Andoju', stories)
 
   assert.equal(rows.length, 1)
   assert.equal(rows[0].anyBlocker, 'sandbox times out')
@@ -81,7 +81,7 @@ test('a blocker against completed work keeps it Completed', () => {
     inProgress: [],
     blockers: [{ description: 'deploy slot not booked', storyRef: 'SCRUM-6' }],
     confidence: 'high'
-  }, 'Madhavi Andoju', 'raw', stories)
+  }, 'Madhavi Andoju', stories)
 
   assert.equal(rows.length, 1)
   assert.equal(rows[0].status, 'Completed')
@@ -93,7 +93,7 @@ test('a blocker with no work item gets its own Blocked row, comment empty', () =
     completed: [], inProgress: [],
     blockers: [{ description: 'no VPN access', storyRef: null }],
     confidence: 'high'
-  }, 'Madhavi Andoju', 'raw', stories)
+  }, 'Madhavi Andoju', stories)
 
   assert.equal(rows.length, 1)
   assert.equal(rows[0].status, 'Blocked')
@@ -102,14 +102,9 @@ test('a blocker with no work item gets its own Blocked row, comment empty', () =
   assert.equal(rows[0].win, null)
 })
 
-test('an empty extraction still records the member as having replied', () => {
-  const rows = toTrackerRows(
-    { completed: [], inProgress: [], blockers: [], confidence: 'high' },
-    'Madhavi Andoju', 'nothing to report today', stories
-  )
-  assert.equal(rows.length, 1)
-  assert.equal(rows[0].comment, 'nothing to report today')
-  assert.equal(rows[0].status, 'In Progress')
+test('an empty extraction produces no rows — there is no General row any more (SPEC-004 item 11)', () => {
+  const rows = toTrackerRows({ completed: [], inProgress: [], blockers: [] }, 'Madhavi Andoju', stories)
+  assert.deepEqual(rows, [])
 })
 
 test('two blockers on the same item are joined onto one row', () => {
@@ -121,7 +116,7 @@ test('two blockers on the same item are joined onto one row', () => {
       { description: 'test data stale', storyRef: 'SCRUM-6' }
     ],
     confidence: 'high'
-  }, 'Madhavi Andoju', 'raw', stories)
+  }, 'Madhavi Andoju', stories)
 
   assert.equal(rows.length, 1)
   assert.equal(rows[0].anyBlocker, 'waiting on review; test data stale')

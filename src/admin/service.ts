@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { ConversationReference } from '@microsoft/agents-activity'
 import type { BotTeam, JobType, Member, TeamConfig } from '../types.js'
 import { config } from '../config/env.js'
@@ -6,11 +7,14 @@ import { graphRequest } from '../graph/client.js'
 import { JiraClient } from '../pm/jira.js'
 import { runJobNow } from '../jobs/tick.js'
 import { channelReference, listTeamChannels } from '../bot/channels.js'
+import { chatState } from '../bot/reachability.js'
+import { trackerFor } from '../trackers/factory.js'
+import { assessReadiness, type ReadinessFacts, type ReadinessRow } from './readiness.js'
 import {
   allTeams, botTeams, clearChannelRef, configChangesFor, getChannelRef, getTeam, llmUsageForDates, recordConfigChange,
-  runsForDate, saveChannelRef, saveTeam, teamForMember
+  runsForDate, saveChannelRef, saveScrumMasterRef, saveTeam, scrumMasterOf, summaryHasRun, teamForMember
 } from '../store/firestore.js'
-import { checkSchedule, mayManage, normaliseEmail } from './validate.js'
+import { checkSchedule, isValidTimezone, mayAdminister, mayManage, normaliseEmail, overlapProblem } from './validate.js'
 
 /**
  * What the admin page can do to a team (SPEC-008).
@@ -98,11 +102,11 @@ async function lookUpUser (idOrEmail: string): Promise<GraphUser | undefined> {
   }
 }
 
-export async function teamView (team: TeamConfig): Promise<unknown> {
+export async function teamView (team: TeamConfig, actor: Actor): Promise<unknown> {
   const today = localDate(new Date(), team.timezone)
   const client = jira()
 
-  const [runs, channelRef, changes, jiraUsers, emails] = await Promise.all([
+  const [runs, channelRef, changes, jiraUsers, emails, scrumMaster] = await Promise.all([
     runsForDate(team.teamId, today),
     getChannelRef(team.teamId),
     configChangesFor(team.teamId),
@@ -114,13 +118,21 @@ export async function teamView (team: TeamConfig): Promise<unknown> {
       }),
     // Members seeded before the page existed have no stored address; Graph has it.
     Promise.all(team.members.map(async (member) => member.email ??
-      (await lookUpUser(member.memberId).catch(() => undefined))?.mail ?? null))
+      (await lookUpUser(member.memberId).catch(() => undefined))?.mail ?? null)),
+    scrumMasterOf(team)
   ])
 
   return {
     teamId: team.teamId,
     name: team.name,
     today,
+    me: actor.oid,
+    meIsAdmin: config.admin.userIds.includes(actor.oid),
+    scrumMasterId: team.scrumMasterId,
+    // A role, not a roster entry (SPEC-008 10f).
+    scrumMaster: scrumMaster === undefined
+      ? null
+      : { name: scrumMaster.displayName, email: scrumMaster.email ?? null, reachable: (scrumMaster.conversationRef ?? '') !== '' },
     schedule: {
       standupTime: team.standupTime,
       summaryTime: team.summaryTime,
@@ -177,6 +189,9 @@ export async function addMember (team: TeamConfig, rawEmail: unknown, actor: Act
 
   if (team.members.some((m) => m.memberId === user.id)) return `${user.displayName ?? email} is already on the team.`
 
+  const overlap = overlapProblem('addMember', user.id, user.displayName ?? email, await allTeams())
+  if (overlap !== undefined) throw new AdminError(409, overlap)
+
   // Rosters must not overlap (SPEC-001): an update from someone on two teams
   // would have no single tracker to go to.
   const other = await teamForMember(user.id)
@@ -196,7 +211,11 @@ export async function addMember (team: TeamConfig, rawEmail: unknown, actor: Act
 export async function removeMember (team: TeamConfig, memberId: string, actor: Actor): Promise<string> {
   const member = team.members.find((m) => m.memberId === memberId)
   if (member === undefined) throw new AdminError(404, 'That person is not on the team.')
-  if (memberId === team.scrumMasterId) throw new AdminError(400, 'The Scrum Master cannot be removed.')
+  // SPEC-008 10f: a Scrum Master still on the roster (the old model) may be
+  // taken off it. Their chat is kept first, so their alerts keep arriving.
+  if (memberId === team.scrumMasterId && (member.conversationRef ?? '') !== '') {
+    await saveScrumMasterRef(member.memberId, member.displayName, member.conversationRef as string)
+  }
   await applyChange(team, { members: team.members.filter((m) => m.memberId !== memberId) }, actor.name)
   return `Removed ${member.displayName}. Rows they already wrote stay in the tracker.`
 }
@@ -240,6 +259,89 @@ export async function removeStakeholder (team: TeamConfig, rawEmail: string, act
   if (emails.length === team.stakeholders.emails.length) throw new AdminError(404, `${email} is not on the list.`)
   await applyChange(team, { stakeholders: { ...team.stakeholders, emails } }, actor.name)
   return `${email} removed from the summary list.`
+}
+
+/**
+ * Behaviour 10b: a new team, created Paused so nothing is sent until its
+ * Scrum Master has set it up and switched it on.
+ */
+export async function createTeam (actor: Actor, raw: Record<string, unknown>): Promise<{ teamId: string, message: string }> {
+  if (!mayAdminister(actor.oid, config.admin.userIds)) throw new AdminError(403, 'Only an admin can create a team.')
+  const teams = await allTeams()
+
+  const name = String(raw.name ?? '').trim()
+  if (name === '' || name.length > 60) throw new AdminError(400, 'Give the team a name of up to 60 characters.')
+  if (teams.some((t) => t.name.toLowerCase() === name.toLowerCase())) throw new AdminError(409, `A team called "${name}" already exists.`)
+
+  const timezone = String(raw.timezone ?? '').trim() || config.defaultTimezone
+  if (!isValidTimezone(timezone)) throw new AdminError(400, `"${timezone}" is not a timezone I recognise. Try Asia/Kolkata.`)
+
+  const rawEmail = String(raw.scrumMasterEmail ?? '').trim()
+  let user: GraphUser | undefined
+  if (rawEmail === '') {
+    user = await lookUpUser(actor.oid)
+  } else {
+    const email = normaliseEmail(rawEmail)
+    if (email === undefined) throw new AdminError(400, 'The Scrum Master email is not an email address.')
+    user = await lookUpUser(email)
+  }
+  if (user === undefined) throw new AdminError(400, 'That Scrum Master is not a user in this Microsoft 365 tenant.')
+  if (user.userType === 'Guest' || user.accountEnabled === false) throw new AdminError(400, 'The Scrum Master must be an active member of the tenant.')
+  const overlap = overlapProblem('makeScrumMaster', user.id, user.displayName ?? 'That person', teams)
+  if (overlap !== undefined) throw new AdminError(409, overlap)
+
+  const team: TeamConfig = {
+    teamId: randomUUID(),
+    name,
+    active: false,
+    timezone,
+    standupTime: '09:30',
+    gracePeriodMinutes: 120,
+    summaryTime: '18:00',
+    // The Scrum Master is a role, not a member (SPEC-008 10f): the roster starts empty.
+    members: [],
+    scrumMasterId: user.id,
+    scrumMasterName: user.displayName ?? rawEmail,
+    scrumMasterEmail: user.mail ?? user.userPrincipalName ?? rawEmail,
+    habitualThreshold: 2,
+    habitualWindowDays: 5,
+    tracker: config.sharepoint.siteId !== ''
+      ? { kind: 'sharepoint', siteId: config.sharepoint.siteId, listId: config.sharepoint.listId }
+      : { kind: 'jira', projectKey: config.jira.projectKey, standupIssueKey: config.jira.standupIssueKey },
+    stakeholders: { emails: [] }
+  }
+  await saveTeam(team)
+  await recordConfigChange({
+    teamId: team.teamId, changedBy: actor.name, changedAt: new Date(),
+    fields: [{ field: 'created', from: null, to: name }]
+  })
+  console.log(JSON.stringify({ event: 'admin.teamCreated', teamId: team.teamId, actor: actor.oid }))
+  return { teamId: team.teamId, message: `Created ${name}. It is Paused: add members and set the schedule, then switch it to Running.` }
+}
+
+/**
+ * Behaviour 10j (29 Sep 2026): an admin sets the team's Scrum Master by email.
+ * Anyone in the tenant who is on no roster; they may already run other teams.
+ */
+export async function setScrumMaster (team: TeamConfig, rawEmail: unknown, actor: Actor): Promise<string> {
+  if (!mayAdminister(actor.oid, config.admin.userIds)) throw new AdminError(403, 'Only an admin can change the Scrum Master.')
+  const email = normaliseEmail(rawEmail)
+  if (email === undefined) throw new AdminError(400, 'That is not an email address.')
+  const user = await lookUpUser(email)
+  if (user === undefined) throw new AdminError(400, `${email} is not a user in this Microsoft 365 tenant.`)
+  if (user.userType === 'Guest' || user.accountEnabled === false) throw new AdminError(400, 'The Scrum Master must be an active member of the tenant.')
+  const name = user.displayName ?? email
+  if (user.id === team.scrumMasterId) return `${name} is already the Scrum Master.`
+
+  const overlap = overlapProblem('makeScrumMaster', user.id, name, await allTeams())
+  if (overlap !== undefined) throw new AdminError(409, overlap)
+
+  await applyChange(team, {
+    scrumMasterId: user.id,
+    scrumMasterName: name,
+    scrumMasterEmail: user.mail ?? user.userPrincipalName ?? email
+  }, actor.name)
+  return `${name} is now the Scrum Master of ${team.name}. Blocker alerts and non-responder flags go to them from the next event; they need to send "help" to Scrum Assistant once if they never have.`
 }
 
 export interface ChannelOption { teamName: string, channelId: string, channelName: string }
@@ -364,4 +466,65 @@ export async function llmUsage (actor: Actor, days = 14): Promise<unknown> {
     maxCallsPerDay: config.llm.maxCallsPerDay,
     days: await llmUsageForDates(dates)
   }
+}
+
+/**
+ * Behaviour 10d: is this team ready for today? Read-only, no LLM calls.
+ *
+ * Every fact is gathered even when an earlier one fails, so one broken
+ * connection does not hide the other problems.
+ */
+export async function readiness (team: TeamConfig): Promise<{ checkedAt: string, rows: ReadinessRow[] }> {
+  const today = localDate(new Date(), team.timezone)
+  const client = jira()
+
+  const sprintFacts = async (): Promise<Pick<ReadinessFacts, 'sprint' | 'jiraError'>> => {
+    if (client === undefined) return { sprint: undefined, jiraError: 'Jira is not configured on this server.' }
+    try {
+      const data = await client.getSprintData()
+      return { sprint: data === undefined ? undefined : { name: data.sprintName, items: data.items } }
+    } catch (error) {
+      return { sprint: undefined, jiraError: error instanceof Error ? error.message.slice(0, 160) : String(error) }
+    }
+  }
+
+  const scrumMasterFacts = async (): Promise<ReadinessFacts['scrumMaster']> => {
+    const sm = await scrumMasterOf(team)
+    if (sm === undefined) return undefined
+    try {
+      return { name: sm.displayName, chat: await chatState(sm.conversationRef) }
+    } catch (error) {
+      return { name: sm.displayName, chat: 'error', chatError: error instanceof Error ? error.message.slice(0, 120) : String(error) }
+    }
+  }
+
+  const [sprint, members, tracker, summaryRanToday, scrumMaster] = await Promise.all([
+    sprintFacts(),
+    Promise.all(team.members.map(async (member): Promise<ReadinessFacts['members'][number]> => {
+      const linked = (member.jiraAccountId ?? '') !== ''
+      try {
+        return { name: member.displayName, linked, chat: await chatState(member.conversationRef) }
+      } catch (error) {
+        return { name: member.displayName, linked, chat: 'error', chatError: error instanceof Error ? error.message.slice(0, 120) : String(error) }
+      }
+    })),
+    trackerFor(team).readToday(team.teamId, today)
+      .then(() => ({ ok: true }))
+      .catch((error: unknown) => ({ ok: false, error: error instanceof Error ? error.message.slice(0, 160) : String(error) })),
+    summaryHasRun(team.teamId, today),
+    scrumMasterFacts()
+  ])
+
+  const rows = assessReadiness({
+    ...sprint,
+    pointsFieldConfigured: config.jira.storyPointsField !== '',
+    members,
+    ...(scrumMaster === undefined ? {} : { scrumMaster }),
+    tracker,
+    summaryRanToday,
+    standupTime: team.standupTime,
+    summaryTime: team.summaryTime
+  })
+  console.log(JSON.stringify({ event: 'admin.readiness', teamId: team.teamId, red: rows.filter((r) => !r.ok).map((r) => r.check) }))
+  return { checkedAt: new Date().toISOString(), rows }
 }

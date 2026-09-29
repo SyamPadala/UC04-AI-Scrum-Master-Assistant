@@ -8,7 +8,7 @@ import type { SummaryOutput } from '../agents/schema.js'
 import { sendProactive, sendProactiveCard } from '../bot/adapter.js'
 import { summaryCard, summaryEmailHtml, summaryPlainText, summaryTitle } from '../cards/summary.js'
 import { sendMail } from '../graph/mail.js'
-import { getChannelRef } from '../store/firestore.js'
+import { getChannelRef, scrumMasterOf } from '../store/firestore.js'
 import { config } from '../config/env.js'
 
 /**
@@ -190,7 +190,7 @@ export async function distributeSummary (
  * told that tonight's needs sending by hand.
  */
 async function reportSummaryFailure (team: TeamConfig, localDate: string, reason: string): Promise<void> {
-  const scrumMaster = team.members.find((member) => member.memberId === team.scrumMasterId)
+  const scrumMaster = await scrumMasterOf(team)
   if (scrumMaster === undefined || (scrumMaster.conversationRef ?? '') === '' || config.dryRun) return
   try {
     await sendProactive(

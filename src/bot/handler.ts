@@ -4,11 +4,14 @@ import type { LlmClient } from '../llm/types.js'
 import type { PmClient } from '../pm/types.js'
 import { LlmBudgetError, LlmOfflineError } from '../llm/types.js'
 import { localDate } from '../config/time.js'
-import { saveBotTeam, saveChannelRef, saveConversationRef, teamForChannel, teamForMember } from '../store/firestore.js'
+import {
+  saveBotTeam, saveChannelRef, saveConversationRef, saveScrumMasterRef, teamForChannel, teamForMember, teamsRunBy
+} from '../store/firestore.js'
 import { channelReference, teamOfActivity } from './channels.js'
 import { trackerFor } from '../trackers/factory.js'
 import { processUpdate, StandupClosedError } from '../jobs/updateIntake.js'
 import { handleAdminCommand, parseAdminCommand } from './admin.js'
+import { intakeReply } from './replies.js'
 
 /**
  * What a member is told once the day has closed (A14).
@@ -32,6 +35,17 @@ async function rememberSender (context: TurnContext): Promise<void> {
   const from = context.activity.from
   if (from?.id === undefined) return
   const memberId = from.aadObjectId ?? from.id
+  const reference = context.activity.getConversationReference()
+
+  // A Scrum Master is not on any roster (SPEC-008 10f). Their chat is kept once
+  // per person, so alerts from every team they run can reach them (10g).
+  try {
+    if ((await teamsRunBy(memberId)).length > 0) {
+      await saveScrumMasterRef(memberId, from.name, JSON.stringify(reference))
+    }
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'scrumMaster.saveRefFailed', memberId, error: String(error) }))
+  }
 
   // Stored against the sender's own team (FR-10). Someone on no roster is not
   // added to one: joining a team is the Scrum Master's decision, not a side
@@ -49,7 +63,6 @@ async function rememberSender (context: TurnContext): Promise<void> {
     return
   }
 
-  const reference = context.activity.getConversationReference()
   await saveConversationRef(team.teamId, memberId, from.name, JSON.stringify(reference))
 }
 
@@ -182,6 +195,15 @@ export class ScrumAssistant extends ActivityHandler {
     }
 
     if (team === undefined) {
+      // SPEC-008 10k: a Scrum Master runs the stand-up; they don't report in it.
+      const run = await teamsRunBy(memberId).catch(() => [])
+      if (run.length > 0) {
+        await context.sendActivity(MessageFactory.text(
+          `You're the Scrum Master of ${run.map((t) => t.name).join(', ')}. Scrum Masters don't send stand-up updates, so I haven't recorded that. ` +
+          'Type **help** to see what you can do here.'
+        ))
+        return
+      }
       console.log(JSON.stringify({ event: 'update.notOnRoster', memberId }))
       await context.sendActivity(MessageFactory.text(
         'You are not on a team roster I know about, so I have not recorded that. ' +
@@ -199,29 +221,9 @@ export class ScrumAssistant extends ActivityHandler {
         tracker: trackerFor(team)
       })
 
-      if (!result.understood) {
-        await context.sendActivity(MessageFactory.text(
-          "I couldn't tell which work item that is about, so I haven't changed anything. " +
-          'Could you name the item? For example: *SCRUM-21 is unblocked and back in progress*.'
-        ))
-        return
-      }
-
-      const parts = [`Recorded your update, ${memberName}.`]
-      // Says what this message added *and* what the day now holds, so a member
-      // adding a forgotten ticket can see their earlier rows are still there.
-      parts.push(result.added === result.rows
-        ? `${result.rows} ${result.rows === 1 ? 'item' : 'items'} in the tracker for ${today}.`
-        : `Added ${result.added}; you now have ${result.rows} items in the tracker for ${today}.`)
-      if (result.blockers > 0) {
-        parts.push(result.alertSent
-          ? 'Your Scrum Master has been told about the blocker.'
-          : 'I could not reach your Scrum Master about the blocker; it is recorded in the tracker.')
-      }
-      if (result.truncated) {
-        parts.push('Your message was long, so only the first part was read.')
-      }
-      await context.sendActivity(MessageFactory.text(parts.join(' ')))
+      // SPEC-004 items 12–20: one reply saying what was written, item by item,
+      // and why anything else was not.
+      await context.sendActivity(MessageFactory.text(intakeReply(result, memberName)))
     } catch (error) {
       // A14: closing time is not a failure. The member is told plainly where
       // to go instead, and nothing is recorded for the day.

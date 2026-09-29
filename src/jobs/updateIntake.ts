@@ -1,10 +1,12 @@
 import type { TeamConfig } from '../types.js'
 import type { LlmClient } from '../llm/types.js'
 import type { PmClient, Story } from '../pm/types.js'
-import type { StandupUpdate, Tracker, TrackerRow } from '../trackers/types.js'
+import type { RowStatus, StandupUpdate, Tracker, TrackerRow } from '../trackers/types.js'
 import type { ExtractionOutput } from '../agents/schema.js'
 import { extractUpdate } from '../agents/updateProcessor.js'
+import { collapseRows } from '../trackers/rows.js'
 import { sendBlockerAlert } from './blockerAlert.js'
+import { alertNoSprint } from './noSprintAlert.js'
 import { summaryHasRun } from '../store/firestore.js'
 import { config } from '../config/env.js'
 
@@ -16,9 +18,39 @@ import { config } from '../config/env.js'
  * never given the means to do any of it.
  */
 
+/**
+ * How a message ended (SPEC-004 items 11–20). Every value has its own reply;
+ * none of them is silent.
+ */
+export type IntakeOutcome =
+  | 'recorded' // at least one verified item was written
+  | 'nothingRecorded' // the message was an update, but no item could be verified
+  | 'notUnderstood' // an update the model could not read (5b)
+  | 'notUpdate' // not a stand-up update at all (item 15)
+  | 'nothing' // "nothing to report" — not recorded, non-responder for now (item 16)
+  | 'notLinked' // member has no Jira link, so ownership cannot be checked (item 20)
+  | 'noSprint' // no active sprint, so nothing can be matched (item 12)
+
+/** An item the member reported that was not written, and why (items 13–14). */
+export type Refusal =
+  | { reason: 'noWorkItem', words: string }
+  | { reason: 'notYours', key: string, owner: string | null }
+
+/** A row this message wrote, as the member is told about it (item 17). */
+export interface RecordedItem { win: string, title: string | null, status: RowStatus, blocker: string | null }
+
 export interface IntakeResult {
+  outcome: IntakeOutcome
   /** False when nothing could be taken from the message and nothing was written (SPEC-004 5b). */
   understood: boolean
+  recorded: RecordedItem[]
+  refused: Refusal[]
+  /** Blockers not tied to a verified work item: not written, but alerted (item 19). */
+  unlinkedBlockers: string[]
+  /** The member's open sprint items, offered back when a work item was not found (item 13). */
+  openItems: Array<{ key: string, title: string }>
+  /** False when no alert about a missing sprint could be sent; the reason says why. */
+  noSprintAlertSent?: boolean
   /** Rows the member now has for the day, after merging (A11). */
   rows: number
   /** Rows this particular message contributed. */
@@ -40,7 +72,7 @@ export interface IntakeResult {
  * keeps the column trustworthy — it either holds what Jira says or nothing.
  */
 export function toTrackerRows (
-  output: ExtractionOutput, memberName: string, rawText: string, stories: Map<string, Story>
+  output: Pick<ExtractionOutput, 'completed' | 'inProgress' | 'blockers'>, memberName: string, stories: Map<string, Story>
 ): TrackerRow[] {
   const titleOf = (key: string | null): string | null =>
     key === null ? null : stories.get(key)?.title ?? null
@@ -93,18 +125,8 @@ export function toTrackerRows (
     })
   }
 
-  // "Nothing to report" is participation, not absence. One row keeps the
-  // member visible in the tracker and in the follow-up check (SPEC-002).
-  if (rows.length === 0) {
-    rows.push({
-      win: null,
-      description: null,
-      assignedTo: memberName,
-      comment: rawText,
-      status: 'In Progress',
-      anyBlocker: null
-    })
-  }
+  // No General row (SPEC-004 item 11, 28 Sep 2026): an item that names no
+  // verified work item is reported back to the member, never filed.
   return rows
 }
 
@@ -140,6 +162,52 @@ export function mergeRows (existing: TrackerRow[], incoming: TrackerRow[]): Trac
     if (!duplicate) merged.push(row)
   }
   return merged
+}
+
+/**
+ * Splits the extraction into what may be written and what may not (items 11,
+ * 13, 14, 19). Only a work item that exists in Jira **and** is assigned to the
+ * sender is kept. Decided by code from Jira's own data, never by the model.
+ */
+export function verifyItems (
+  output: ExtractionOutput, stories: Map<string, Story>, jiraAccountId: string
+): { kept: Pick<ExtractionOutput, 'completed' | 'inProgress' | 'blockers'>, refused: Refusal[], unlinkedBlockers: string[] } {
+  const refused: Refusal[] = []
+  const refuse = (refusal: Refusal): void => {
+    const seen = refused.some((r) => refusal.reason === 'notYours'
+      ? r.reason === 'notYours' && r.key === refusal.key
+      : r.reason === 'noWorkItem' && r.words === refusal.words)
+    if (!seen) refused.push(refusal)
+  }
+  const check = (ref: string | null): 'ok' | 'missing' | 'notYours' => {
+    if (ref === null) return 'missing'
+    const story = stories.get(ref)
+    if (story === undefined) return 'missing'
+    // Unassigned counts as not theirs (user decision, 28 Sep 2026).
+    return story.assigneeAccountId === jiraAccountId ? 'ok' : 'notYours'
+  }
+  const notYours = (ref: string): Refusal => ({ reason: 'notYours', key: ref, owner: stories.get(ref)?.assignee ?? null })
+
+  const keepItems = (items: ExtractionOutput['completed']): ExtractionOutput['completed'] => items.filter((item) => {
+    const verdict = check(item.storyRef)
+    if (verdict === 'missing') refuse({ reason: 'noWorkItem', words: item.comment })
+    if (verdict === 'notYours') refuse(notYours(item.storyRef as string))
+    return verdict === 'ok'
+  })
+
+  const unlinkedBlockers: string[] = []
+  const blockers = output.blockers.filter((blocker) => {
+    const verdict = check(blocker.storyRef)
+    if (verdict === 'missing') unlinkedBlockers.push(blocker.description)
+    if (verdict === 'notYours') refuse(notYours(blocker.storyRef as string))
+    return verdict === 'ok'
+  })
+
+  return {
+    kept: { completed: keepItems(output.completed), inProgress: keepItems(output.inProgress), blockers },
+    refused,
+    unlinkedBlockers
+  }
 }
 
 /** Reads the real titles for every work item the extraction referred to. */
@@ -193,13 +261,43 @@ export async function processUpdate (
     tracker: Tracker
     /** Injected in tests; the store is the real source. */
     summaryHasRun?: (teamId: string, localDate: string) => Promise<boolean>
+    /** Injected in tests; the real one messages the Scrum Master (item 12). */
+    alertNoSprint?: (team: TeamConfig, localDate: string) => Promise<{ sent: boolean, reason?: string }>
   }
 ): Promise<IntakeResult> {
   const receivedAt = new Date()
   const member = team.members.find((entry) => entry.memberId === memberId)
+  const jiraAccountId = member?.jiraAccountId ?? ''
 
   const closed = await (deps.summaryHasRun ?? summaryHasRun)(team.teamId, localDate)
   if (closed) throw new StandupClosedError(localDate)
+
+  const base = (outcome: IntakeOutcome, extractionMs = 0, extra: Partial<IntakeResult> = {}): IntakeResult => ({
+    outcome,
+    understood: outcome !== 'notUnderstood',
+    recorded: [],
+    refused: [],
+    unlinkedBlockers: [],
+    openItems: [],
+    rows: 0,
+    added: 0,
+    blockers: 0,
+    alertSent: false,
+    extractionMs,
+    totalMs: Date.now() - receivedAt.getTime(),
+    truncated: false,
+    confidence: 'high',
+    ...extra
+  })
+
+  // Item 20: without a Jira link, ownership cannot be checked, so nothing can
+  // be recorded. Checked before the model is called — no call is spent.
+  if (jiraAccountId === '') {
+    console.log(JSON.stringify({ event: 'update.notLinked', teamId: team.teamId, memberId }))
+    return base('notLinked')
+  }
+
+  const sprint = await deps.pm.getActiveSprint()
 
   // Read back from the tracker rather than from Firestore, because the tracker
   // is the only place update content lives (Privacy NFR). Today's rows are
@@ -211,107 +309,113 @@ export async function processUpdate (
     .filter((b) => b.memberId === memberId || b.member === memberName)
 
   const extraction = await extractUpdate(
-    {
-      text,
-      memberId,
-      memberName,
-      teamId: team.teamId,
-      jiraAccountId: member?.jiraAccountId ?? '',
-      activeBlockers: openBlockers
-    },
+    { text, memberId, memberName, teamId: team.teamId, jiraAccountId, activeBlockers: openBlockers },
     deps.llm,
     deps.pm,
     config.agent1
   )
-
-  const stories = await resolveStories(extraction.output, deps.pm, extraction.openItems)
-
-  // What this message adds, merged into what the member already said today.
-  const existing = today.find((update) => update.memberName === memberName)?.rows ?? []
-
   const output = extraction.output
-  const saidSomething =
-    output.completed.length + output.inProgress.length + output.blockers.length > 0
+  const openItems = extraction.openItems.map((item) => ({ key: item.key, title: item.title }))
+  const common = {
+    openItems,
+    truncated: extraction.truncated,
+    confidence: output.confidence
+  }
 
-  // SPEC-004 5b: nothing found, and either the model was unsure or the member
-  // has already reported today. Nothing is written and they are asked which
-  // item they mean — replying "Recorded" here silently lost their update.
-  if (!saidSomething && (output.confidence === 'low' || existing.length > 0)) {
+  // Items 15, 16 and 5b: a message with nothing in it is never filed. The
+  // model's label decides only which reply the member gets.
+  const saidSomething = output.completed.length + output.inProgress.length + output.blockers.length > 0
+  if (!saidSomething) {
+    const outcome: IntakeOutcome = output.kind === 'not_update'
+      ? 'notUpdate'
+      : output.kind === 'nothing' ? 'nothing' : 'notUnderstood'
     console.log(JSON.stringify({
-      event: 'update.notUnderstood', teamId: team.teamId, memberId, confidence: output.confidence,
-      extractionMs: extraction.durationMs
+      event: 'update.notRecorded', outcome, teamId: team.teamId, memberId,
+      confidence: output.confidence, extractionMs: extraction.durationMs
     }))
-    return {
-      understood: false,
-      rows: existing.length,
-      added: 0,
-      blockers: 0,
-      alertSent: false,
-      extractionMs: extraction.durationMs,
-      totalMs: Date.now() - receivedAt.getTime(),
-      truncated: extraction.truncated,
-      confidence: output.confidence
+    const existing = today.find((update) => update.memberName === memberName)?.rows ?? []
+    return base(outcome, extraction.durationMs, { ...common, rows: existing.length })
+  }
+
+  const stories = await resolveStories(output, deps.pm, extraction.openItems)
+  const verified = verifyItems(output, stories, jiraAccountId)
+
+  let result: IntakeResult
+  if (sprint === undefined) {
+    // Item 12: no sprint, no matching. Nothing is written; the Scrum Master is
+    // told once a day. Blockers are still alerted below (FR-06).
+    let noSprintAlertSent = false
+    try {
+      const alert = await (deps.alertNoSprint ?? alertNoSprint)(team, localDate)
+      noSprintAlertSent = alert.sent || alert.reason === 'already alerted today'
+      if (!alert.sent) console.log(JSON.stringify({ event: 'noSprintAlert.notSent', teamId: team.teamId, reason: alert.reason }))
+    } catch (error) {
+      console.error(JSON.stringify({ event: 'noSprintAlert.failed', teamId: team.teamId, error: String(error) }))
     }
+    result = base('noSprint', extraction.durationMs, {
+      ...common,
+      noSprintAlertSent,
+      unlinkedBlockers: output.blockers.map((b) => b.description)
+    })
+  } else {
+    // Items 11, 13, 14, 18: only verified items are written; the rest go back
+    // to the member with their reason in the same reply.
+    const incoming = toTrackerRows(verified.kept, memberName, stories)
+    const existing = today.find((update) => update.memberName === memberName)?.rows ?? []
+    const rows = mergeRows(existing, incoming)
+
+    if (incoming.length > 0) {
+      const update: StandupUpdate = {
+        teamId: team.teamId, memberId, memberName, localDate, rows, rawText: text, capturedAt: receivedAt
+      }
+      await deps.tracker.write(update)
+    }
+
+    const recorded: RecordedItem[] = collapseRows(incoming).map((row) => ({
+      win: row.win as string, title: row.description, status: row.status, blocker: row.anyBlocker
+    }))
+    result = base(incoming.length > 0 ? 'recorded' : 'nothingRecorded', extraction.durationMs, {
+      ...common,
+      recorded,
+      refused: verified.refused,
+      unlinkedBlockers: verified.unlinkedBlockers,
+      rows: rows.length,
+      added: incoming.length
+    })
   }
 
-  // "Nothing to report" from someone who has already reported adds nothing —
-  // it must not overwrite the morning's rows with an empty placeholder.
-  const incoming = toTrackerRows(output, memberName, text, stories)
-
-  const rows = mergeRows(existing, incoming)
-
-  const update: StandupUpdate = {
-    teamId: team.teamId,
-    memberId,
-    memberName,
-    localDate,
-    rows,
-    rawText: text,
-    capturedAt: receivedAt
-  }
-  await deps.tracker.write(update)
-
-  // FR-06 is triggered from the validated extraction, after the update is
-  // safely filed: a failed alert must never cost the member their update.
-  let alertSent = false
-  let alertReason: string | undefined
+  // FR-06 is triggered from the validated extraction, after anything that was
+  // going to be filed is filed: a failed alert must never cost the member their
+  // update. Every blocker is alerted, written or not (item 19).
+  result.blockers = output.blockers.length
   try {
     const alert = await sendBlockerAlert(
-      team, memberId, memberName, localDate, extraction.output.blockers, stories, receivedAt
+      team, memberId, memberName, localDate, output.blockers, stories, receivedAt
     )
-    alertSent = alert.sent
-    alertReason = alert.reason
+    result.alertSent = alert.sent
+    if (alert.reason !== undefined) result.alertReason = alert.reason
   } catch (error) {
-    alertReason = error instanceof Error ? error.message : String(error)
-    console.error(JSON.stringify({ event: 'blockerAlert.failed', teamId: team.teamId, memberId, error: alertReason }))
+    result.alertReason = error instanceof Error ? error.message : String(error)
+    console.error(JSON.stringify({ event: 'blockerAlert.failed', teamId: team.teamId, memberId, error: result.alertReason }))
   }
 
-  const totalMs = Date.now() - receivedAt.getTime()
+  result.totalMs = Date.now() - receivedAt.getTime()
   // The Latency NFR is measured from this number, so it is the real elapsed
   // time from message received to tracker written and alert sent.
   console.log(JSON.stringify({
     event: 'update.processed',
+    outcome: result.outcome,
     teamId: team.teamId,
     memberId,
-    rows: rows.length,
-    added: incoming.length,
-    blockers: extraction.output.blockers.length,
-    confidence: extraction.output.confidence,
+    rows: result.rows,
+    added: result.added,
+    refused: result.refused.length,
+    unlinkedBlockers: result.unlinkedBlockers.length,
+    blockers: result.blockers,
+    confidence: output.confidence,
     extractionMs: extraction.durationMs,
-    totalMs,
-    withinLatencyBudget: totalMs <= 30_000
+    totalMs: result.totalMs,
+    withinLatencyBudget: result.totalMs <= 30_000
   }))
-
-  return {
-    understood: true,
-    rows: rows.length,
-    added: incoming.length,
-    blockers: extraction.output.blockers.length,
-    alertSent,
-    ...(alertReason === undefined ? {} : { alertReason }),
-    extractionMs: extraction.durationMs,
-    totalMs,
-    truncated: extraction.truncated,
-    confidence: extraction.output.confidence
-  }
+  return result
 }

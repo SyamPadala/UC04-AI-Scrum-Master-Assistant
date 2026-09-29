@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved (24 Sep 2026) |
+| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026 |
 | **Delivers** | NFR Configuration; supports FR-08 (stakeholder list), FR-10 (per-team settings) |
 | **Assumptions** | A9 (configuration via a web admin panel, amended 24 Sep 2026) |
 | **Depends on** | SPEC-001 |
@@ -89,6 +89,85 @@ hand to test it. No script, no config file, no redeploy.
     whether live calls are on. Counts only (Privacy NFR). Added 24 Sep 2026 at
     the user's request.
 
+**Teams and Scrum Master** — *added 26 Sep 2026. Both were out of scope here;
+the PRD never excluded them, and FR-10 plus the Configuration NFR need them.*
+
+10b. **New team.** Name, timezone, and Scrum Master (by email; defaults to the
+    signed-in user). The team starts **Paused**, with the Scrum Master as its
+    only member, default times (stand-up 09:30, follow-up after 120 minutes,
+    summary 18:00), no stakeholders, and the same tracker type as the server
+    default. Nothing is sent to anyone until the Scrum Master switches it to
+    Running. Allowed for users in `ADMIN_USER_IDS` and for anyone who is
+    already the Scrum Master of a team.
+10c. **Change Scrum Master.** On the Dev team tab, any member can be made the
+    Scrum Master. Blocker alerts and non-responder flags go to them from the
+    next event. A person who is Scrum Master of this team and not an admin
+    loses access to it when they hand it over; the page says so before saving.
+
+**Readiness** — *added and approved 28 Sep 2026. User request after the
+28 Sep demo failed on problems a check would have caught in seconds. Not an FR
+of its own; it supports the Reliability NFR and the demo constraint, and
+changes no behaviour elsewhere.*
+
+10d. **Check readiness** — one button, read-only, **no LLM calls**. One row per
+    check, green or red, with the fix in plain words:
+
+    | Check | Red when |
+    |---|---|
+    | Active sprint | No active sprint in the team's Jira board |
+    | Stories | Active sprint has no stories |
+    | Assignees | A story in the sprint is unassigned |
+    | Story points | A story has no points in the configured field |
+    | Jira links | A roster member isn't linked to a Jira account |
+    | Teams chats | A member has no chat, or Teams answers "Conversation not found" for it (checked through the bot's own connection; no new permission) |
+    | Tracker | The configured list or Jira issue can't be reached |
+    | Schedule | Today's summary has already run (stand-up closed), or the stand-up time is later than the summary time |
+
+10e. **Dead chats are shown, not just counted.** When a reminder, follow-up or
+    alert send gets "Conversation not found", the member's stored chat is
+    cleared, so the Dev team tab shows **App not installed** and the run
+    outcome names them. They become reachable again by sending any message
+    to the assistant. (Touches SPEC-003's send path.)
+
+**Roles** — *added and approved 29 Sep 2026. User decisions: the Scrum
+Master is a role, not a roster member; a Scrum Master may run several teams;
+only an admin creates teams and sets Scrum Masters. Supersedes 10b's "anyone
+who is already a Scrum Master may create a team" and 10c's hand-over from the
+Dev team tab. Not an FR of its own: it serves FR-10 and the Configuration NFR.*
+
+| Action | Admin (`ADMIN_USER_IDS`) | Scrum Master |
+|---|---|---|
+| Create a team, set or change its Scrum Master | yes | no |
+| Members, schedule, stakeholders, tracker, Run now, Readiness | every team | own teams only |
+| Teams shown in the selector | all | the ones they run |
+
+10f. **The Scrum Master is not on the roster.** They get no reminders or
+    follow-ups, give no stand-up updates and are not counted in participation.
+    They still receive blocker alerts, non-responder flags, the no-sprint alert
+    and summary-failure notices for every team they run. *("No dev work for
+    the Scrum Master", user, 29 Sep 2026.)*
+10g. **One person may be Scrum Master of several teams.** Their Teams chat is
+    stored once per person (Firestore `scrumMasters/{objectId}`: display name,
+    email, conversation reference — no update content), captured whenever they
+    message the assistant, and used for all their teams.
+10h. **Scrum Masters and members don't overlap.** A person on any roster
+    cannot be made a Scrum Master, and a Scrum Master cannot be added to a
+    roster, each refused with the reason. One team per member stays (replies
+    are routed by roster); a member on two teams is a known limitation (POC-Plan
+    §10) until each team has its own Jira board.
+10i. **New team (admin only).** Name, timezone, Scrum Master by email (defaults
+    to the admin). Starts Paused with an **empty** roster.
+10j. **Change Scrum Master (admin only)**, by email, shown next to the team name.
+10k. **In chat,** a Scrum Master's message that is not a command gets *"You're
+    the Scrum Master of <team>. Scrum Masters don't send stand-up updates."*
+    `setup`, `help` work as before; `status`, `pause`, `resume`, `run` work
+    when they run one team, and point to the admin page when they run several.
+    Readiness (10d) adds a **Scrum Master chat** check.
+
+**Migration.** Scrum Team Alpha has its Scrum Master (Syam) on the roster. On
+deploy his stored chat is copied to `scrumMasters/`, and he is removed from
+Alpha's roster; he has no tracker rows or sprint stories today.
+
 **Saving**
 
 11. Every change is validated on the server and saved immediately. The next
@@ -122,6 +201,8 @@ POST   /admin/api/teams/:teamId/stakeholders // { email }
 DELETE /admin/api/teams/:teamId/stakeholders/:email
 GET    /admin/api/teams/:teamId/channels     // Behaviour 6: channels the bot can post to
 PUT    /admin/api/teams/:teamId/channel      // Behaviour 6 { channelId } — '' disconnects
+POST   /admin/api/teams                      // Behaviour 10b { name, timezone, scrumMasterEmail? }
+PUT    /admin/api/teams/:teamId/scrum-master // Behaviour 10c { memberId }
 POST   /admin/api/teams/:teamId/run/:jobType // Behaviour 8
 GET    /admin/api/llm                        // Behaviour 10a
 ```
@@ -171,15 +252,16 @@ gives.
 - **Cross-site request.** A required custom request header on every write; a
   form posted from another site cannot send it and is rejected.
 - **Scrum Master of team A calls team B's API directly.** 403, logged.
+- **New team whose Scrum Master is already on another team's roster.** Refused
+  — rosters must not overlap.
+- **New team with a name already used.** Refused.
+- **Scrum Master set to someone not on the roster.** Refused — add them first.
 - **Two people editing at once.** Last write wins; both changes are in the log.
 - **Privacy.** The page shows no update content — only configuration, roster,
   run outcomes and counts.
 
 ## Out of scope
 
-- Changing who the Scrum Master is, and creating a new team from the page.
-  Both are done by `scripts/seed-team.mjs` for now; creating the second team is
-  part of the FR-10 work.
 - Participation reports and non-responder history on the page.
 - Pinning the page as a Teams tab (possible later with no code change to the
   page itself).
@@ -202,4 +284,13 @@ gives.
 | 11 | `setup` in chat returns the page link | Type `setup` | Screenshot |
 | 12 | Unit tests | Validation, authorization, roster overlap | `npm test` |
 | 13 | Stakeholder channel chosen on the page receives the summary | Install app in the stakeholder Teams team, Connect, Run now → summary | Post in the channel; outcome `success` |
+| 15 | New team created from the page | Create "Scrum Team Beta" | Team selector lists it; starts Paused |
+| 16 | Scrum Master changed from the page | Make another member Scrum Master | Next blocker alert reaches them |
 | 14 | Installing the app in a Teams team leaves personal chats alone | Check the Scrum Master's stored reference after the install | Still `personal` |
+| 17 | Readiness shows red for each broken condition | Unit tests per check with fakes; live with the sprint not started | Test output; screenshot |
+| 18 | Readiness makes no LLM call and writes nothing | Code review + LLM usage count unchanged after a check | Review note; usage tab |
+| 19 | "Conversation not found" marks the member App not installed | Unit test with a fake send error | Test output |
+| 20 | Only an admin can create a team or change its Scrum Master | Unit test on the service; sign in as a non-admin Scrum Master | 403 + no New team button |
+| 21 | One Scrum Master runs two teams and sees both | Create Beta with the same Scrum Master | Selector lists both |
+| 22 | Scrum Master gets no reminder, still gets the blocker alert | Run now → reminder; send a blocker as a member | ReminderResult counts; alert card |
+| 23 | Overlap refused both ways | Unit tests | Test output |

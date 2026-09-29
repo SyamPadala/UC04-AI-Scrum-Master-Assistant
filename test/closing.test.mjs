@@ -37,11 +37,11 @@ function stubs () {
     }
   }
   const pm = {
-    getActiveSprint: async () => undefined,
+    getActiveSprint: async () => ({ id: 1, name: 'Sprint 1', goal: '', startDate: null, endDate: null }),
     getSprintData: async () => undefined,
     lookupStory: async (key) => {
       calls.lookups += 1
-      return { key, title: 'A story', status: 'In Progress', statusCategory: 'In Progress', points: 3, assignee: null, assigneeAccountId: null, url: '', updated: new Date() }
+      return { key, title: 'A story', status: 'In Progress', statusCategory: 'In Progress', points: 3, assignee: 'Madhavi Andoju', assigneeAccountId: 'j1', url: '', updated: new Date() }
     },
     getMemberOpenItems: async () => []
   }
@@ -87,7 +87,7 @@ test('before the summary has run, the update is recorded as normal', async () =>
   const { tracker, file } = await freshTracker('open')
 
   const result = await processUpdate(TEAM, 'm1', 'Madhavi Andoju', 'Finished SCRUM-7', '2026-09-22', {
-    llm, pm, tracker, summaryHasRun: async () => false
+    llm, pm, tracker, summaryHasRun: async () => false, alertNoSprint: async () => ({ sent: true })
   })
 
   assert.equal(calls.llm, 1)

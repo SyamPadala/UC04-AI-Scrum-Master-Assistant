@@ -1,7 +1,7 @@
 import { CardFactory, MessageFactory, type TurnContext } from '@microsoft/agents-hosting'
 import type { TeamConfig } from '../types.js'
 import { adminStatusCard } from '../cards/adminCards.js'
-import { runsForDate, teamForMember } from '../store/firestore.js'
+import { runsForDate, teamForMember, teamsRunBy } from '../store/firestore.js'
 import { applyChange } from '../admin/service.js'
 import { localDate } from '../config/time.js'
 import { config } from '../config/env.js'
@@ -47,16 +47,23 @@ function senderIdOf (context: TurnContext): string {
  * Settings and status are always for the sender's own team. Reading a fixed
  * team id from the server settings let any team's Scrum Master open, and
  * change, the first team's configuration.
+ *
+ * A Scrum Master is on no roster (SPEC-008 10f): the team is the one they run.
+ * Running several, a chat command cannot know which one is meant, so they are
+ * sent to the admin page, where the team is chosen explicitly (10k).
  */
 async function teamOfSender (context: TurnContext): Promise<TeamConfig | undefined> {
   try {
-    const team = await teamForMember(senderIdOf(context))
-    if (team === undefined) {
-      await context.sendActivity(MessageFactory.text(
-        'You are not on a team roster I know about. Ask your Scrum Master to add you.'
-      ))
-    }
-    return team
+    const senderId = senderIdOf(context)
+    const team = await teamForMember(senderId)
+    if (team !== undefined) return team
+
+    const run = await teamsRunBy(senderId)
+    if (run.length === 1) return run[0]
+    await context.sendActivity(MessageFactory.text(run.length > 1
+      ? `You run ${run.map((t) => t.name).join(' and ')}. Use the admin page for that, where you choose the team: ${config.admin.publicBaseUrl}/admin`
+      : 'You are not on a team roster I know about. Ask your Scrum Master to add you.'))
+    return undefined
   } catch {
     await context.sendActivity(MessageFactory.text(
       'I could not work out which team you are on. Ask your Scrum Master to check the roster.'
@@ -66,8 +73,26 @@ async function teamOfSender (context: TurnContext): Promise<TeamConfig | undefin
 }
 
 export async function handleAdminCommand (command: AdminCommand, context: TurnContext): Promise<void> {
-  const team = await teamOfSender(context)
-  if (team === undefined) return
+  // help and setup name no team, so they need none — which lets a Scrum Master
+  // of several teams use them (SPEC-008 10k). setup is still only for people
+  // who run a team.
+  if (command === 'setup') {
+    const senderId = senderIdOf(context)
+    const runsATeam = config.admin.userIds.includes(senderId) || (await teamsRunBy(senderId).catch(() => [])).length > 0
+    if (!runsATeam) {
+      await context.sendActivity(MessageFactory.text('Only the Scrum Master can change these settings.'))
+      return
+    }
+    await context.sendActivity(MessageFactory.text(
+      config.admin.publicBaseUrl === ''
+        ? 'Settings are managed on the admin page, which is not configured on this server yet.'
+        : `Team members, stakeholders and the schedule are managed on the admin page: ${config.admin.publicBaseUrl}/admin`
+    ))
+    return
+  }
+
+  const team = command === 'help' ? undefined : await teamOfSender(context)
+  if (command !== 'help' && team === undefined) return
 
   if (command === 'help') {
     await context.sendActivity(MessageFactory.text(
@@ -79,6 +104,8 @@ export async function handleAdminCommand (command: AdminCommand, context: TurnCo
     ))
     return
   }
+
+  if (team === undefined) return
 
   if (command === 'status') {
     const today = localDate(new Date(), team.timezone)
@@ -123,16 +150,6 @@ export async function handleAdminCommand (command: AdminCommand, context: TurnCo
         `The ${jobType} could not be run: ${error instanceof Error ? error.message : String(error)}`
       ))
     }
-    return
-  }
-
-  // Configuration lives on the admin page now (SPEC-008 behaviour 13).
-  if (command === 'setup') {
-    await context.sendActivity(MessageFactory.text(
-      config.admin.publicBaseUrl === ''
-        ? 'Settings are managed on the admin page, which is not configured on this server yet.'
-        : `Team members, stakeholders and the schedule are managed on the admin page: ${config.admin.publicBaseUrl}/admin`
-    ))
     return
   }
 

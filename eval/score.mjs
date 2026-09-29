@@ -15,7 +15,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { config } from '../dist/config/env.js'
 import { createLlm } from '../dist/llm/index.js'
-import { JiraClient } from '../dist/pm/jira.js'
 import { extractUpdate } from '../dist/agents/updateProcessor.js'
 
 const root = path.resolve(import.meta.dirname, '..')
@@ -24,22 +23,21 @@ const smoke = process.argv.includes('--smoke')
 const selected = smoke ? cases.slice(0, 8) : cases
 
 const llm = createLlm()
-const jira = new JiraClient({
-  baseUrl: config.jira.baseUrl,
-  email: config.jira.email,
-  apiToken: config.jira.apiToken,
-  projectKey: config.jira.projectKey,
-  storyPointsField: config.jira.storyPointsField,
-  boardId: config.jira.boardId
-})
 
-// The member's open stories reach the prompt exactly as in production. The
-// labelled cases name stories across the whole sprint, so the eval member is
-// given every open story in the sprint rather than one person's — which
-// depends on who happens to be assigned today and made the number drift.
-const sprint = await jira.getSprintData()
-const openStories = (sprint?.items ?? []).filter((item) => item.statusCategory !== 'Done')
-const pm = { ...jira, lookupStory: (key) => jira.lookupStory(key), getMemberOpenItems: async () => openStories }
+// The stories the cases were labelled against, fixed in eval/stories.json.
+// Reading them from live Jira made the number depend on Jira's state: on 28 Sep
+// the sprint was cleared and a run scored 29.8% because every key was gone.
+// They reach the prompt exactly as open items do in production; lookup_story
+// answers from the same list, so an unknown key (SCRUM-9999) is still "not found".
+const openStories = JSON.parse(fs.readFileSync(path.join(root, 'eval/stories.json'), 'utf8')).map((story) => ({
+  ...story, statusCategory: 'In Progress', points: null, assignee: 'Eval Member', assigneeAccountId: 'eval', url: '', updated: new Date(0)
+}))
+const pm = {
+  getActiveSprint: async () => ({ id: 0, name: 'Eval sprint', goal: '', startDate: null, endDate: null }),
+  getSprintData: async () => undefined,
+  lookupStory: async (key) => openStories.find((story) => story.key === key),
+  getMemberOpenItems: async () => openStories
+}
 console.log(`open stories given to the model: ${openStories.map((s) => s.key).join(', ') || 'none'}
 `)
 
@@ -80,6 +78,9 @@ for (const testCase of selected) {
     const inProgress = sameKeys(keysOf(output.inProgress), testCase.expect.inProgress)
     const blockers = sameKeys(keysOf(output.blockers), testCase.expect.blockers)
     const confidence = output.confidence === testCase.expect.confidence
+    // SPEC-004 items 15–16: the label decides the member's reply for an empty
+    // message ("not an update" vs "nothing to report"), so it is scored.
+    const kind = output.kind === (testCase.expect.kind ?? 'update')
 
     row = {
       id: testCase.id,
@@ -87,19 +88,20 @@ for (const testCase of selected) {
       inProgress,
       blockers,
       confidence,
-      // The case passes on structure. Confidence is reported separately: it is
-      // a useful signal but not what FR-03 asks for.
-      pass: completed && inProgress && blockers,
+      kind,
+      // The case passes on structure and kind. Confidence is reported
+      // separately: it is a useful signal but not what FR-03 asks for.
+      pass: completed && inProgress && blockers && kind,
       ms: extraction.durationMs,
       cached: extraction.roundTrips === 0,
       note: testCase.note,
       // Keys only, so a miss can be diagnosed from the output alone.
-      got: { completed: keysOf(output.completed), inProgress: keysOf(output.inProgress), blockers: keysOf(output.blockers.map((b) => ({ storyRef: b.storyRef }))) }
+      got: { kind: output.kind, completed: keysOf(output.completed), inProgress: keysOf(output.inProgress), blockers: keysOf(output.blockers.map((b) => ({ storyRef: b.storyRef }))) }
     }
   } catch (error) {
     row = {
       id: testCase.id, completed: false, inProgress: false, blockers: false,
-      confidence: false, pass: false, ms: Date.now() - started, cached: false,
+      confidence: false, kind: false, pass: false, ms: Date.now() - started, cached: false,
       note: testCase.note, error: error.message
     }
   }
@@ -112,7 +114,8 @@ for (const testCase of selected) {
   const fields = [
     row.completed ? '' : 'completed',
     row.inProgress ? '' : 'inProgress',
-    row.blockers ? '' : 'blockers'
+    row.blockers ? '' : 'blockers',
+    row.kind ? '' : 'kind'
   ].filter((field) => field !== '')
   console.log(
     `${row.id}  ${mark}  ${String(row.ms).padStart(6)}ms  ${row.cached ? 'cached' : 'live  '}  ` +
@@ -133,6 +136,7 @@ console.log(`accuracy       : ${accuracy.toFixed(1)}%  (target >= 90%, FR-03)`)
 console.log(`  completed    : ${fieldScore('completed').toFixed(1)}%`)
 console.log(`  inProgress   : ${fieldScore('inProgress').toFixed(1)}%`)
 console.log(`  blockers     : ${fieldScore('blockers').toFixed(1)}%`)
+console.log(`  kind         : ${fieldScore('kind').toFixed(1)}%`)
 console.log(`  confidence   : ${fieldScore('confidence').toFixed(1)}%  (reported, not scored)`)
 console.log(`latency mean   : ${Math.round(totalMs / results.length)}ms`)
 console.log(`latency worst  : ${slowest}ms  (budget 30000ms, Latency NFR)`)
@@ -150,6 +154,7 @@ const report = {
     completed: fieldScore('completed'),
     inProgress: fieldScore('inProgress'),
     blockers: fieldScore('blockers'),
+    kind: fieldScore('kind'),
     confidence: fieldScore('confidence')
   },
   latencyMeanMs: Math.round(totalMs / results.length),
