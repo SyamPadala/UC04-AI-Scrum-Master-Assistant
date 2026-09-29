@@ -35,4 +35,6 @@ export interface PmClient {
   getSprintData: () => Promise<SprintData | undefined>
   lookupStory: (key: string) => Promise<Story | undefined>
   getMemberOpenItems: (jiraAccountId: string) => Promise<Story[]>
+  /** Every unfinished story in the active sprint, anyone's (SPEC-004 item 22). Empty with no active sprint. */
+  getSprintOpenItems: () => Promise<Story[]>
 }

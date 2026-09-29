@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026 |
+| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026 |
 | **Delivers** | FR-02, FR-03, NFR Latency |
 | **Assumptions** | A8 (story resolution), A11 (messages combined per member per day) |
 | **Depends on** | SPEC-001, SPEC-002 |
@@ -129,6 +129,56 @@ Code decides and acts in every case; Agent 1 only reads the message.
     10d) shows the missing link before the day starts. Checked before the
     model is called, so no LLM call is spent. *User decision, 28 Sep 2026.*
 
+### Amendment 29 Sep 2026 — reliable work item resolution (approved 29 Sep 2026)
+
+*Why:* in live testing, "scrum 25" and "scrum-24" were missed while "SCRUM-24"
+was found; another member's story described in words was never matched,
+because Agent 1 saw only the sender's own stories; "code completed, testing in
+progress" was filed as Completed; and Submit on the 14a card was dropped
+silently. The user asked for a foolproof design. Four layers, each catching
+what the previous one misses. Code owns keys, candidates and every decision;
+Agent 1 owns reading the words.
+
+21. **Keys are found by code.** Before Agent 1 is called, any form of a key
+    for the configured project in the member's text ("scrum 25", "Scrum-25",
+    "SCRUM25", "scrum_25") is rewritten to its canonical form (SCRUM-25). Any
+    key Agent 1 returns is canonicalised the same way. Only the key's
+    formatting changes; the member's words are otherwise untouched.
+22. **Agent 1 sees the whole active sprint.** Candidates are every open (not
+    Done) story in the active sprint, each labelled with its assignee (or
+    "unassigned"); the sender's own stories are listed first. Backlog and
+    other sprints are not sent. Above 40 candidates, code keeps the sender's
+    own stories, every story keyed in the message, and the 30 others whose
+    titles share the most words with the message. *(Replaces items 4–5's
+    "the member's open items".)*
+23. **Agent 1 may only answer with a known key.** A key is accepted only if it
+    is a candidate or appears in the member's text (then checked in Jira as
+    before, item 15 of the rules). Any other key is treated as "no work item"
+    (item 13). The model cannot invent a story.
+24. **Unsure is never guessed.** When the words could mean more than one
+    candidate, Agent 1 returns up to three alternatives instead of a key.
+    Code sends a card: *"Which story is this? '<their words>'"* with one
+    button per alternative (key, title, owner) and **None of these**.
+    - Choosing the sender's own story records it.
+    - Choosing another person's story records it under the sender with
+      "(assigned to <owner>)" — the choice is the confirmation (as 14a).
+    - Choosing an unassigned story, or None, records nothing and says why.
+    - Same card rules as 14a: data in the buttons, Jira re-checked, twice
+      records once, expired or closed records nothing.
+25. **Completed means the story is done** (user decision, 29 Sep 2026). A
+    story is Completed only when the member says the story itself is
+    finished. A finished step with steps still to come ("code completed,
+    testing in progress", "coding done, deploying tomorrow") is In Progress.
+    The comment keeps their words.
+26. **Every card press is answered.** Card data is read tolerantly (Teams
+    leaves empty fields out); a press that still cannot be read gets *"I
+    couldn't read that button press, nothing was recorded, please send the
+    update again"* and is logged by field names only.
+
+**Not in this amendment** (later, by the user's decision): a Jira board per
+team; matching work outside the active sprint by words; a member on two
+teams.
+
 ## Interface
 
 ```ts
@@ -247,3 +297,10 @@ Counting participation (SPEC-007). Voice input (A10, not built).
 | 11 | Garbage and "nothing to report" not written, member told, stays non-responder | Unit test + eval cases labelled with `kind` | Test output; eval report |
 | 12 | Confirmation lists WIN, title, status per recorded item | Unit test on the reply text + live | Test output; screenshot |
 | 13 | Accuracy stays ≥ 90% with the new `kind` field | `eval/` run — **live LLM, ask the user first** | Accuracy report |
+| 14 | Every key form resolves to the same story | Unit tests on the normaliser; eval cases "scrum 25", "scrum-24", "SCRUM25" | Test output; eval report |
+| 15 | Another member's story described in words is matched to its key | New eval cases with the whole sprint as candidates | Eval report |
+| 16 | "Code done, testing now" is In Progress; "story done" is Completed | New eval cases | Eval report |
+| 17 | Ambiguous wording returns alternatives, never a guessed key; the picker records only what the member chose | Eval cases; unit tests on the picker handler | Eval report; test output |
+| 18 | A key the model returns that is neither a candidate nor in the text is dropped | Unit test with a fake model | Test output |
+| 19 | Every card press gets a reply, including one that cannot be read | Unit test; live press on each card, checked in the logs | Test output; log lines |
+| 20 | No eval case ends with a wrong work item written | Eval report reviewed case by case | Eval report |

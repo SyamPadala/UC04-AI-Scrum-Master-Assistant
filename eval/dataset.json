@@ -118,7 +118,7 @@
   },
   {
     "id": "e09",
-    "note": "two separate blockers",
+    "note": "two separate blockers (29 Sep 2026, user decision: stale test data while working on SCRUM-21 marks SCRUM-21 Blocked)",
     "text": "Working on SCRUM-21. Two problems: the test data hasn't been refreshed, and I still can't get into the Jira admin screen.",
     "expect": {
       "completed": [],
@@ -127,7 +127,7 @@
       ],
       "blockers": [
         null,
-        null
+        "SCRUM-21"
       ],
       "confidence": "high",
       "kind": "update"
@@ -738,6 +738,152 @@
       "blockers": [],
       "confidence": "high",
       "kind": "nothing"
+    }
+  },
+  {
+    "id": "e48",
+    "text": "finished scrum 7 yesterday",
+    "note": "item 21: lower case key with a space",
+    "expect": {
+      "completed": [
+        "SCRUM-7"
+      ],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e49",
+    "text": "Scrum-6 in progress, testing it now",
+    "note": "item 21: mixed-case key",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-6"
+      ],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e50",
+    "text": "completed SCRUM21 today",
+    "note": "item 21: key without hyphen",
+    "expect": {
+      "completed": [
+        "SCRUM-21"
+      ],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e51",
+    "text": "Completed the implementation of Synchronous Data Flow and Error Resilience Choreography",
+    "note": "item 22: another member's story described in words",
+    "expect": {
+      "completed": [
+        "SCRUM-30"
+      ],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e52",
+    "text": "Working on the IHub integration middleware request handling today",
+    "note": "item 22: another member's story, in progress",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-31"
+      ],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e53",
+    "text": "I have completed the coding for the notification service, currently testing, and once done I will deploy it to the Dev environment",
+    "note": "item 25: a finished step is not a finished story",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-22"
+      ],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e54",
+    "text": "Code complete on the risk scoring service, raising the PR now",
+    "note": "item 25: code complete is in progress",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-21"
+      ],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e55",
+    "text": "The notification service is done and deployed to dev",
+    "note": "item 25: the story itself is done",
+    "expect": {
+      "completed": [
+        "SCRUM-22"
+      ],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e56",
+    "text": "Finished the endpoint work",
+    "note": "item 24: two endpoint stories fit — ask, do not guess",
+    "expect": {
+      "completed": [
+        null
+      ],
+      "inProgress": [],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update",
+      "alternatives": {
+        "completed": [
+          "SCRUM-6",
+          "SCRUM-7"
+        ]
+      }
+    }
+  },
+  {
+    "id": "e57",
+    "text": "Started on the scalability and high availability story",
+    "note": "item 22: an unassigned story described in words",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-33"
+      ],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
     }
   }
 ]

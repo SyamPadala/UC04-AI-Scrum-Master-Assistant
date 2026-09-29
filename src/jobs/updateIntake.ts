@@ -40,6 +40,16 @@ export type Refusal =
  * An item on someone else's story, held for the member to confirm (item 14a).
  * Travels in the confirmation card's button data, never in Firestore.
  */
+/**
+ * An item whose words fit more than one story (SPEC-004 item 24). The member
+ * chooses on a card; nothing is guessed.
+ */
+export interface AmbiguousItem {
+  words: string
+  status: RowStatus
+  options: Array<{ key: string, title: string, owner: string | null }>
+}
+
 export interface PendingItem {
   key: string
   title: string | null
@@ -60,6 +70,8 @@ export interface IntakeResult {
   refused: Refusal[]
   /** Items on someone else's story, awaiting Submit or Cancel (item 14a). */
   pending: PendingItem[]
+  /** Items that could be one of several stories, awaiting the member's choice (item 24). */
+  ambiguous: AmbiguousItem[]
   /** Blockers not tied to a verified work item: not written, but alerted (item 19). */
   unlinkedBlockers: string[]
   /** The member's open sprint items, offered back when a work item was not found (item 13). */
@@ -190,6 +202,7 @@ export function verifyItems (
   kept: Pick<ExtractionOutput, 'completed' | 'inProgress' | 'blockers'>
   refused: Refusal[]
   pending: PendingItem[]
+  ambiguous: AmbiguousItem[]
   unlinkedBlockers: string[]
 } {
   const refused: Refusal[] = []
@@ -220,8 +233,20 @@ export function verifyItems (
   }
   const joined = (a: string | null, b: string): string => a === null ? b : `${a}; ${b}`
 
+  // Item 24: words that fit several stories are asked about, not guessed.
+  const ambiguous: AmbiguousItem[] = []
+  const optionsFor = (keys: string[]): AmbiguousItem['options'] => keys
+    .map((key) => stories.get(key))
+    .filter((story): story is Story => story !== undefined)
+    .map((story) => ({ key: story.key, title: story.title, owner: story.assignee }))
+
   const keepItems = (items: ExtractionOutput['completed'], status: RowStatus): ExtractionOutput['completed'] => items.filter((item) => {
     const verdict = check(item.storyRef)
+    const options = item.storyRef === null ? optionsFor(item.alternatives ?? []) : []
+    if (verdict === 'missing' && options.length > 0) {
+      ambiguous.push({ words: item.comment, status, options })
+      return false
+    }
     if (verdict === 'missing') refuse({ reason: 'noWorkItem', words: item.comment })
     if (verdict === 'unassigned') refuse({ reason: 'unassigned', key: item.storyRef as string })
     if (verdict === 'otherOwner') {
@@ -248,7 +273,7 @@ export function verifyItems (
     return verdict === 'ok'
   })
 
-  return { kept: { completed, inProgress, blockers }, refused, pending: [...pending.values()], unlinkedBlockers }
+  return { kept: { completed, inProgress, blockers }, refused, pending: [...pending.values()], ambiguous, unlinkedBlockers }
 }
 
 /** Reads the real titles for every work item the extraction referred to. */
@@ -319,6 +344,7 @@ export async function processUpdate (
     recorded: [],
     refused: [],
     pending: [],
+    ambiguous: [],
     unlinkedBlockers: [],
     openItems: [],
     rows: 0,
@@ -379,7 +405,8 @@ export async function processUpdate (
     return base(outcome, extraction.durationMs, { ...common, rows: existing.length })
   }
 
-  const stories = await resolveStories(output, deps.pm, extraction.openItems)
+  // Seeded with every story offered to the model, so owners and titles are known.
+  const stories = await resolveStories(output, deps.pm, extraction.candidates)
   const verified = verifyItems(output, stories, jiraAccountId)
 
   let result: IntakeResult
@@ -421,6 +448,7 @@ export async function processUpdate (
       recorded,
       refused: verified.refused,
       pending: verified.pending,
+      ambiguous: verified.ambiguous,
       unlinkedBlockers: verified.unlinkedBlockers,
       rows: rows.length,
       added: incoming.length
@@ -455,6 +483,7 @@ export async function processUpdate (
     added: result.added,
     refused: result.refused.length,
     pending: result.pending.length,
+    ambiguous: result.ambiguous.length,
     unlinkedBlockers: result.unlinkedBlockers.length,
     blockers: result.blockers,
     confidence: output.confidence,

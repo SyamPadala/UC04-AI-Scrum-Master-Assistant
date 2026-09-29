@@ -14,13 +14,14 @@
 export const UPDATE_PROCESSOR_SYSTEM = `You read one short stand-up update written by a software engineer and return what it says as JSON.
 
 Return three lists:
-- completed: work the person says is finished
+- completed: a work item the person says is finished — the item itself, not one step of it. "Code completed, testing in progress", "coding done, deploying tomorrow" and "code complete, raising the PR" are inProgress, not completed. "SCRUM-7 is done", "finished the notification service", "deployed it and it's closed" are completed.
 - inProgress: work they say they are doing now or will do next, and work that was blocked but can now move again
 - blockers: anything stopping them, waiting on someone else, or described as stuck
 
 Matching work items:
-- You are given the person's open sprint items and any blockers they reported earlier that are still open.
-- People rarely type keys. Match what they describe to an item by meaning, not exact words: "risk score issue" or "the scoring rules" is the Risk Scoring item; "the endpoint" is the item whose title is about an endpoint. Use the key only when one item clearly fits.
+- You are given every open story in the current sprint, each marked with who it is assigned to — "yours" for the person's own, first — and any blockers they reported earlier that are still open.
+- People rarely type keys. Match what they describe to a story by meaning, not exact words: "risk score issue" or "the scoring rules" is the Risk Scoring story. Match against every listed story, including ones assigned to someone else: if their words fit another person's story, use that story's key. Who owns it is decided later, not by you.
+- Use a key only when one story clearly fits. If the words could fit two or three stories and you cannot tell which, set storyRef to null and put those keys in "alternatives" (most likely first). If nothing fits, storyRef is null and alternatives is empty.
 - A message that one of their open blockers is resolved, sorted, cleared, unblocked, fixed, or that they can now progress or move forward, is an inProgress entry for that blocker's work item. It is a status update, never "nothing to report".
 - A resolved problem that matches no open blocker and names no work item is not an entry of its own. "The VPN issue is sorted, back on SCRUM-6" is one inProgress entry, SCRUM-6, and nothing else.
 - If all they say about an item is that it is blocked or cannot start, put it in blockers only ("SCRUM-5 can't start until sign-off" is a blocker on SCRUM-5, not in progress). If they also say they are on it or working on it ("On SCRUM-21. The sandbox keeps timing out", "coded but waiting on review"), put it in both inProgress and blockers.
@@ -34,8 +35,8 @@ Rules:
 - Return JSON only. No prose, no code fences, no explanation.
 - Use the person's own words for "comment" and "description". Do not rewrite, summarise or improve them.
 - Split distinct pieces of work into separate entries. One sentence covering two work items is two entries.
-- "storyRef" is a work item key such as SCRUM-12. Use it only when the person's words point to a specific item. If they did not, use null. Never invent a key.
-- A person may mention a work item key that is not in their open items. Use the lookup_story tool to check it exists before using it. If it does not exist, keep their words and set storyRef to null.
+- "storyRef" is a work item key such as SCRUM-12: one of the listed stories, or a key the person typed. Use it only when the person's words point to a specific story. If they did not, use null. Never invent a key.
+- A person may type a key that is not in the list. Use the lookup_story tool to check it exists before using it. If it does not exist, keep their words and set storyRef to null.
 - "kind" says what sort of message it is:
   - "update": they report work, progress or a blocker. This is almost every message.
   - "nothing": they explicitly say there is nothing to report ("nothing to report today", "no updates"). Return empty lists.
@@ -48,8 +49,8 @@ Rules:
 Respond with exactly this shape:
 
 {
-  "completed":  [{ "storyRef": "SCRUM-7" | null, "comment": "their words" }],
-  "inProgress": [{ "storyRef": "SCRUM-6" | null, "comment": "their words" }],
+  "completed":  [{ "storyRef": "SCRUM-7" | null, "comment": "their words", "alternatives": [] }],
+  "inProgress": [{ "storyRef": "SCRUM-6" | null, "comment": "their words", "alternatives": [] }],
   "blockers":   [{ "description": "their words", "storyRef": "SCRUM-6" | null }],
   "confidence": "high" | "low",
   "kind": "update" | "nothing" | "not_update"
@@ -58,26 +59,31 @@ Respond with exactly this shape:
 /**
  * The user turn.
  *
- * The member's open sprint items are supplied here rather than left to a tool
- * call. Six lines of text cost a fraction of a tool round-trip, and every
+ * The sprint's open stories are supplied here rather than left to a tool
+ * call. A few lines of text cost a fraction of a tool round-trip, and every
  * round-trip resends the entire conversation — so injecting the facts the model
  * almost always needs is the single largest saving available.
+ *
+ * SPEC-004 item 22: every open story in the sprint, each with its owner and the
+ * member's own first, so words about someone else's story can be matched too.
  */
 export function updateProcessorUser (
   memberName: string,
   text: string,
-  openItems: Array<{ key: string, title: string, status: string }>,
+  stories: Array<{ key: string, title: string, status: string, owner?: string | null, mine?: boolean }>,
   activeBlockers: Array<{ workItem: string | null, description: string, since: string }> = []
 ): string {
-  const items = openItems.length === 0
-    ? '(no open sprint items are recorded for this person)'
-    : openItems.map((item) => `${item.key} [${item.status}] ${item.title}`).join('\n')
+  const ownerOf = (story: { owner?: string | null, mine?: boolean }): string =>
+    story.mine !== false ? 'yours' : story.owner == null ? 'unassigned' : `assigned to ${story.owner}`
+  const items = stories.length === 0
+    ? '(no open stories in the current sprint)'
+    : stories.map((story) => `${story.key} [${story.status}] (${ownerOf(story)}) ${story.title}`).join('\n')
   // Without these, "the issue got resolved" has nothing to attach to (SPEC-004 5a).
   const blockers = activeBlockers.length === 0
     ? '(none)'
     : activeBlockers.map((b) => `${b.workItem ?? 'no work item'} — ${b.description} (last reported ${b.since})`).join('\n')
 
-  return `Open sprint items assigned to ${memberName}:
+  return `Open stories in the current sprint (${memberName}'s own marked "yours"):
 ${items}
 
 Blockers ${memberName} reported earlier that are still open:

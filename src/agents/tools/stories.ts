@@ -23,13 +23,6 @@ export const storyTools: LlmTool[] = [
       },
       required: ['key']
     }
-  },
-  {
-    name: 'get_member_open_items',
-    description:
-      'List the unfinished sprint items assigned to this person. ' +
-      'The same list is already provided in the message; use this only to re-check it.',
-    parameters: { type: 'object', properties: {}, required: [] }
   }
 ]
 
@@ -49,16 +42,6 @@ export function createStoryToolExecutor (pm: PmClient, jiraAccountId: string): T
         return story === undefined
           ? { found: false, key }
           : { found: true, key: story.key, title: story.title, status: story.status, assignee: story.assignee }
-      }
-      case 'get_member_open_items': {
-        // An unlinked member yields an empty list. That means "not linked",
-        // never "nothing assigned", so it is said rather than implied.
-        if (jiraAccountId === '') return { linked: false, items: [] }
-        const items = await pm.getMemberOpenItems(jiraAccountId)
-        return {
-          linked: true,
-          items: items.map((item) => ({ key: item.key, title: item.title, status: item.status }))
-        }
       }
       default:
         return { error: `unknown tool: ${name}` }

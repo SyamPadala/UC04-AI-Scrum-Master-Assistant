@@ -50,7 +50,8 @@ function stubs (output, { sprint = true } = {}) {
     getActiveSprint: async () => sprint ? { id: 1, name: 'Sprint 1', goal: '', startDate: null, endDate: null } : undefined,
     getSprintData: async () => undefined,
     lookupStory: async (key) => STORIES[key],
-    getMemberOpenItems: async (id) => sprint ? Object.values(STORIES).filter((s) => s.assigneeAccountId === id) : []
+    getMemberOpenItems: async (id) => sprint ? Object.values(STORIES).filter((s) => s.assigneeAccountId === id) : [],
+    getSprintOpenItems: async () => sprint ? Object.values(STORIES) : []
   }
   const alertNoSprint = async () => { calls.noSprintAlerts += 1; return { sent: true } }
   return { calls, llm, pm, alertNoSprint }

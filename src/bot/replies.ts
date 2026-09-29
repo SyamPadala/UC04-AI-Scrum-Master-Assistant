@@ -36,7 +36,7 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
         : `⚠ ${item.win}${title} — Blocked: ${item.blocker}`)
     }
   } else {
-    lines.push(result.pending.length > 0 && result.refused.length === 0
+    lines.push((result.pending.length > 0 || result.ambiguous.length > 0) && result.refused.length === 0
       ? 'Nothing recorded yet:'
       : "I haven't recorded anything from that message:")
   }
@@ -55,6 +55,11 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
   // Item 14a: the card that follows this reply asks them to confirm.
   for (const item of result.pending) {
     lines.push(`? ${item.key} is assigned to ${item.owner}, not you. Confirm below if you still want it recorded.`)
+  }
+
+  // Item 24: the card that follows asks which story they meant.
+  for (const item of result.ambiguous) {
+    lines.push(`? Which story is "${item.words}"? Choose below.`)
   }
 
   // A blocker already alerted earlier today is one the Scrum Master has heard.

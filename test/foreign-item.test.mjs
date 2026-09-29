@@ -52,7 +52,7 @@ test('Submit records under the sender, says whose story it is, and asks for it t
   assert.equal(row.assignedTo, 'Santhosh')
   assert.equal(row.comment, '(assigned to Pravallika) finished it')
   assert.equal(row.status, 'Completed')
-  assert.match(reply, /Recorded SCRUM-25 in the tracker\. Please ask your Scrum Master to assign it to you in Jira\./)
+  assert.match(reply, /Recorded SCRUM-25 in the tracker\. It is assigned to Pravallika; please ask your Scrum Master to assign it to you in Jira\./)
 })
 
 test('Submit pressed twice records one row', async () => {

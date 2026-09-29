@@ -3,6 +3,7 @@ import type { TeamConfig } from '../types.js'
 import type { PmClient } from '../pm/types.js'
 import type { Tracker, TrackerRow } from '../trackers/types.js'
 import { FOREIGN_ITEM_ACTION, type ForeignItemPayload } from '../cards/foreignItem.js'
+import { STORY_PICK_ACTION, type StoryPickPayload } from '../cards/storyPicker.js'
 import { mergeRows, StandupClosedError } from './updateIntake.js'
 import { summaryHasRun } from '../store/firestore.js'
 
@@ -20,20 +21,84 @@ const payloadSchema = z.object({
   teamId: z.string().min(1),
   localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   memberId: z.string().min(1),
+  // Teams leaves empty (null) fields out of a card's data (found live, 29 Sep
+  // 2026: every press was dropped), so an absent field reads as null.
   item: z.object({
     key: z.string().min(1),
-    title: z.string().nullable(),
+    title: z.string().nullish().transform((v) => v ?? null),
     owner: z.string(),
     status: z.enum(['Completed', 'In Progress', 'Blocked']),
-    comment: z.string().nullable(),
-    blocker: z.string().nullable()
+    comment: z.string().nullish().transform((v) => v ?? null),
+    blocker: z.string().nullish().transform((v) => v ?? null)
   })
 })
 
-/** The card's button data, or undefined when this activity is not a press on that card. */
+const pickSchema = z.object({
+  action: z.literal(STORY_PICK_ACTION),
+  // Teams leaves a null field out, so a missing pick is "None of these".
+  pick: z.string().min(1).nullish().transform((v) => v ?? null),
+  teamId: z.string().min(1),
+  localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  memberId: z.string().min(1),
+  item: z.object({
+    words: z.string(),
+    status: z.enum(['Completed', 'In Progress', 'Blocked'])
+  })
+})
+
+/** True when the activity carries one of our cards' data at all, valid or not (item 26). */
+export function isForeignItemPress (value: unknown): boolean {
+  const data = typeof value === 'string' ? safeJson(value) : value
+  const action = typeof data === 'object' && data !== null ? (data as { action?: unknown }).action : undefined
+  return action === FOREIGN_ITEM_ACTION || action === STORY_PICK_ACTION
+}
+
+/**
+ * A press on the "Which story is this?" card (item 24), turned into the same
+ * shape as a Submit on the confirmation card: the choice is the confirmation.
+ */
+export function parseStoryPick (value: unknown): ForeignItemPayload | undefined {
+  const data = typeof value === 'string' ? safeJson(value) : value
+  const result = pickSchema.safeParse(data)
+  if (!result.success) {
+    if ((data as { action?: unknown } | undefined)?.action === STORY_PICK_ACTION) {
+      console.error(JSON.stringify({
+        event: 'storyPick.badPayload',
+        fields: Object.keys(data as object),
+        problems: result.error.issues.map((issue) => `${issue.path.join('.')} ${issue.code}`)
+      }))
+    }
+    return undefined
+  }
+  const pick = result.data as StoryPickPayload
+  return {
+    action: FOREIGN_ITEM_ACTION,
+    choice: pick.pick === null ? 'cancel' : 'submit',
+    teamId: pick.teamId,
+    localDate: pick.localDate,
+    memberId: pick.memberId,
+    item: { key: pick.pick ?? '', title: null, owner: '', status: pick.item.status, comment: pick.item.words, blocker: null }
+  }
+}
+
+/** The card's button data, or undefined when this activity is not a valid press on that card. */
 export function parseForeignItemPayload (value: unknown): ForeignItemPayload | undefined {
-  const result = payloadSchema.safeParse(value)
+  const data = typeof value === 'string' ? safeJson(value) : value
+  const result = payloadSchema.safeParse(data)
+  if (!result.success && isForeignItemPress(data)) {
+    // Field names and problems only: the data holds the member's words.
+    console.error(JSON.stringify({
+      event: 'foreignItem.badPayload',
+      fields: Object.keys(data as object),
+      itemFields: Object.keys(((data as { item?: object }).item) ?? {}),
+      problems: result.error.issues.map((issue) => `${issue.path.join('.')} ${issue.code}`)
+    }))
+  }
   return result.success ? result.data as ForeignItemPayload : undefined
+}
+
+function safeJson (text: string): unknown {
+  try { return JSON.parse(text) } catch { return undefined }
 }
 
 export async function recordForeignItem (
@@ -53,7 +118,7 @@ export async function recordForeignItem (
   if (payload.memberId !== senderId || payload.teamId !== team.teamId) {
     return 'That card was sent to someone else, so nothing was recorded.'
   }
-  if (payload.choice === 'cancel') return `${key} not recorded.`
+  if (payload.choice === 'cancel') return key === '' ? 'Not recorded.' : `${key} not recorded.`
   if (payload.localDate !== today) return 'This card has expired. Please send the update again.'
   if (await (deps.summaryHasRun ?? summaryHasRun)(team.teamId, today)) throw new StandupClosedError(today)
 
@@ -91,6 +156,6 @@ export async function recordForeignItem (
   console.log(JSON.stringify({ event: 'foreignItem.recorded', teamId: team.teamId, memberId: senderId, key, theirs }))
 
   return theirs
-    ? `Recorded ${key} in the tracker. It is assigned to you now.`
-    : `Recorded ${key} in the tracker. Please ask your Scrum Master to assign it to you in Jira.`
+    ? `Recorded ${key} in the tracker.`
+    : `Recorded ${key} in the tracker. It is assigned to ${story.assignee ?? payload.item.owner}; please ask your Scrum Master to assign it to you in Jira.`
 }

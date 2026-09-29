@@ -3,6 +3,60 @@ import type { PmClient, Story } from '../pm/types.js'
 import { UPDATE_PROCESSOR_SYSTEM, updateProcessorUser } from './prompts/updateProcessor.js'
 import { createStoryToolExecutor, storyTools } from './tools/stories.js'
 import { parseExtraction, type ExtractionInput, type ExtractionOutput } from './schema.js'
+import { keysInText, normaliseKeysInText } from './keys.js'
+import { config } from '../config/env.js'
+
+/** Above this many open stories, the list sent to the model is trimmed (SPEC-004 item 22). */
+const MAX_CANDIDATES = 40
+const OTHERS_WHEN_TRIMMED = 30
+
+/** Lower-case words of three letters or more, for ranking titles against a message. */
+function words (text: string): Set<string> {
+  return new Set(text.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3))
+}
+
+/**
+ * The stories the model may choose from (SPEC-004 item 22): every open story in
+ * the sprint, the member's own first. Trimmed only for an unusually large
+ * sprint: own stories and keyed ones always stay, then the titles sharing the
+ * most words with the message.
+ */
+export function candidateStories (all: Story[], jiraAccountId: string, text: string, keyed: string[]): Story[] {
+  const own = all.filter((s) => jiraAccountId !== '' && s.assigneeAccountId === jiraAccountId)
+  const others = all.filter((s) => !own.includes(s))
+  if (all.length <= MAX_CANDIDATES) return [...own, ...others]
+
+  const said = words(text)
+  const score = (story: Story): number => [...words(story.title)].filter((w) => said.has(w)).length
+  const mustKeep = others.filter((s) => keyed.includes(s.key))
+  const ranked = others
+    .filter((s) => !mustKeep.includes(s))
+    .sort((a, b) => score(b) - score(a))
+    .slice(0, OTHERS_WHEN_TRIMMED)
+  return [...own, ...mustKeep, ...ranked]
+}
+
+/**
+ * SPEC-004 item 23: a key is accepted only if it was offered or typed. Anything
+ * else becomes "no work item", and alternatives are kept only when offered.
+ */
+export function restrictToKnownKeys (output: ExtractionOutput, offered: Set<string>, typed: Set<string>): ExtractionOutput {
+  const known = (key: string | null): string | null => key !== null && (offered.has(key) || typed.has(key)) ? key : null
+  const item = (entry: ExtractionOutput['completed'][number]): ExtractionOutput['completed'][number] => {
+    const storyRef = known(entry.storyRef)
+    return {
+      ...entry,
+      storyRef,
+      alternatives: storyRef !== null ? [] : [...new Set(entry.alternatives.filter((key) => offered.has(key)))].slice(0, 3)
+    }
+  }
+  return {
+    ...output,
+    completed: output.completed.map(item),
+    inProgress: output.inProgress.map(item),
+    blockers: output.blockers.map((b) => ({ ...b, storyRef: known(b.storyRef) }))
+  }
+}
 
 /**
  * Agent 1 — the update processor (SPEC-004, FR-03 and FR-06 detection).
@@ -25,8 +79,10 @@ export interface Agent1Options {
 
 export interface Agent1Result {
   output: ExtractionOutput
-  /** Open items at the time of the call, so code can fill in titles afterwards. */
+  /** The member's own open items at the time of the call. */
   openItems: Story[]
+  /** Every story offered to the model, so code can read titles and owners afterwards. */
+  candidates: Story[]
   durationMs: number
   /** Round-trips the model needed; 0 when a recorded response was replayed. */
   roundTrips: number
@@ -43,20 +99,27 @@ export async function extractUpdate (
   const startedAt = Date.now()
 
   const truncated = input.text.length > options.maxInputChars
-  const text = truncated ? input.text.slice(0, options.maxInputChars) : input.text
+  // Item 21: "scrum 25" and "SCRUM-25" are the same key; code says so, not the model.
+  const text = normaliseKeysInText(truncated ? input.text.slice(0, options.maxInputChars) : input.text, config.jira.projectKey)
+  const typed = new Set(keysInText(text, config.jira.projectKey))
 
   // Fetched once and passed to the model in the prompt. A tool round-trip for
   // the same facts would resend the whole conversation, which costs far more
-  // than the six lines this produces.
-  const openItems = input.jiraAccountId === ''
-    ? []
-    : await pm.getMemberOpenItems(input.jiraAccountId)
+  // than the lines this produces.
+  const candidates = candidateStories(await pm.getSprintOpenItems(), input.jiraAccountId, text, [...typed])
+  const openItems = candidates.filter((s) => input.jiraAccountId !== '' && s.assigneeAccountId === input.jiraAccountId)
 
   const request = {
     system: UPDATE_PROCESSOR_SYSTEM,
     user: updateProcessorUser(
       input.memberName, text,
-      openItems.map((item) => ({ key: item.key, title: item.title, status: item.status })),
+      candidates.map((story) => ({
+        key: story.key,
+        title: story.title,
+        status: story.status,
+        owner: story.assignee,
+        mine: openItems.includes(story)
+      })),
       input.activeBlockers ?? []
     ),
     tools: storyTools,
@@ -74,8 +137,9 @@ export async function extractUpdate (
     try {
       const response = await llm.complete(request, executeTool)
       return {
-        output: parseExtraction(response.text),
+        output: restrictToKnownKeys(parseExtraction(response.text), new Set(candidates.map((s) => s.key)), typed),
         openItems,
+        candidates,
         durationMs: Date.now() - startedAt,
         roundTrips: response.fromCache ? 0 : response.roundTrips,
         truncated,

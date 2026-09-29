@@ -14,7 +14,8 @@ import { processUpdate, StandupClosedError } from '../jobs/updateIntake.js'
 import { handleAdminCommand, parseAdminCommand } from './admin.js'
 import { intakeReply } from './replies.js'
 import { foreignItemCard, type ForeignItemPayload } from '../cards/foreignItem.js'
-import { parseForeignItemPayload, recordForeignItem } from '../jobs/foreignItem.js'
+import { isForeignItemPress, parseForeignItemPayload, parseStoryPick, recordForeignItem } from '../jobs/foreignItem.js'
+import { storyPickerCard } from '../cards/storyPicker.js'
 
 /**
  * What a member is told once the day has closed (A14).
@@ -140,9 +141,17 @@ export class ScrumAssistant extends ActivityHandler {
 
       // SPEC-004 14a: Submit or Cancel on the "someone else's story" card
       // arrives as a message with the button's data and no text.
-      const confirmation = parseForeignItemPayload(context.activity.value)
+      // Item 24: a pick on "Which story is this?" is handled the same way.
+      const confirmation = parseForeignItemPayload(context.activity.value) ?? parseStoryPick(context.activity.value)
       if (confirmation !== undefined) {
         await this.confirmForeignItem(context, memberId, memberName, confirmation)
+        await next()
+        return
+      }
+      if (isForeignItemPress(context.activity.value)) {
+        await context.sendActivity(MessageFactory.text(
+          "Sorry, I couldn't read that button press, so nothing was recorded. Please send the update again."
+        ))
         await next()
         return
       }
@@ -240,6 +249,12 @@ export class ScrumAssistant extends ActivityHandler {
       for (const item of result.pending) {
         const card = MessageFactory.attachment(CardFactory.adaptiveCard(foreignItemCard(item, team.teamId, today, memberId)))
         card.summary = `${item.key} is assigned to ${item.owner}. Submit anyway?`
+        await context.sendActivity(card)
+      }
+      // Item 24: one "Which story is this?" card per unsure item.
+      for (const item of result.ambiguous) {
+        const card = MessageFactory.attachment(CardFactory.adaptiveCard(storyPickerCard(item, team.teamId, today, memberId)))
+        card.summary = 'Which story is this?'
         await context.sendActivity(card)
       }
     } catch (error) {

@@ -29,14 +29,22 @@ const llm = createLlm()
 // the sprint was cleared and a run scored 29.8% because every key was gone.
 // They reach the prompt exactly as open items do in production; lookup_story
 // answers from the same list, so an unknown key (SCRUM-9999) is still "not found".
+// SPEC-004 item 22: the eval member's own stories plus other members' and an
+// unassigned one, as the whole sprint is offered in production.
 const openStories = JSON.parse(fs.readFileSync(path.join(root, 'eval/stories.json'), 'utf8')).map((story) => ({
-  ...story, statusCategory: 'In Progress', points: null, assignee: 'Eval Member', assigneeAccountId: 'eval', url: '', updated: new Date(0)
+  ...story,
+  statusCategory: 'In Progress',
+  points: null,
+  assigneeAccountId: story.assignee === 'Eval Member' ? 'eval' : story.assignee === null ? null : `acct-${story.assignee}`,
+  url: '',
+  updated: new Date(0)
 }))
 const pm = {
   getActiveSprint: async () => ({ id: 0, name: 'Eval sprint', goal: '', startDate: null, endDate: null }),
   getSprintData: async () => undefined,
   lookupStory: async (key) => openStories.find((story) => story.key === key),
-  getMemberOpenItems: async () => openStories
+  getMemberOpenItems: async () => openStories.filter((story) => story.assigneeAccountId === 'eval'),
+  getSprintOpenItems: async () => openStories
 }
 console.log(`open stories given to the model: ${openStories.map((s) => s.key).join(', ') || 'none'}
 `)
@@ -81,6 +89,14 @@ for (const testCase of selected) {
     // SPEC-004 items 15–16: the label decides the member's reply for an empty
     // message ("not an update" vs "nothing to report"), so it is scored.
     const kind = output.kind === (testCase.expect.kind ?? 'update')
+    // SPEC-004 item 24: where a case expects alternatives, the offered keys must match.
+    const altsOf = (bucket) => output[bucket].flatMap((entry) => entry.alternatives ?? []).sort()
+    const alternatives = ['completed', 'inProgress'].every((bucket) =>
+      testCase.expect.alternatives?.[bucket] === undefined ||
+      sameKeys(altsOf(bucket), testCase.expect.alternatives[bucket]))
+    // Verification 20: a key the member did not mean, written as if they had.
+    const wrongKeys = ['completed', 'inProgress', 'blockers'].flatMap((bucket) =>
+      keysOf(output[bucket]).filter((key) => key !== null && !testCase.expect[bucket].includes(key)).map((key) => `${bucket}:${key}`))
 
     row = {
       id: testCase.id,
@@ -89,14 +105,16 @@ for (const testCase of selected) {
       blockers,
       confidence,
       kind,
+      alternatives,
+      wrongKeys,
       // The case passes on structure and kind. Confidence is reported
       // separately: it is a useful signal but not what FR-03 asks for.
-      pass: completed && inProgress && blockers && kind,
+      pass: completed && inProgress && blockers && kind && alternatives,
       ms: extraction.durationMs,
       cached: extraction.roundTrips === 0,
       note: testCase.note,
       // Keys only, so a miss can be diagnosed from the output alone.
-      got: { kind: output.kind, completed: keysOf(output.completed), inProgress: keysOf(output.inProgress), blockers: keysOf(output.blockers.map((b) => ({ storyRef: b.storyRef }))) }
+      got: { kind: output.kind, alternatives: [...altsOf('completed'), ...altsOf('inProgress')], completed: keysOf(output.completed), inProgress: keysOf(output.inProgress), blockers: keysOf(output.blockers.map((b) => ({ storyRef: b.storyRef }))) }
     }
   } catch (error) {
     row = {
@@ -115,7 +133,8 @@ for (const testCase of selected) {
     row.completed ? '' : 'completed',
     row.inProgress ? '' : 'inProgress',
     row.blockers ? '' : 'blockers',
-    row.kind ? '' : 'kind'
+    row.kind ? '' : 'kind',
+    row.alternatives === false ? 'alternatives' : ''
   ].filter((field) => field !== '')
   console.log(
     `${row.id}  ${mark}  ${String(row.ms).padStart(6)}ms  ${row.cached ? 'cached' : 'live  '}  ` +
@@ -137,6 +156,8 @@ console.log(`  completed    : ${fieldScore('completed').toFixed(1)}%`)
 console.log(`  inProgress   : ${fieldScore('inProgress').toFixed(1)}%`)
 console.log(`  blockers     : ${fieldScore('blockers').toFixed(1)}%`)
 console.log(`  kind         : ${fieldScore('kind').toFixed(1)}%`)
+const wrong = results.filter((row) => (row.wrongKeys ?? []).length > 0)
+console.log(`wrong keys     : ${wrong.length} case(s)${wrong.length === 0 ? '' : ' — ' + wrong.map((row) => `${row.id} ${row.wrongKeys.join(',')}`).join('; ')}  (target 0, SPEC-004 verification 20)`)
 console.log(`  confidence   : ${fieldScore('confidence').toFixed(1)}%  (reported, not scored)`)
 console.log(`latency mean   : ${Math.round(totalMs / results.length)}ms`)
 console.log(`latency worst  : ${slowest}ms  (budget 30000ms, Latency NFR)`)
@@ -155,6 +176,7 @@ const report = {
     inProgress: fieldScore('inProgress'),
     blockers: fieldScore('blockers'),
     kind: fieldScore('kind'),
+    wrongKeyCases: results.filter((row) => (row.wrongKeys ?? []).length > 0).length,
     confidence: fieldScore('confidence')
   },
   latencyMeanMs: Math.round(totalMs / results.length),

@@ -29,7 +29,8 @@ function stubs (outputs) {
     getActiveSprint: async () => ({ id: 1, name: 'Sprint 1', goal: '', startDate: null, endDate: null }),
     getSprintData: async () => undefined,
     lookupStory: async (key) => ({ key, title: 'Risk Scoring Service', status: 'In Progress', statusCategory: 'In Progress', points: 3, assignee: 'Syam Padala', assigneeAccountId: 'j1', url: '', updated: new Date() }),
-    getMemberOpenItems: async () => []
+    getMemberOpenItems: async () => [],
+    getSprintOpenItems: async () => []
   }
   return { llm, pm, prompts }
 }

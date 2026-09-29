@@ -1,8 +1,12 @@
 [
-  { "key": "SCRUM-5", "title": "Implement application state machine in Onboarding Orchestrator", "status": "In Progress" },
-  { "key": "SCRUM-6", "title": "Expose create application endpoint", "status": "In Progress" },
-  { "key": "SCRUM-7", "title": "Expose submit application endpoint", "status": "In Progress" },
-  { "key": "SCRUM-20", "title": "Implement asynchronous screening service with HMAC-validated webhook callbacks and manual review routing", "status": "In Progress" },
-  { "key": "SCRUM-21", "title": "Build Risk Scoring Service with configurable weights and LOW/MEDIUM/HIGH banding", "status": "In Progress" },
-  { "key": "SCRUM-22", "title": "Implement Notification Service", "status": "In Progress" }
+  { "key": "SCRUM-5", "title": "Implement application state machine in Onboarding Orchestrator", "status": "In Progress", "assignee": "Eval Member" },
+  { "key": "SCRUM-6", "title": "Expose create application endpoint", "status": "In Progress", "assignee": "Eval Member" },
+  { "key": "SCRUM-7", "title": "Expose submit application endpoint", "status": "In Progress", "assignee": "Eval Member" },
+  { "key": "SCRUM-20", "title": "Implement asynchronous screening service with HMAC-validated webhook callbacks and manual review routing", "status": "In Progress", "assignee": "Eval Member" },
+  { "key": "SCRUM-21", "title": "Build Risk Scoring Service with configurable weights and LOW/MEDIUM/HIGH banding", "status": "In Progress", "assignee": "Eval Member" },
+  { "key": "SCRUM-22", "title": "Implement Notification Service", "status": "In Progress", "assignee": "Eval Member" },
+  { "key": "SCRUM-30", "title": "Implement Synchronous Data Flow and Error Resilience Choreography", "status": "In Progress", "assignee": "Sailaja" },
+  { "key": "SCRUM-31", "title": "Implement Unified IHub Integration Middleware Request Handling", "status": "In Progress", "assignee": "Vardhan" },
+  { "key": "SCRUM-32", "title": "Build Core Architecture Pipelines for Ingress, Strategy, Transformation and Resilience", "status": "To Do", "assignee": "Pravallika" },
+  { "key": "SCRUM-33", "title": "Ensure Scalability, High Availability and Observability", "status": "To Do", "assignee": null }
 ]

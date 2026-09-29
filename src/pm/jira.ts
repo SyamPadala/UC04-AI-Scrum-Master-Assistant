@@ -258,14 +258,18 @@ export class JiraClient implements PmClient {
    */
   async getMemberOpenItems (jiraAccountId: string): Promise<Story[]> {
     if (jiraAccountId === '') return []
+    return (await this.getSprintOpenItems()).filter((issue) => issue.assigneeAccountId === jiraAccountId)
+  }
 
+  /**
+   * Every unfinished story in the active sprint, whoever it is assigned to
+   * (SPEC-004 item 22). Agent 1 matches a member's words against all of them;
+   * code decides afterwards what the owner means.
+   */
+  async getSprintOpenItems (): Promise<Story[]> {
     const sprint = await this.getActiveSprint()
     if (sprint === undefined) return []
-
-    const items = await this.sprintIssues(sprint.id)
-    return items.filter(
-      (issue) => issue.assigneeAccountId === jiraAccountId && issue.statusCategory !== 'Done'
-    )
+    return (await this.sprintIssues(sprint.id)).filter((issue) => issue.statusCategory !== 'Done')
   }
 
   /**

@@ -43,7 +43,8 @@ function stubs () {
       calls.lookups += 1
       return { key, title: 'A story', status: 'In Progress', statusCategory: 'In Progress', points: 3, assignee: 'Madhavi Andoju', assigneeAccountId: 'j1', url: '', updated: new Date() }
     },
-    getMemberOpenItems: async () => []
+    getMemberOpenItems: async () => [],
+    getSprintOpenItems: async () => []
   }
   return { calls, llm, pm }
 }

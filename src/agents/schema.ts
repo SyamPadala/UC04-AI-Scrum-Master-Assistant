@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { canonicalKey } from './keys.js'
 
 /**
  * Agent 1's output contract (SPEC-004, FR-03).
@@ -9,15 +10,23 @@ import { z } from 'zod'
  * from either source would not be evidence that the model works.
  */
 
+/** A key in canonical form ('scrum-7' → 'SCRUM-7', SPEC-004 item 21), or null (A8). */
+const storyRef = z.string().trim().min(1).transform(canonicalKey).nullable().catch(null)
+
 const itemSchema = z.object({
   /** Work item key such as 'SCRUM-7', or null when the member named none (A8). */
-  storyRef: z.string().trim().min(1).nullable().catch(null),
-  comment: z.string().trim().min(1)
+  storyRef,
+  comment: z.string().trim().min(1),
+  /**
+   * When the words could mean more than one story: up to three candidate keys,
+   * with storyRef null (SPEC-004 item 24). Code asks the member; nothing is guessed.
+   */
+  alternatives: z.array(z.string().trim().min(1).transform(canonicalKey)).max(3).catch([]).default([])
 })
 
 const blockerSchema = z.object({
   description: z.string().trim().min(1),
-  storyRef: z.string().trim().min(1).nullable().catch(null)
+  storyRef
 })
 
 export const extractionSchema = z.object({
