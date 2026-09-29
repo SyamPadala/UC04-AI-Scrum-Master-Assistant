@@ -67,3 +67,16 @@ test('two entries for the same item in one message are joined, not overwritten',
   assert.equal(stored.length, 1)
   assert.equal(stored[0].row.comment, 'drafted the application; verified the endpoint')
 })
+
+test('two teams sharing one SharePoint list see only their own members (SPEC-002 4c)', async (t) => {
+  const { SharePointTracker } = await import('../dist/trackers/sharepoint.js')
+  const real = globalThis.fetch
+  t.after(() => { globalThis.fetch = real })
+  const item = (id, who, win, blocker) => ({ id, fields: { Date: '2026-09-26T12:00:00Z', WIN: win, AssignedTo: who, Comment: 'c', Status: blocker ? 'Blocked' : 'In Progress', AnyBlocker: blocker } })
+  globalThis.fetch = async (url) => String(url).includes('/oauth2/')
+    ? new Response(JSON.stringify({ access_token: 'x', expires_in: 3600 }), { status: 200 })
+    : new Response(JSON.stringify({ value: [item('1', 'Alpha Person', 'SCRUM-5', 'stuck'), item('2', 'Beta Person', 'BETA-1', 'stuck')] }), { status: 200 })
+  const alpha = new SharePointTracker('site', 'list', ['Alpha Person'])
+  assert.deepEqual((await alpha.readToday('alpha', '2026-09-26')).map((u) => u.memberName), ['Alpha Person'])
+  assert.deepEqual((await alpha.openBlockers('alpha')).map((b) => b.workItem), ['SCRUM-5'])
+})

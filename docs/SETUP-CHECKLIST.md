@@ -4,7 +4,7 @@ The single source of truth for setup state. Read this first in a new session.
 
 **Last updated:** 21 Sep 2026
 **Focus right now:** setup only. No coding until setup is further along and the
-specs are approved (item 20).
+specs are approved (item 19).
 
 Record values that come out of each item in `.env` — never in this file, never
 in chat.
@@ -25,7 +25,7 @@ Live service: `https://scrum-assistant-lxz5k662sa-el.a.run.app`
 **Built but not yet seen live:** FR-06 blocker alert, FR-10 second team.
 **Blocked on setup, not code:** FR-07/FR-08 delivery — the summary builds
 correctly but has nowhere to go until the bot is added to the stakeholder
-channel or stakeholder emails are set (items 22 and 23).
+channel or stakeholder emails are set (items 21 and 22).
 
 **Progress: 19 of 25 done.** Remaining: Excel workbook (7), spec approval (20),
 AI Journal (21), stakeholder channel (22), summary email (23).
@@ -87,8 +87,7 @@ app is not installed for them.
 - [x] **5. Register the bot** — DONE 18 Sep 2026
       Teams Developer Portal, bot "Scrum Assistant".
       `BOT_APP_ID` and `BOT_APP_PASSWORD` are in `.env`.
-      Endpoint address deliberately left empty — set at item 17 to the Dev
-      Tunnel URL + `/api/messages`, later to the Cloud Run URL.
+      Endpoint address: the Cloud Run URL + `/api/messages`.
 
 - [ ] **5a. Onboard the four members** — the step that makes them real
 
@@ -277,13 +276,7 @@ credit. These items are the services inside it.
 - [x] **15. Node 24, npm, git** — installed
 - [x] **16. Repo initialised** — `.gitignore`, `.env.example`, `.env` in place,
       first commit `39dc77d`
-- [x] **17. Dev Tunnel** — **REMOVED from scope 19 Sep 2026, do not re-add**
-      A Dev Tunnel gives a laptop a temporary public web address so Teams can
-      reach an app running locally. It is a convenience for developers who want
-      to test without redeploying — it is not required.
-      The app is deployed to Cloud Run and the bot registration points at the
-      Cloud Run URL. One address, one place. Decision made by the user.
-- [x] **18. GitHub repository** + first push — DONE 18 Sep 2026
+- [x] **17. GitHub repository** + first push — DONE 18 Sep 2026
       `https://github.com/SyamPadala/UC04-AI-Scrum-Master-Assistant`
       Local branch renamed `master` -> `main` and rebased onto the
       auto-created README commit, so history is linear.
@@ -303,7 +296,7 @@ credit. These items are the services inside it.
 
 Checked 17 Sep 2026 — these keys exist but are still **empty**:
 
-- [x] **19. The LLM is funded** — DONE 21 Sep 2026
+- [x] **18. The LLM is funded** — DONE 21 Sep 2026
       Billing was activated on the **existing** Gemini project. The key already
       in `.env` started working unchanged — no new key was needed. Verified
       with a two-word call: HTTP 200, 8 tokens.
@@ -330,10 +323,10 @@ Checked 17 Sep 2026 — these keys exist but are still **empty**:
 
 ## F. Project decisions still open
 
-- [ ] **20. Approve the specs** — change Status `Draft` -> `Approved` in
+- [ ] **19. Approve the specs** — change Status `Draft` -> `Approved` in
       `docs/specs/SPEC-001..008`. Process rule 1 blocks all production code
       until this is done.
-- [ ] **21. AI Journal** — purpose, format, contents, who reviews it.
+- [ ] **20. AI Journal** — purpose, format, contents, who reviews it.
       Recommendation: maintain it continuously during the build, not at the end.
 
 ## G. Blocking FR-08 delivery — added 21 Sep 2026
@@ -341,7 +334,7 @@ Checked 17 Sep 2026 — these keys exist but are still **empty**:
 The summary builds correctly. It has nowhere to send it. Either of these fixes
 half of FR-08; both fixes all of it.
 
-- [ ] **22. Add the bot to the "Stakeholder Updates" channel**
+- [ ] **21. Add the bot to the "Stakeholder Updates" channel**
       The bot posts to a channel itself, using a stored channel reference,
       because `ChannelMessage.Send` is delegated-only and a background service
       can never use it (item 8). That reference is captured the first time the
@@ -349,7 +342,7 @@ half of FR-08; both fixes all of it.
       to the team/channel once.
       *Verify:* the `channelRef` field appears on the team record in Firestore.
 
-- [ ] **23. Stakeholder email**
+- [ ] **22. Stakeholder email**
       Two parts, both needed:
       - **Addresses** — set via the `setup` card, "Stakeholder emails".
       - **`SUMMARY_SENDER_USER_ID`** — the mailbox the summary is sent *from*.

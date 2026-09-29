@@ -16,7 +16,7 @@ import { config } from '../config/env.js'
 export function trackerFor (team: TeamConfig): Tracker {
   switch (team.tracker.kind) {
     case 'sharepoint':
-      return new SharePointTracker(team.tracker.siteId, team.tracker.listId)
+      return new SharePointTracker(team.tracker.siteId, team.tracker.listId, team.members.map((m) => m.displayName))
     case 'mock':
       return new MockTracker(team.tracker.path)
     case 'jira':

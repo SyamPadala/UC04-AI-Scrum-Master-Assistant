@@ -310,6 +310,17 @@ Follow the daily cycle so a working slice exists early; build against mocks so a
 - **Should the summary name the members who never replied?** FR-07 lists what the summary contains and non-responders are not in the list. Raised 22 Sep 2026.
 - **Should a member confirm the work item the LLM picked before the tracker is written?** User's proposal, 22 Sep 2026. The PRD's own mitigation for this risk is different — Scrum Master review after the fact. Not decided; the user asked to discuss it later.
 - **Should the summary show work reported complete that Jira still shows open?** Completion and velocity are read from Jira, so the summary understates progress until someone moves the ticket. Harmless mid-sprint, permanent if it happens at the sprint boundary. Raised 22 Sep 2026.
+- **Trade-off: one person, one team.** Rosters must not overlap because a 1:1
+  message carries no team, and the Scrum Master is stored as a roster member.
+  Effect: a Scrum Master cannot run two teams, and someone who moves project
+  cannot join the new team while the old one still lists them (typically as
+  its Scrum Master). Options discussed 28 Sep 2026: (1) Scrum Master as a role,
+  not a membership; (2) "move to this team" when adding, notifying the old
+  team's Scrum Master; (3) flag members with no updates or open stories for N
+  days; (4) follow each Teams team's member list via the bot (no new Graph
+  permission); (5) allow multi-team members, the agent routes each update by
+  its stories, verified by code, and asks when unsure. Recommendation: 1 + 2,
+  later 4. **Deferred by the user, 28 Sep 2026.**
 - SDD structure, spec template and rules (next session).
 - **AI Journal:** user to share details next session (purpose, template/format, contents, reviewer). Recommendation: update it continuously during development, not at the end; include it in SDD setup.
 

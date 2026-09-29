@@ -30,9 +30,15 @@ const FIELD = {
 const GRAPH_ROOT = 'https://graph.microsoft.com/v1.0'
 
 export class SharePointTracker implements Tracker {
+  /**
+   * `memberNames`: the team's roster. The list has no team column, so a team
+   * reads only its own members' rows — two teams can share one list (SPEC-002
+   * 4c). Omitted, every row is read (the smoke check).
+   */
   constructor (
     private readonly siteId: string,
-    private readonly listId: string
+    private readonly listId: string,
+    private readonly memberNames?: readonly string[]
   ) {}
 
   private get base (): string {
@@ -106,8 +112,15 @@ export class SharePointTracker implements Tracker {
     return mine.length
   }
 
-  /** Every row, following Graph's paging. The list stays small: one row per member per item. */
+  /** This team's rows, following Graph's paging. The list stays small: one row per member per item. */
   private async allItems (): Promise<ListItem[]> {
+    const all = await this.everyItem()
+    if (this.memberNames === undefined) return all
+    const mine = new Set(this.memberNames)
+    return all.filter((item) => mine.has(String(item.fields[FIELD.assignedTo] ?? '')))
+  }
+
+  private async everyItem (): Promise<ListItem[]> {
     const items: ListItem[] = []
     let path: string | undefined = `${this.base}/items?expand=fields&$top=999`
     while (path !== undefined) {

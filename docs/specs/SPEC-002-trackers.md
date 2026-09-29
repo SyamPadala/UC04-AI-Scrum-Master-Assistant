@@ -63,6 +63,10 @@ This is also where the update *lives*. We deliberately keep no copy of it.
 >     `openBlockers(teamId)` returns every row whose `AnyBlocker` is set — the
 >     team's current impediments, whatever day they were raised — with the date
 >     last reported. No earlier day is ever read.
+> 4c. **Two teams can share one SharePoint list** (added 26 Sep 2026, FR-10).
+>     The list has no team column, so a team's tracker reads and updates only
+>     the rows of that team's own members. Rosters never overlap (SPEC-001),
+>     so each row belongs to exactly one team.
 > 4b. Jira comments are unchanged: a comment per story per day is how Jira keeps
 >     history. `openBlockers` there reads the latest assistant comment per
 >     member on each open story in the project.
