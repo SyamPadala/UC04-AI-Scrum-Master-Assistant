@@ -103,15 +103,18 @@ test('item 13: a key that does not exist in Jira is treated as no work item', as
   assert.deepEqual(result.refused, [{ reason: 'noWorkItem', words: 'done' }])
 })
 
-test("item 14: someone else's work item is refused, and so is an unassigned one", async () => {
+test("item 14: an unassigned work item is refused; 14a: someone else's is held for confirmation", async () => {
   const { result, stored, reply } = await run(update({
     completed: [{ storyRef: 'SCRUM-25', comment: 'finished' }],
     inProgress: [{ storyRef: 'SCRUM-28', comment: 'picked it up' }]
   }))
-  assert.deepEqual(stored, [])
-  assert.deepEqual(result.refused.map((r) => r.key), ['SCRUM-25', 'SCRUM-28'])
-  assert.match(reply, /SCRUM-25 is not assigned to you, so it can't be updated\. Please reach out to your Scrum Master\./)
-  assert.match(reply, /SCRUM-28 is not assigned to you/)
+  assert.deepEqual(stored, [], 'neither is written yet')
+  assert.deepEqual(result.refused, [{ reason: 'unassigned', key: 'SCRUM-28' }])
+  assert.deepEqual(result.pending, [{
+    key: 'SCRUM-25', title: 'Build Core Architecture', owner: 'Pravallika', status: 'Completed', comment: 'finished', blocker: null
+  }])
+  assert.match(reply, /SCRUM-28 is not assigned to you, so it can't be updated\. Please reach out to your Scrum Master\./)
+  assert.match(reply, /\? SCRUM-25 is assigned to Pravallika, not you\. Confirm below/)
 })
 
 test('item 18: a mixed message records the verified item and refuses the rest', async () => {
@@ -122,7 +125,8 @@ test('item 18: a mixed message records the verified item and refuses the rest', 
   assert.equal(result.outcome, 'recorded')
   assert.deepEqual(stored[0].rows.map((r) => r.win), ['SCRUM-27'])
   assert.match(reply, /✔ SCRUM-27 Enforce Transport Security — Completed/)
-  assert.match(reply, /✘ SCRUM-25 is not assigned to you/)
+  assert.match(reply, /\? SCRUM-25 is assigned to Pravallika/)
+  assert.equal(result.pending.length, 1, 'the other person\'s item waits for the card')
 })
 
 test('item 17: the confirmation lists WIN, title and status for each recorded item', async () => {

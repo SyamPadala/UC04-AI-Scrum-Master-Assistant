@@ -13,8 +13,11 @@ export interface BlockerLine {
   storyUrl?: string | null
 }
 
+/** A member's open sprint item, listed when a blocker names none (SPEC-005 2a). */
+export interface OpenItemLine { key: string, title: string, url?: string | null }
+
 export function blockerAlertCard (
-  memberName: string, localDate: string, blockers: BlockerLine[]
+  memberName: string, localDate: string, blockers: BlockerLine[], openItems: OpenItemLine[] = []
 ): unknown {
   const body: unknown[] = [
     {
@@ -34,6 +37,21 @@ export function blockerAlertCard (
   ]
 
   for (const blocker of blockers) {
+    // SPEC-005 2a: when no story is named, show what the member is working on.
+    // Information, not attribution — nothing is marked Blocked because of it.
+    // By name, never a pronoun.
+    const openLine = blocker.storyRef !== null
+      ? []
+      : [{
+          type: 'TextBlock',
+          text: openItems.length === 0
+            ? `${memberName} has no open items in the sprint.`
+            : `${memberName}'s open items: ${openItems.map((item) => `${item.key} ${item.title}`).join('; ')}`,
+          isSubtle: true,
+          size: 'Small',
+          spacing: 'Small',
+          wrap: true
+        }]
     // "not specified" rather than silence: an unattributed blocker is still a
     // blocker, and hiding the gap would read as though a story was known (A8).
     const story = blocker.storyRef === null
@@ -55,18 +73,25 @@ export function blockerAlertCard (
           size: 'Small',
           spacing: 'Small',
           wrap: true
-        }
+        },
+        ...openLine
       ]
     })
   }
 
-  const links = blockers
+  const blockerLinks = blockers
     .filter((blocker) => blocker.storyUrl != null && blocker.storyRef !== null)
     .map((blocker) => ({
       type: 'Action.OpenUrl',
       title: `Open ${blocker.storyRef}`,
       url: blocker.storyUrl as string
     }))
+  const openLinks = blockers.some((blocker) => blocker.storyRef === null)
+    ? openItems.filter((item) => item.url != null && item.url !== '').map((item) => ({
+      type: 'Action.OpenUrl', title: `Open ${item.key}`, url: item.url as string
+    }))
+    : []
+  const links = [...blockerLinks, ...openLinks.filter((o) => !blockerLinks.some((b) => b.url === o.url))]
 
   return {
     type: 'AdaptiveCard',

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026 |
+| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026 |
 | **Delivers** | FR-02, FR-03, NFR Latency |
 | **Assumptions** | A8 (story resolution), A11 (messages combined per member per day) |
 | **Depends on** | SPEC-001, SPEC-002 |
@@ -79,9 +79,28 @@ Code decides and acts in every case; Agent 1 only reads the message.
 13. **Sprint active, no work item found for an item.** That item is not
     recorded. The member is told: *"I couldn't find a work item for: '<their
     words>'. Your open items: SCRUM-27 <title>, …. Which one is it?"*
-14. **Work item assigned to someone else, or unassigned.** Not recorded. The
-    member is told: *"SCRUM-25 is not assigned to you, so it can't be updated.
-    Please reach out to your Scrum Master."* No confirmation card.
+14. **Unassigned work item.** Not recorded. The member is told: *"SCRUM-28 is
+    not assigned to you, so it can't be updated. Please reach out to your
+    Scrum Master."*
+14a. *Amended 29 Sep 2026 (user decision; replaces the 28 Sep "no card").*
+    **Work item assigned to someone else.** Not recorded yet; the member gets
+    a card: *"SCRUM-25 is assigned to Pravallika, not you. Submit your update
+    anyway?"* **[Submit] [Cancel]**.
+    - **Submit:** code records the item under the **sender's** name, with the
+      comment prefixed *"(assigned to <owner>)"*, and replies *"Recorded
+      SCRUM-25 in the tracker. Please ask your Scrum Master to assign it to
+      you in Jira."* Jira is not changed.
+    - **Cancel:** *"SCRUM-25 not recorded."*
+    - The pending item travels in the card's button data (key, status,
+      comment, blocker, date), so nothing is stored in Firestore (Privacy
+      NFR). On Submit, code re-checks the story in Jira: it must still exist
+      and still not be unassigned.
+    - Submitting twice records once (the row is updated in place, keyed on
+      member + work item). A card from another day, or after the day's
+      scheduled summary, records nothing: *"This card has expired"* / the
+      stand-up-closed notice.
+    - The member's own items in the same message are recorded at once; only
+      the other person's item waits for the button.
 15. **Not a stand-up update** (e.g. *"asdf lol"*, *"thanks!"*). Agent 1 labels
     the message `kind: 'not_update'`. Nothing is recorded; the member is told:
     *"This doesn't look like a stand-up update, so it isn't counted as a
@@ -223,7 +242,8 @@ Counting participation (SPEC-007). Voice input (A10, not built).
 | 7 | Two messages same day produce one record | Live repeat | Tracker state (A11) |
 | 8 | Agents hold no write or send tools | Code review of `agents/tools/` | Review note |
 | 9 | No active sprint: nothing written, member told, one SM alert per day | Unit test + live with sprint not started | Test output; Teams screenshots |
-| 10 | Unknown item, other person's item, unassigned item each refused with reason | Unit tests on the intake with a fake PM client | Test output |
+| 10 | Unknown item and unassigned item refused with reason; other person's item offered as a Submit/Cancel card | Unit tests on the intake with a fake PM client | Test output |
+| 10a | Submit records under the sender with "(assigned to …)"; Cancel records nothing; twice records once; expired card records nothing | Unit tests on the submit handler; live in Teams | Test output; tracker; screenshot |
 | 11 | Garbage and "nothing to report" not written, member told, stays non-responder | Unit test + eval cases labelled with `kind` | Test output; eval report |
 | 12 | Confirmation lists WIN, title, status per recorded item | Unit test on the reply text + live | Test output; screenshot |
 | 13 | Accuracy stays ≥ 90% with the new `kind` field | `eval/` run — **live LLM, ask the user first** | Accuracy report |

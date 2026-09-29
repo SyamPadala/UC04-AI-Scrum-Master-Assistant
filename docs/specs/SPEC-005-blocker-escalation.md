@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | Draft — amendment of 29 Sep 2026 (item 2a) approved 29 Sep 2026 |
 | **Delivers** | FR-06 |
 | **Assumptions** | A1 (alert sent as part of update processing, target < 30 s), A8 (story resolution) |
 | **Depends on** | SPEC-004 |
@@ -20,6 +20,13 @@ affects. They don't have to wait for the end-of-day summary to find out.
    message to the team's Scrum Master (FR-06). The agent does not send it.
 2. The alert names the member, the blocker description, and the affected story
    with a link — or "not specified" when no story could be resolved (A8).
+2a. *Added 29 Sep 2026 (user decision, option A, after "my laptop is broken"
+   arrived as "Affected work item: not specified").* When the affected story
+   is not specified, the alert also lists the member's **open sprint items**
+   (key and title, with links): *"pravallika boppana's open items: SCRUM-25
+   Build Core Architecture…"* — by name, never a pronoun. This is information, not attribution: no item is marked
+   Blocked and nothing is written to the tracker (SPEC-004 item 19). With no
+   open items, the line says so.
 3. Several blockers from one member arrive as one alert listing all of them, not
    as several messages.
 4. The alert is sent as part of update processing, so it lands within the same
@@ -91,4 +98,5 @@ Flagging non-responders (SPEC-007).
 | 4 | Multiple blockers arrive as one alert | Live run | Screenshot |
 | 5 | Duplicate blocker same day alerts once | Live repeat | Log showing suppression |
 | 6 | Unresolvable story shows "not specified" | Eval case | Screenshot (A8) |
+| 6a | "Not specified" alert lists the member's open items and marks none Blocked | Unit test on the card; live "my laptop is broken" | Test output; screenshot |
 | 7 | Failed alert does not lose the update | Fault injection | Tracker state + log |

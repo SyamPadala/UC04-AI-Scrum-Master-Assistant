@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { TeamConfig } from '../types.js'
 import type { Story } from '../pm/types.js'
-import { blockerAlertCard, type BlockerLine } from '../cards/blockerAlert.js'
+import { blockerAlertCard, type BlockerLine, type OpenItemLine } from '../cards/blockerAlert.js'
 import { isConversationGone, sendProactiveCard } from '../bot/adapter.js'
 import { claimBlockerAlert, forgetScrumMasterChat, scrumMasterOf } from '../store/firestore.js'
 import { config } from '../config/env.js'
@@ -43,7 +43,9 @@ export async function sendBlockerAlert (
   localDate: string,
   blockers: Array<{ description: string, storyRef: string | null }>,
   stories: Map<string, Story>,
-  detectedAt: Date
+  detectedAt: Date,
+  /** The member's open sprint items, listed when a blocker names none (SPEC-005 2a). */
+  openItems: OpenItemLine[] = []
 ): Promise<BlockerAlertResult> {
   if (blockers.length === 0) return { sent: false, suppressed: 0, reason: 'no blockers' }
 
@@ -93,7 +95,7 @@ export async function sendBlockerAlert (
   }
 
   try {
-    await sendProactiveCard(scrumMaster.conversationRef as string, blockerAlertCard(memberName, localDate, lines), fallback)
+    await sendProactiveCard(scrumMaster.conversationRef as string, blockerAlertCard(memberName, localDate, lines, openItems), fallback)
   } catch (error) {
     // SPEC-008 10e: the Scrum Master's chat is gone. Forget it so the page
     // shows it, and say so rather than reporting a generic failure.

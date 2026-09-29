@@ -34,7 +34,20 @@ export type IntakeOutcome =
 /** An item the member reported that was not written, and why (items 13–14). */
 export type Refusal =
   | { reason: 'noWorkItem', words: string }
-  | { reason: 'notYours', key: string, owner: string | null }
+  | { reason: 'unassigned', key: string }
+
+/**
+ * An item on someone else's story, held for the member to confirm (item 14a).
+ * Travels in the confirmation card's button data, never in Firestore.
+ */
+export interface PendingItem {
+  key: string
+  title: string | null
+  owner: string
+  status: RowStatus
+  comment: string | null
+  blocker: string | null
+}
 
 /** A row this message wrote, as the member is told about it (item 17). */
 export interface RecordedItem { win: string, title: string | null, status: RowStatus, blocker: string | null }
@@ -45,6 +58,8 @@ export interface IntakeResult {
   understood: boolean
   recorded: RecordedItem[]
   refused: Refusal[]
+  /** Items on someone else's story, awaiting Submit or Cancel (item 14a). */
+  pending: PendingItem[]
   /** Blockers not tied to a verified work item: not written, but alerted (item 19). */
   unlinkedBlockers: string[]
   /** The member's open sprint items, offered back when a work item was not found (item 13). */
@@ -171,43 +186,69 @@ export function mergeRows (existing: TrackerRow[], incoming: TrackerRow[]): Trac
  */
 export function verifyItems (
   output: ExtractionOutput, stories: Map<string, Story>, jiraAccountId: string
-): { kept: Pick<ExtractionOutput, 'completed' | 'inProgress' | 'blockers'>, refused: Refusal[], unlinkedBlockers: string[] } {
+): {
+  kept: Pick<ExtractionOutput, 'completed' | 'inProgress' | 'blockers'>
+  refused: Refusal[]
+  pending: PendingItem[]
+  unlinkedBlockers: string[]
+} {
   const refused: Refusal[] = []
   const refuse = (refusal: Refusal): void => {
-    const seen = refused.some((r) => refusal.reason === 'notYours'
-      ? r.reason === 'notYours' && r.key === refusal.key
+    const seen = refused.some((r) => refusal.reason === 'unassigned'
+      ? r.reason === 'unassigned' && r.key === refusal.key
       : r.reason === 'noWorkItem' && r.words === refusal.words)
     if (!seen) refused.push(refusal)
   }
-  const check = (ref: string | null): 'ok' | 'missing' | 'notYours' => {
+  const check = (ref: string | null): 'ok' | 'missing' | 'unassigned' | 'otherOwner' => {
     if (ref === null) return 'missing'
     const story = stories.get(ref)
     if (story === undefined) return 'missing'
-    // Unassigned counts as not theirs (user decision, 28 Sep 2026).
-    return story.assigneeAccountId === jiraAccountId ? 'ok' : 'notYours'
+    if (story.assigneeAccountId === jiraAccountId) return 'ok'
+    // Unassigned: the Scrum Master assigns it first (user decision, 29 Sep 2026).
+    return story.assigneeAccountId === null ? 'unassigned' : 'otherOwner'
   }
-  const notYours = (ref: string): Refusal => ({ reason: 'notYours', key: ref, owner: stories.get(ref)?.assignee ?? null })
 
-  const keepItems = (items: ExtractionOutput['completed']): ExtractionOutput['completed'] => items.filter((item) => {
+  // Someone else's story: gathered per key into one item to confirm (14a).
+  const pending = new Map<string, PendingItem>()
+  const hold = (ref: string): PendingItem => {
+    const existing = pending.get(ref)
+    if (existing !== undefined) return existing
+    const story = stories.get(ref) as Story
+    const item: PendingItem = { key: ref, title: story.title, owner: story.assignee ?? 'someone else', status: 'In Progress', comment: null, blocker: null }
+    pending.set(ref, item)
+    return item
+  }
+  const joined = (a: string | null, b: string): string => a === null ? b : `${a}; ${b}`
+
+  const keepItems = (items: ExtractionOutput['completed'], status: RowStatus): ExtractionOutput['completed'] => items.filter((item) => {
     const verdict = check(item.storyRef)
     if (verdict === 'missing') refuse({ reason: 'noWorkItem', words: item.comment })
-    if (verdict === 'notYours') refuse(notYours(item.storyRef as string))
+    if (verdict === 'unassigned') refuse({ reason: 'unassigned', key: item.storyRef as string })
+    if (verdict === 'otherOwner') {
+      const held = hold(item.storyRef as string)
+      held.comment = joined(held.comment, item.comment)
+      // Completed stands over In Progress, as it does on the member's own rows.
+      if (status === 'Completed' || held.status !== 'Completed') held.status = status
+    }
     return verdict === 'ok'
   })
+  const completed = keepItems(output.completed, 'Completed')
+  const inProgress = keepItems(output.inProgress, 'In Progress')
 
   const unlinkedBlockers: string[] = []
   const blockers = output.blockers.filter((blocker) => {
     const verdict = check(blocker.storyRef)
     if (verdict === 'missing') unlinkedBlockers.push(blocker.description)
-    if (verdict === 'notYours') refuse(notYours(blocker.storyRef as string))
+    if (verdict === 'unassigned') refuse({ reason: 'unassigned', key: blocker.storyRef as string })
+    if (verdict === 'otherOwner') {
+      const held = hold(blocker.storyRef as string)
+      held.blocker = joined(held.blocker, blocker.description)
+      if (held.status !== 'Completed') held.status = 'Blocked'
+    }
     return verdict === 'ok'
   })
 
-  return {
-    kept: { completed: keepItems(output.completed), inProgress: keepItems(output.inProgress), blockers },
-    refused,
-    unlinkedBlockers
-  }
+  return { kept: { completed, inProgress, blockers }, refused, pending: [...pending.values()], unlinkedBlockers }
 }
 
 /** Reads the real titles for every work item the extraction referred to. */
@@ -277,6 +318,7 @@ export async function processUpdate (
     understood: outcome !== 'notUnderstood',
     recorded: [],
     refused: [],
+    pending: [],
     unlinkedBlockers: [],
     openItems: [],
     rows: 0,
@@ -378,6 +420,7 @@ export async function processUpdate (
       ...common,
       recorded,
       refused: verified.refused,
+      pending: verified.pending,
       unlinkedBlockers: verified.unlinkedBlockers,
       rows: rows.length,
       added: incoming.length
@@ -390,7 +433,8 @@ export async function processUpdate (
   result.blockers = output.blockers.length
   try {
     const alert = await sendBlockerAlert(
-      team, memberId, memberName, localDate, output.blockers, stories, receivedAt
+      team, memberId, memberName, localDate, output.blockers, stories, receivedAt,
+      extraction.openItems.map((item) => ({ key: item.key, title: item.title, url: item.url }))
     )
     result.alertSent = alert.sent
     if (alert.reason !== undefined) result.alertReason = alert.reason
@@ -410,6 +454,7 @@ export async function processUpdate (
     rows: result.rows,
     added: result.added,
     refused: result.refused.length,
+    pending: result.pending.length,
     unlinkedBlockers: result.unlinkedBlockers.length,
     blockers: result.blockers,
     confidence: output.confidence,

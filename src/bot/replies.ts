@@ -36,11 +36,13 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
         : `⚠ ${item.win}${title} — Blocked: ${item.blocker}`)
     }
   } else {
-    lines.push("I haven't recorded anything from that message:")
+    lines.push(result.pending.length > 0 && result.refused.length === 0
+      ? 'Nothing recorded yet:'
+      : "I haven't recorded anything from that message:")
   }
 
   for (const refusal of result.refused) {
-    if (refusal.reason === 'notYours') {
+    if (refusal.reason === 'unassigned') {
       lines.push(`✘ ${refusal.key} is not assigned to you, so it can't be updated. Please reach out to your Scrum Master.`)
     } else {
       const options = result.openItems.length === 0
@@ -48,6 +50,11 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
         : ` Your open items: ${result.openItems.map((item) => `${item.key} ${item.title}`).join(', ')}. Which one is it?`
       lines.push(`✘ I couldn't find a work item for: "${refusal.words}".${options}`)
     }
+  }
+
+  // Item 14a: the card that follows this reply asks them to confirm.
+  for (const item of result.pending) {
+    lines.push(`? ${item.key} is assigned to ${item.owner}, not you. Confirm below if you still want it recorded.`)
   }
 
   // A blocker already alerted earlier today is one the Scrum Master has heard.

@@ -1,4 +1,5 @@
-import { ActivityHandler, MessageFactory, type TurnContext } from '@microsoft/agents-hosting'
+import { ActivityHandler, CardFactory, MessageFactory, type TurnContext } from '@microsoft/agents-hosting'
+import { Activity } from '@microsoft/agents-activity'
 import type { TeamConfig } from '../types.js'
 import type { LlmClient } from '../llm/types.js'
 import type { PmClient } from '../pm/types.js'
@@ -12,6 +13,8 @@ import { trackerFor } from '../trackers/factory.js'
 import { processUpdate, StandupClosedError } from '../jobs/updateIntake.js'
 import { handleAdminCommand, parseAdminCommand } from './admin.js'
 import { intakeReply } from './replies.js'
+import { foreignItemCard, type ForeignItemPayload } from '../cards/foreignItem.js'
+import { parseForeignItemPayload, recordForeignItem } from '../jobs/foreignItem.js'
 
 /**
  * What a member is told once the day has closed (A14).
@@ -135,6 +138,15 @@ export class ScrumAssistant extends ActivityHandler {
       const memberName = context.activity.from?.name ?? 'Unknown'
       const memberId = context.activity.from?.aadObjectId ?? context.activity.from?.id ?? ''
 
+      // SPEC-004 14a: Submit or Cancel on the "someone else's story" card
+      // arrives as a message with the button's data and no text.
+      const confirmation = parseForeignItemPayload(context.activity.value)
+      if (confirmation !== undefined) {
+        await this.confirmForeignItem(context, memberId, memberName, confirmation)
+        await next()
+        return
+      }
+
       if (text === '') {
         await next()
         return
@@ -224,6 +236,12 @@ export class ScrumAssistant extends ActivityHandler {
       // SPEC-004 items 12–20: one reply saying what was written, item by item,
       // and why anything else was not.
       await context.sendActivity(MessageFactory.text(intakeReply(result, memberName)))
+      // Item 14a: one card per story that is someone else's, to confirm.
+      for (const item of result.pending) {
+        const card = MessageFactory.attachment(CardFactory.adaptiveCard(foreignItemCard(item, team.teamId, today, memberId)))
+        card.summary = `${item.key} is assigned to ${item.owner}. Submit anyway?`
+        await context.sendActivity(card)
+      }
     } catch (error) {
       // A14: closing time is not a failure. The member is told plainly where
       // to go instead, and nothing is recorded for the day.
@@ -236,6 +254,41 @@ export class ScrumAssistant extends ActivityHandler {
       }
       await this.reportFailure(context, memberId, error)
     }
+  }
+
+  /** SPEC-004 14a: the member pressed Submit or Cancel on the confirmation card. */
+  private async confirmForeignItem (
+    context: TurnContext, memberId: string, memberName: string, payload: ForeignItemPayload
+  ): Promise<void> {
+    let team: TeamConfig | undefined
+    try {
+      team = await teamForMember(memberId)
+    } catch {
+      team = undefined
+    }
+    if (team === undefined) {
+      await context.sendActivity(MessageFactory.text('You are not on a team roster I know about, so nothing was recorded.'))
+      return
+    }
+    const today = localDate(new Date(), team.timezone)
+    let reply: string
+    try {
+      reply = await recordForeignItem(team, memberId, memberName, payload, today, { pm: this.pm, tracker: trackerFor(team) })
+    } catch (error) {
+      if (error instanceof StandupClosedError) {
+        await context.sendActivity(MessageFactory.text(CLOSED_NOTICE))
+        return
+      }
+      await this.reportFailure(context, memberId, error)
+      return
+    }
+    // Replace the card, so its buttons can't be pressed again. Best effort:
+    // the reply below says the same thing if Teams refuses the update.
+    const cardId = context.activity.replyToId
+    if (cardId !== undefined && cardId !== '') {
+      await context.updateActivity(Activity.fromObject({ type: 'message', id: cardId, text: reply })).catch(() => {})
+    }
+    await context.sendActivity(MessageFactory.text(reply))
   }
 
   /**
