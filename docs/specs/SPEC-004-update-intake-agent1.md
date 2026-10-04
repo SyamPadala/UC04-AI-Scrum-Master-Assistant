@@ -348,6 +348,54 @@ she got a picker. The work is in SCRUM-32's acceptance criteria.
 **Also in this round, outside SPEC-004:** tracker resilience (SPEC-002 item
 5a); Reopen stand-up (SPEC-008 10l).
 
+### Amendment 4 Oct 2026 — general updates (approved by the user, 4 Oct 2026)
+
+*Why:* a new joiner with no story, or a whole team between sprints, is told
+"not recorded" every day and counted as a non-responder, although they did
+report. User decision, 4 Oct 2026 (LATER.md L12). No admin setting and no mode:
+code decides from Jira on every update.
+
+39. **No story assigned to the member → General update.** When the team has
+    **no active sprint**, or the sender has **no open (not Done) story
+    assigned in the active sprint**, the update goes straight in as a
+    **General** row (SPEC-002 2b), with no story matching and no card — also
+    when the words fit a teammate's story. The tracker mirrors Jira: no open
+    ticket of their own, nothing to put on a story. *(E.g. Sai Krishna, no
+    story; Santhosh, whose only story is Done.)*
+    - Agent 1 is still called, to read the message (update / nothing /
+      not an update, status, blockers); it is sent no candidate stories.
+    - The row: `WIN` empty, Description *General*, Assigned To and Updated By
+      the sender, Comment their words — every part, including training and
+      meetings (item 30 does not apply here), Status *In Progress*, or
+      *Blocked* with `AnyBlocker` set. One General row per member per day;
+      later messages that day update it (item 7).
+    - The member counts as **responded**. Reply: *"Saved as a general update:
+      '<their words>'."*
+    - **A blocker** goes in the General row and the Scrum Master is alerted
+      at once, as a blocker with no story (item 19, SPEC-005 2a).
+    - **Unchanged:** "not an update" (item 15) and "nothing to report"
+      (item 16) record nothing; a member not linked to Jira (item 20) is still
+      refused, because code can't tell whether they have a story.
+    - **Members who have an open story assigned:** today's flow, unchanged (items
+      34, 38) — own story recorded, otherwise the card, None of these records
+      nothing.
+    - *Replaces item 12's "nothing is recorded" and item 11 for this case.*
+
+    **Decisions (all taken 4 Oct 2026):**
+    - (a) *Decided 4 Oct 2026: keep.* No active sprint → the team's Scrum
+      Master still gets item 12's alert, once per team per day (wording:
+      *"No active sprint in <project>. Stand-up updates are being saved as
+      general updates."*).
+    - (b) *Decided 4 Oct 2026:* only an open (not Done) story counts. All of
+      the member's stories Done → General, no card.
+    - (c) *Decided 4 Oct 2026:* General updates are **not** in the summary
+      (SPEC-006 unchanged). They are mostly new joiners' KT and access
+      status, which is not for stakeholders; they stay in the tracker. A
+      blocker in a General row is **also left out** of the summary's
+      Blockers section — the Scrum Master is alerted at once instead. With
+      no sprint, SPEC-006's existing rule applies (no sprint figures, the gap
+      stated).
+
 ## Interface
 
 ```ts
@@ -473,3 +521,5 @@ Counting participation (SPEC-007). Voice input (A10, not built).
 | 18 | A key the model returns that is neither a candidate nor in the text is dropped | Unit test with a fake model | Test output |
 | 19 | Every card press gets a reply, including one that cannot be read | Unit test; live press on each card, checked in the logs | Test output; log lines |
 | 20 | No eval case ends with a wrong work item written | Eval report reviewed case by case | Eval report |
+| 21 | Item 39: no sprint, no story, or only Done stories → one General row, responded, no card; a blocker also alerts; a member with an open story is unchanged | Unit tests on the intake with a fake PM client; live as Sai Krishna (no story) | Test output; tracker row; Teams screenshot |
+| 22 | Item 39(c): General rows, and blockers on them, do not appear in the summary | Unit test on the summary facts | Test output |

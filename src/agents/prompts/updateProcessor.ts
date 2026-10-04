@@ -88,7 +88,8 @@ export function updateProcessorUser (
   memberName: string,
   text: string,
   stories: Array<{ key: string, title: string, status: string, owner?: string | null, mine?: boolean, about?: string | null }>,
-  activeBlockers: Array<{ workItem: string | null, description: string, since: string }> = []
+  activeBlockers: Array<{ workItem: string | null, description: string, since: string }> = [],
+  general = false
 ): string {
   const ownerOf = (story: { owner?: string | null, mine?: boolean }): string =>
     story.mine !== false ? 'assigned to you' : story.owner == null ? 'unassigned' : `assigned to ${story.owner}`
@@ -104,8 +105,15 @@ export function updateProcessorUser (
     ? '(none)'
     : activeBlockers.map((b) => `${b.workItem ?? 'no work item'} — ${b.description} (last reported ${b.since})`).join('\n')
 
-  return `Open stories in the current sprint (${memberName}'s own say "assigned to you"):
-${items}
+  // SPEC-004 item 39: no open story of their own, so nothing is matched and
+  // every part is general work — said here, in the user turn, so the system
+  // prompt (and every recorded sprint answer) stays as it is.
+  const work = general
+    ? `${memberName} has no open story of their own in the current sprint, so everything they report is general work (for example knowledge transfer, onboarding, access requests, environment setup, training, meetings). List every part of the message as an entry with storyRef null, reason null and empty alternatives. The rule about leaving out meetings, reviews and training does not apply to this person. Blockers are still blockers.`
+    : `Open stories in the current sprint (${memberName}'s own say "assigned to you"):
+${items}`
+
+  return `${work}
 
 Blockers ${memberName} reported earlier that are still open:
 ${blockers}

@@ -24,9 +24,19 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
 
   const lines: string[] = []
 
-  if (result.outcome === 'noSprint') {
-    lines.push("There is no active sprint, so I couldn't link your update to a work item and haven't recorded it." +
-      (result.noSprintAlertSent === true ? ' Your Scrum Master has been told.' : ''))
+  if (result.outcome === 'general') {
+    // Item 39: everything went into her General row; the blocker line follows.
+    const said = result.general?.said ?? null
+    lines.push(said === null ? 'Saved as a general update.' : `Saved as a general update: "${said}"`)
+    const blocker = result.general?.blocker ?? null
+    if (blocker !== null) {
+      const alerted = result.alertSent || result.alertReason === 'all blockers already alerted today'
+      lines.push(alerted
+        ? `⚠ Blocker: "${blocker}". Your Scrum Master has been told.`
+        : `⚠ Blocker: "${blocker}". It is in the tracker, but I couldn't reach your Scrum Master about it.`)
+    }
+    if (result.truncated) lines.push('Your message was long, so only the first part was read.')
+    return lines.join('\n\n')
   } else if (result.recorded.length > 0) {
     lines.push(`Recorded your update, ${memberName}:`)
     for (const item of result.recorded) {

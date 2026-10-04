@@ -68,7 +68,9 @@ export async function gatherFacts (
 ): Promise<SummaryFacts> {
   const updates = await tracker.readToday(team.teamId, localDate)
   // SPEC-006 4a: current impediments from the tracker's current state.
-  const blockers = await tracker.openBlockers(team.teamId)
+  // SPEC-004 item 39(c): General rows — and blockers on them — stay in the
+  // tracker and out of the summary; the Scrum Master was alerted already.
+  const blockers = (await tracker.openBlockers(team.teamId)).filter((b) => b.workItem !== null)
 
   // Sprint data is optional on purpose: SPEC-006 requires the summary to state
   // the gap rather than omit the section or invent figures.
@@ -108,9 +110,10 @@ export async function gatherFacts (
             }))
           }
         }),
-    updates: updates.map((update) => ({
+    // A member with only a General row still counts as responded (above).
+    updates: updates.filter((update) => update.rows.some((row) => row.win !== null)).map((update) => ({
       member: update.memberName,
-      rows: update.rows.map((row) => ({
+      rows: update.rows.filter((row) => row.win !== null).map((row) => ({
         win: row.win,
         status: row.status,
         comment: row.comment,

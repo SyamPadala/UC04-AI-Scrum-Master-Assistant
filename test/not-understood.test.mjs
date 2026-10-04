@@ -30,7 +30,8 @@ function stubs (outputs) {
     getSprintData: async () => undefined,
     lookupStory: async (key) => ({ key, title: 'Risk Scoring Service', status: 'In Progress', statusCategory: 'In Progress', points: 3, assignee: 'Syam Padala', assigneeAccountId: 'j1', url: '', updated: new Date() }),
     getMemberOpenItems: async () => [],
-    getSprintOpenItems: async () => []
+    // Open stories of his own, so updates are matched rather than General (item 39).
+    getSprintOpenItems: async () => ['SCRUM-6', 'SCRUM-21'].map((key) => ({ key, title: 'Risk Scoring Service', status: 'In Progress', statusCategory: 'In Progress', points: 3, assignee: 'Syam Padala', assigneeAccountId: 'j1', url: '', updated: new Date() }))
   }
   return { llm, pm, prompts }
 }

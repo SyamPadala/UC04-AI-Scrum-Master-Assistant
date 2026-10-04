@@ -156,6 +156,8 @@ export interface Agent1Result {
   openItems: Story[]
   /** Every story offered to the model, so code can read titles and owners afterwards. */
   candidates: Story[]
+  /** SPEC-004 item 39: the member had no open story of their own (or there is no sprint). */
+  general: boolean
   durationMs: number
   /** Round-trips the model needed; 0 when a recorded response was replayed. */
   roundTrips: number
@@ -179,8 +181,12 @@ export async function extractUpdate (
   // Fetched once and passed to the model in the prompt. A tool round-trip for
   // the same facts would resend the whole conversation, which costs far more
   // than the lines this produces.
-  const candidates = candidateStories(await pm.getSprintOpenItems(), input.jiraAccountId, text, [...typed])
-  const openItems = candidates.filter((s) => input.jiraAccountId !== '' && s.assigneeAccountId === input.jiraAccountId)
+  const sprintStories = candidateStories(await pm.getSprintOpenItems(), input.jiraAccountId, text, [...typed])
+  const openItems = sprintStories.filter((s) => input.jiraAccountId !== '' && s.assigneeAccountId === input.jiraAccountId)
+  // SPEC-004 item 39: no sprint, or no open story of their own → a general
+  // update. The model is offered no stories, so it cannot match one.
+  const general = openItems.length === 0
+  const candidates = general ? [] : sprintStories
 
   const request = {
     system: UPDATE_PROCESSOR_SYSTEM,
@@ -194,7 +200,8 @@ export async function extractUpdate (
         mine: openItems.includes(story),
         about: story.about ?? null
       })),
-      input.activeBlockers ?? []
+      input.activeBlockers ?? [],
+      general
     ),
     tools: storyTools,
     maxToolIterations: options.maxToolIterations,
@@ -222,6 +229,7 @@ export async function extractUpdate (
         ),
         openItems,
         candidates,
+        general,
         durationMs: Date.now() - startedAt,
         roundTrips: response.fromCache ? 0 : response.roundTrips,
         truncated,

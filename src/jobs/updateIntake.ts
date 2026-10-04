@@ -29,7 +29,7 @@ export type IntakeOutcome =
   | 'notUpdate' // not a stand-up update at all (item 15)
   | 'nothing' // "nothing to report" — not recorded, non-responder for now (item 16)
   | 'notLinked' // member has no Jira link, so ownership cannot be checked (item 20)
-  | 'noSprint' // no active sprint, so nothing can be matched (item 12)
+  | 'general' // no sprint, or no open story of their own: one General row (item 39)
 
 /** An item the member reported that was not written, and why (items 13–14). */
 export type Refusal =
@@ -96,6 +96,8 @@ export interface IntakeResult {
   openItems: Array<{ key: string, title: string }>
   /** False when no alert about a missing sprint could be sent; the reason says why. */
   noSprintAlertSent?: boolean
+  /** Item 39: what went into the member's General row from this message. */
+  general?: { said: string | null, blocker: string | null }
   /** Rows the member now has for the day, after merging (A11). */
   rows: number
   /** Rows this particular message contributed. */
@@ -170,9 +172,34 @@ export function toTrackerRows (
     })
   }
 
-  // No General row (SPEC-004 item 11, 28 Sep 2026): an item that names no
-  // verified work item is reported back to the member, never filed.
+  // No General row here (SPEC-004 item 11, 28 Sep 2026): for a member with an
+  // open story, an item that names no verified work item is reported back to
+  // them, never filed. A member without one gets `generalRow` instead (item 39).
   return rows
+}
+
+/**
+ * SPEC-004 item 39: a member with no open story of their own — or a team with
+ * no sprint — has every part of the message filed as one General row (SPEC-002
+ * 2b). Their words go in Comment, blockers in AnyBlocker, so the blocker is not
+ * repeated; the Status is Blocked when there is one, otherwise In Progress.
+ */
+export function generalRow (
+  output: Pick<ExtractionOutput, 'completed' | 'inProgress' | 'blockers'>, memberName: string
+): TrackerRow {
+  const join = (values: string[]): string | null => {
+    const kept = [...new Set(values.map((v) => v.trim()).filter((v) => v !== ''))]
+    return kept.length === 0 ? null : kept.join('; ')
+  }
+  const anyBlocker = join(output.blockers.map((b) => b.description))
+  return {
+    win: null,
+    description: null,
+    assignedTo: memberName,
+    comment: join([...output.completed, ...output.inProgress].map((item) => item.comment)),
+    status: anyBlocker === null ? 'In Progress' : 'Blocked',
+    anyBlocker
+  }
 }
 
 /**
@@ -454,28 +481,47 @@ export async function processUpdate (
     return base(outcome, extraction.durationMs, { ...common, rows: existing.length })
   }
 
-  // Seeded with every story offered to the model, so owners and titles are known.
-  const stories = await resolveStories(output, deps.pm, extraction.candidates)
-  const verified = verifyItems(output, stories, jiraAccountId)
-
+  let stories = new Map<string, Story>()
+  let alertable: ExtractionOutput['blockers']
   let result: IntakeResult
-  if (sprint === undefined) {
-    // Item 12: no sprint, no matching. Nothing is written; the Scrum Master is
-    // told once a day. Blockers are still alerted below (FR-06).
-    let noSprintAlertSent = false
-    try {
-      const alert = await (deps.alertNoSprint ?? alertNoSprint)(team, localDate)
-      noSprintAlertSent = alert.sent || alert.reason === 'already alerted today'
-      if (!alert.sent) console.log(JSON.stringify({ event: 'noSprintAlert.notSent', teamId: team.teamId, reason: alert.reason }))
-    } catch (error) {
-      console.error(JSON.stringify({ event: 'noSprintAlert.failed', teamId: team.teamId, error: String(error) }))
-    }
-    result = base('noSprint', extraction.durationMs, {
-      ...common,
-      noSprintAlertSent,
-      unlinkedBlockers: output.blockers.map((b) => b.description)
+  if (extraction.general) {
+    // Item 39: no sprint, or no open story of their own. Every part goes into
+    // the member's one General row — no matching, no card — and they count as
+    // having responded. Later messages today join the same row (A11).
+    const incoming = generalRow(output, memberName)
+    const existing = today.find((update) => update.memberName === memberName)?.rows ?? []
+    const rows = mergeRows(existing, [incoming])
+    await deps.tracker.write({
+      teamId: team.teamId, memberId, memberName, localDate, rows, rawText: text, capturedAt: receivedAt
     })
+
+    // Items 12 and 39(a): with no sprint at all, the Scrum Master still hears
+    // once a day per team, in case the sprint was simply never started.
+    let noSprintAlertSent: boolean | undefined
+    if (sprint === undefined) {
+      noSprintAlertSent = false
+      try {
+        const alert = await (deps.alertNoSprint ?? alertNoSprint)(team, localDate)
+        noSprintAlertSent = alert.sent || alert.reason === 'already alerted today'
+        if (!alert.sent) console.log(JSON.stringify({ event: 'noSprintAlert.notSent', teamId: team.teamId, reason: alert.reason }))
+      } catch (error) {
+        console.error(JSON.stringify({ event: 'noSprintAlert.failed', teamId: team.teamId, error: String(error) }))
+      }
+    }
+    result = base('general', extraction.durationMs, {
+      ...common,
+      ...(noSprintAlertSent === undefined ? {} : { noSprintAlertSent }),
+      general: { said: incoming.comment, blocker: incoming.anyBlocker },
+      rows: collapseRows(rows).length,
+      added: 1
+    })
+    // A blocker in a General row belongs to no story: alerted at once (item 19).
+    alertable = output.blockers.map((b) => ({ ...b, storyRef: null, alternatives: [] }))
   } else {
+    // Seeded with every story offered to the model, so owners and titles are known.
+    stories = await resolveStories(output, deps.pm, extraction.candidates)
+    const verified = verifyItems(output, stories, jiraAccountId)
+
     // Items 11, 13, 14, 18: only verified items are written; the rest go back
     // to the member with their reason in the same reply.
     const incoming = toTrackerRows(verified.kept, memberName, stories)
@@ -501,14 +547,13 @@ export async function processUpdate (
       rows: rows.length,
       added: incoming.length
     })
+    alertable = verified.alertNow
   }
 
   // FR-06 is triggered from the validated extraction, after anything that was
   // going to be filed is filed: a failed alert must never cost the member their
   // update. Every blocker is alerted, written or not (item 19), except one on
-  // a choice card: that waits for the member's answer (items 14b, 38). With no
-  // sprint nothing can be matched, so every blocker is alerted.
-  const alertable = sprint === undefined ? output.blockers : verified.alertNow
+  // a choice card: that waits for the member's answer (items 14b, 38).
   result.blockers = alertable.length
   try {
     const alert = await sendBlockerAlert(

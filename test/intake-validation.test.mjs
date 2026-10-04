@@ -23,7 +23,9 @@ const TEAM = {
   timezone: 'Asia/Kolkata',
   members: [
     { memberId: 'm1', displayName: 'Santhosh', jiraAccountId: 'j1', conversationRef: 'ref' },
-    { memberId: 'm2', displayName: 'Vardhan', conversationRef: 'ref' }
+    { memberId: 'm2', displayName: 'Vardhan', conversationRef: 'ref' },
+    // New joiner: linked to Jira, no story in the sprint (item 39).
+    { memberId: 'm3', displayName: 'Sai Krishna', jiraAccountId: 'j3', conversationRef: 'ref' }
   ],
   scrumMasterId: ''
 }
@@ -39,10 +41,11 @@ const STORIES = {
 }
 
 function stubs (output, { sprint = true } = {}) {
-  const calls = { llm: 0, noSprintAlerts: 0 }
+  const calls = { llm: 0, noSprintAlerts: 0, prompts: [] }
   const llm = {
-    complete: async () => {
+    complete: async (request) => {
       calls.llm += 1
+      calls.prompts.push(request.user)
       return { text: JSON.stringify(output), usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 }, roundTrips: 1 }
     }
   }
@@ -87,14 +90,56 @@ test('item 20: a member with no Jira link is refused before the model is called'
   assert.match(reply, /isn't linked to Jira/)
 })
 
-test('item 12: no active sprint writes nothing, tells the member and alerts the Scrum Master', async () => {
-  const { result, stored, calls, reply } = await run(update({ inProgress: [{ storyRef: 'SCRUM-27', comment: 'on it' }] }), { sprint: false })
-  assert.equal(result.outcome, 'noSprint')
-  assert.deepEqual(stored, [])
-  assert.equal(calls.noSprintAlerts, 1)
-  assert.match(reply, /no active sprint/)
-  assert.match(reply, /Scrum Master has been told/)
-  assert.doesNotMatch(reply, /^Recorded/)
+test('item 39: no active sprint → one General row, responded, and the Scrum Master is alerted', async () => {
+  const { result, stored, calls, reply } = await run(update({ inProgress: [{ storyRef: null, comment: 'set up my laptop and the VPN' }] }), { sprint: false })
+  assert.equal(result.outcome, 'general')
+  assert.deepEqual(stored[0].rows, [{ win: null, description: null, assignedTo: 'Santhosh', comment: 'set up my laptop and the VPN', status: 'In Progress', anyBlocker: null }])
+  assert.equal(calls.noSprintAlerts, 1, 'item 39(a): the once-a-day no-sprint alert stays')
+  assert.match(calls.prompts[0], /has no open story of their own/)
+  assert.doesNotMatch(calls.prompts[0], /Open stories in the current sprint/)
+  assert.equal(reply, 'Saved as a general update: "set up my laptop and the VPN"')
+})
+
+test('item 39: no open story of their own → General, no card, even when the words name a teammate\'s story', async () => {
+  const { result, stored, calls, reply } = await run(update({
+    completed: [{ storyRef: 'SCRUM-25', comment: 'KT session on the architecture done' }],
+    inProgress: [{ storyRef: null, comment: 'waiting on Azure DevOps access' }]
+  }), { memberId: 'm3' })
+  assert.equal(result.outcome, 'general')
+  assert.deepEqual(result.choices, [], 'no card')
+  assert.equal(stored[0].rows.length, 1)
+  assert.equal(stored[0].rows[0].win, null)
+  assert.equal(stored[0].rows[0].comment, 'KT session on the architecture done; waiting on Azure DevOps access')
+  assert.equal(calls.noSprintAlerts, 0, 'a sprint is running')
+  assert.match(reply, /^Saved as a general update/)
+})
+
+test('item 39: a blocker in a general update is in the row and goes to the alert at once', async () => {
+  const { result, stored, reply } = await run(update({
+    inProgress: [{ storyRef: null, comment: 'doing the KT videos' }],
+    blockers: [{ storyRef: null, description: 'no access to the Jira board yet' }]
+  }), { memberId: 'm3' })
+  assert.deepEqual(stored[0].rows[0], { win: null, description: null, assignedTo: 'Sai Krishna', comment: 'doing the KT videos', status: 'Blocked', anyBlocker: 'no access to the Jira board yet' })
+  assert.equal(result.blockers, 1)
+  assert.deepEqual(result.unlinkedBlockers, [], 'it is in the tracker, so not reported as unwritten')
+  // No Scrum Master on this roster, so the reply must not claim they heard.
+  assert.match(reply, /⚠ Blocker: "no access to the Jira board yet"\. It is in the tracker, but I couldn't reach your Scrum Master/)
+})
+
+test('item 39: a second general message the same day joins the same General row', async () => {
+  const file = path.join(tmpdir(), `uc04-validation-general-${Date.now()}.json`)
+  await rm(file, { force: true })
+  const tracker = new MockTracker(file)
+  for (const comment of ['finished the onboarding checklist', 'started the KT on the gateway']) {
+    const s = stubs(update({ inProgress: [{ storyRef: null, comment }] }))
+    await processUpdate(TEAM, 'm3', 'Sai Krishna', 'message', '2026-09-28', {
+      llm: s.llm, pm: s.pm, tracker, summaryHasRun: async () => false, alertNoSprint: s.alertNoSprint
+    })
+  }
+  const stored = await tracker.readToday('team-1', '2026-09-28')
+  await rm(file, { force: true })
+  assert.equal(stored[0].rows.length, 1)
+  assert.equal(stored[0].rows[0].comment, 'finished the onboarding checklist; started the KT on the gateway')
 })
 
 test('items 13, 38: work that fits no story is not written; the card offers her own stories', async () => {

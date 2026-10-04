@@ -44,7 +44,8 @@ function stubs () {
       return { key, title: 'A story', status: 'In Progress', statusCategory: 'In Progress', points: 3, assignee: 'Madhavi Andoju', assigneeAccountId: 'j1', url: '', updated: new Date() }
     },
     getMemberOpenItems: async () => [],
-    getSprintOpenItems: async () => []
+    // An open story of her own, so the update is matched rather than General (item 39).
+    getSprintOpenItems: async () => [{ key: 'SCRUM-7', title: 'A story', status: 'In Progress', statusCategory: 'In Progress', points: 3, assignee: 'Madhavi Andoju', assigneeAccountId: 'j1', url: '', updated: new Date() }]
   }
   return { calls, llm, pm }
 }
