@@ -26,6 +26,8 @@ export interface LlmRequest {
   timeoutMs: number
   /** Names the caller in usage records, e.g. 'agent1'. Never content. */
   label: string
+  /** A model for this request only (SPEC-004 item 36); the client's own model when absent. */
+  model?: string
 }
 
 export interface LlmUsage {

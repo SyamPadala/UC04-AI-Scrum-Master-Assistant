@@ -398,6 +398,10 @@ export function adminPage (userName: string): string {
 
     <section id="tab-run">
       <div class="card">
+        <div class="card-head"><div><h2>Today's stand-up</h2><p id="standup-state">Checking…</p></div>
+          <button class="btn" id="reopen-btn" hidden>${icon('repeat')} Reopen stand-up</button></div>
+      </div>
+      <div class="card">
         <div class="card-head"><div><h2>Run a job now</h2><p>For testing or a demo. It does not use up today's scheduled run and does not close the stand-up.</p></div></div>
         <div class="card-body">
           <div class="jobs">
@@ -555,6 +559,18 @@ export function adminPage (userName: string): string {
     const state = $('state-badge')
     state.textContent = view.schedule.active ? 'Running' : 'Paused'
     state.className = 'badge ' + (view.schedule.active ? 'ok' : 'warn')
+  }
+
+  // SPEC-008 10l: closed by the scheduled summary; reopening lets updates in again.
+  function renderStandup () {
+    const s = view.standup
+    const time = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    $('standup-state').textContent = s.reopenedAt
+      ? 'Open. Reopened by ' + s.reopenedBy + ' at ' + time(s.reopenedAt) + '; the summary will not be sent again today.'
+      : s.closed
+        ? 'Closed at ' + (s.closedAt ? time(s.closedAt) : 'summary time') + ' (summary sent). Late updates are refused.'
+        : 'Open. It closes when the scheduled summary is sent at ' + view.schedule.summaryTime + '.'
+    $('reopen-btn').hidden = !s.closed
   }
 
   // SPEC-008 10f/10j: the Scrum Master is shown apart from the roster; only an
@@ -839,7 +855,7 @@ export function adminPage (userName: string): string {
   async function load () {
     if (!teamId) return
     view = await api('GET', '/teams/' + teamId)
-    renderStats(); renderScrumMaster(); renderMembers(); renderStakeholders(); renderSchedule(); renderActivity()
+    renderStats(); renderStandup(); renderScrumMaster(); renderMembers(); renderStakeholders(); renderSchedule(); renderActivity()
   }
 
   document.querySelectorAll('nav button').forEach((tab) => tab.addEventListener('click', () => {
@@ -905,6 +921,10 @@ export function adminPage (userName: string): string {
       rows.replaceChildren()
       const tr = el('tr'); tr.append(el('td', e.message, 'empty')); rows.append(tr)
     }).finally(() => { button.disabled = false })
+  })
+
+  $('reopen-btn').addEventListener('click', () => {
+    act($('reopen-btn'), () => api('POST', '/teams/' + teamId + '/reopen')).catch(() => {})
   })
 
   document.querySelectorAll('[data-job]').forEach((b) => b.addEventListener('click', () => {

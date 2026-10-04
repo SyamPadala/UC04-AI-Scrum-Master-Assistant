@@ -59,6 +59,18 @@ This is also where the update *lives*. We deliberately keep no copy of it.
 >     again without one; then it is cleared and `Status` set from the report.
 > 2e. **Two members on one story** have one row each (identity includes the
 >     member), so neither overwrites the other.
+> 2f. *Added 1 Oct 2026 (user decision).* **Assigned To matches Jira; Updated
+>     By says who sent it.** A new list column, **Updated By** (internal name
+>     `UpdatedBy`, added by the user), holds the member who sent the update.
+>     **AssignedTo** is the story's owner as in Jira. The comment holds only
+>     the member's words — it never names the sender, because Updated By
+>     already does *(changed 4 Oct 2026, user decision; before, someone else's
+>     story had the comment prefix "Updated by <sender>: ")*. Row identity,
+>     participation, follow-ups and open blockers all use Updated By (falling
+>     back to AssignedTo on rows written before the column existed), so the
+>     sender still counts as having responded and two people's rows on one
+>     story stay separate. *(Before: AssignedTo was the sender and the comment
+>     said "(assigned to <owner>)" — users found it confusing.)*
 > 4a. `readToday` returns the rows whose `Date` (last updated) is today.
 >     `openBlockers(teamId)` returns every row whose `AnyBlocker` is set — the
 >     team's current impediments, whatever day they were raised — with the date
@@ -72,6 +84,24 @@ This is also where the update *lives*. We deliberately keep no copy of it.
 >     member on each open story in the project.
 5. A tracker failure is reported to the caller and recorded, but never loses the
    member's message — the reply is acknowledged in Teams regardless.
+5a. *Added 30 Sep 2026 (approved by the user, 30 Sep 2026; demo-day issue #4).*
+    **A slow or failing tracker is retried, and the member is told.** Sailaja's
+    update at 17:09 was lost: SharePoint hung for about a minute, then Graph
+    answered 504, and there was no timeout and no retry.
+    - Every Graph call has a **15-second timeout**.
+    - A timeout, a 5xx or a 429 is **retried twice**, after 2 s and 5 s (a
+      `Retry-After` header is honoured, up to 10 s). A create (POST) is
+      retried only on 429: after a timeout or a 5xx the row may already exist,
+      and a second create would duplicate it.
+    - On the first retry the member is told once: *"The tracker is responding
+      slowly, retrying… your update isn't lost yet."*
+    - If every attempt fails: *"I couldn't reach the tracker, so your update
+      wasn't recorded. Please send it again in a few minutes."*
+    - The list is read **once per message** (today's rows and open blockers
+      come from the same read; the write reuses it), not three times.
+    - The update is not held for a later retry: that would store its text in
+      Firestore (Privacy NFR). A repeated write is safe — rows are keyed on
+      member + work item.
 6. The `mock` tracker writes to a local JSON file and is fully functional, so
    the whole daily cycle runs with no Microsoft or Jira account.
 

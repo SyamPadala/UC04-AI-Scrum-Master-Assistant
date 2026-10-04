@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { HttpError, httpErrorFrom, withRetry } from '../util/retry.js'
 import type { PmClient, SprintData, Story } from './types.js'
+import { storyAbout } from './about.js'
 
 /**
  * Jira Cloud, read only (SPEC-006).
@@ -141,12 +142,14 @@ export class JiraClient implements PmClient {
       assignee: raw.fields.assignee?.displayName ?? null,
       assigneeAccountId: raw.fields.assignee?.accountId ?? null,
       url: `${this.options.baseUrl}/browse/${raw.key}`,
-      updated: parseDate(raw.fields.updated) ?? new Date(0)
+      updated: parseDate(raw.fields.updated) ?? new Date(0),
+      about: storyAbout(fields.description)
     }
   }
 
   private get issueFields (): string {
-    const base = ['summary', 'status', 'assignee', 'updated']
+    // description: what the story is about, for Agent 1 (SPEC-004 item 32).
+    const base = ['summary', 'status', 'assignee', 'updated', 'description']
     if (this.options.storyPointsField !== '') base.push(this.options.storyPointsField)
     return base.join(',')
   }

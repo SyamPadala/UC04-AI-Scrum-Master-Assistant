@@ -37,18 +37,31 @@ export type Refusal =
   | { reason: 'unassigned', key: string }
 
 /**
- * An item on someone else's story, held for the member to confirm (item 14a).
- * Travels in the confirmation card's button data, never in Firestore.
+ * An item that is not clearly the member's own story (SPEC-004 item 38): her
+ * own open stories and every other story it could fit, for her to choose on a
+ * card. Travels in the card's button data, never in Firestore.
  */
+export interface ChoiceItem {
+  words: string
+  status: RowStatus
+  blocker: string | null
+  options: Array<{ key: string, title: string, owner: string | null, mine: boolean }>
+}
+
+/** At most this many stories on one choice card (item 38). */
+export const MAX_CHOICES = 5
+
 /**
- * An item whose words fit more than one story (SPEC-004 item 24). The member
- * chooses on a card; nothing is guessed.
+ * An item whose words fit more than one story (SPEC-004 item 24). Kept for
+ * cards already sent before item 38; new messages get a ChoiceItem.
  */
 export interface AmbiguousItem {
   words: string
   status: RowStatus
   options: Array<{ key: string, title: string, owner: string | null }>
 }
+
+/** An item on someone else's story (item 14a). Kept for cards already sent before item 38. */
 
 export interface PendingItem {
   key: string
@@ -60,7 +73,14 @@ export interface PendingItem {
 }
 
 /** A row this message wrote, as the member is told about it (item 17). */
-export interface RecordedItem { win: string, title: string | null, status: RowStatus, blocker: string | null }
+export interface RecordedItem {
+  win: string
+  title: string | null
+  status: RowStatus
+  blocker: string | null
+  /** Her own words for this item, so she sees which part of the message went where (1 Oct 2026). */
+  said?: string | null
+}
 
 export interface IntakeResult {
   outcome: IntakeOutcome
@@ -68,10 +88,8 @@ export interface IntakeResult {
   understood: boolean
   recorded: RecordedItem[]
   refused: Refusal[]
-  /** Items on someone else's story, awaiting Submit or Cancel (item 14a). */
-  pending: PendingItem[]
-  /** Items that could be one of several stories, awaiting the member's choice (item 24). */
-  ambiguous: AmbiguousItem[]
+  /** Items that are not clearly her own story, awaiting her choice on a card (item 38). */
+  choices: ChoiceItem[]
   /** Blockers not tied to a verified work item: not written, but alerted (item 19). */
   unlinkedBlockers: string[]
   /** The member's open sprint items, offered back when a work item was not found (item 13). */
@@ -201,9 +219,10 @@ export function verifyItems (
 ): {
   kept: Pick<ExtractionOutput, 'completed' | 'inProgress' | 'blockers'>
   refused: Refusal[]
-  pending: PendingItem[]
-  ambiguous: AmbiguousItem[]
+  choices: ChoiceItem[]
   unlinkedBlockers: string[]
+  /** Blockers to alert now: on her own story or on no story. Those on a card wait for it (item 38). */
+  alertNow: ExtractionOutput['blockers']
 } {
   const refused: Refusal[] = []
   const refuse = (refusal: Refusal): void => {
@@ -221,59 +240,90 @@ export function verifyItems (
     return story.assigneeAccountId === null ? 'unassigned' : 'otherOwner'
   }
 
-  // Someone else's story: gathered per key into one item to confirm (14a).
-  const pending = new Map<string, PendingItem>()
-  const hold = (ref: string): PendingItem => {
-    const existing = pending.get(ref)
-    if (existing !== undefined) return existing
-    const story = stories.get(ref) as Story
-    const item: PendingItem = { key: ref, title: story.title, owner: story.assignee ?? 'someone else', status: 'In Progress', comment: null, blocker: null }
-    pending.set(ref, item)
+  // Item 38: her own open stories first, then every other (assigned) story the
+  // item could fit. Other people's matches always stay; her own fill the rest.
+  const own = [...stories.values()]
+    .filter((story) => jiraAccountId !== '' && story.assigneeAccountId === jiraAccountId)
+    .sort((x, y) => x.key.localeCompare(y.key, undefined, { numeric: true }))
+  const optionsFor = (keys: string[]): ChoiceItem['options'] => {
+    const others = [...new Set(keys)]
+      .map((key) => stories.get(key))
+      .filter((story): story is Story => story !== undefined && story.assigneeAccountId !== null && story.assigneeAccountId !== jiraAccountId)
+      .slice(0, MAX_CHOICES)
+    const room = MAX_CHOICES - others.length
+    return [
+      ...own.slice(0, room).map((story) => ({ key: story.key, title: story.title, owner: story.assignee, mine: true })),
+      ...others.map((story) => ({ key: story.key, title: story.title, owner: story.assignee, mine: false }))
+    ]
+  }
+
+  // Someone else's story named by several parts of one message is one card.
+  const choices: ChoiceItem[] = []
+  const byKey = new Map<string, ChoiceItem>()
+  const joined = (x: string | null, y: string): string => x === null || x === y ? y : `${x}; ${y}`
+  const choiceFor = (key: string | null, keys: string[], words: string, status: RowStatus): ChoiceItem | undefined => {
+    const existing = key === null ? undefined : byKey.get(key)
+    if (existing !== undefined) {
+      existing.words = joined(existing.words, words)
+      existing.options = optionsFor([...existing.options.filter((o) => !o.mine).map((o) => o.key), ...keys])
+      return existing
+    }
+    const options = optionsFor(keys)
+    if (options.length === 0) return undefined
+    const item: ChoiceItem = { words, status, blocker: null, options }
+    choices.push(item)
+    if (key !== null) byKey.set(key, item)
     return item
   }
-  const joined = (a: string | null, b: string): string => a === null ? b : `${a}; ${b}`
-
-  // Item 24: words that fit several stories are asked about, not guessed.
-  const ambiguous: AmbiguousItem[] = []
-  const optionsFor = (keys: string[]): AmbiguousItem['options'] => keys
-    .map((key) => stories.get(key))
-    .filter((story): story is Story => story !== undefined)
-    .map((story) => ({ key: story.key, title: story.title, owner: story.assignee }))
 
   const keepItems = (items: ExtractionOutput['completed'], status: RowStatus): ExtractionOutput['completed'] => items.filter((item) => {
     const verdict = check(item.storyRef)
-    const options = item.storyRef === null ? optionsFor(item.alternatives ?? []) : []
-    if (verdict === 'missing' && options.length > 0) {
-      ambiguous.push({ words: item.comment, status, options })
+    if (verdict === 'ok') return true
+    if (verdict === 'unassigned') {
+      refuse({ reason: 'unassigned', key: item.storyRef as string })
       return false
     }
-    if (verdict === 'missing') refuse({ reason: 'noWorkItem', words: item.comment })
-    if (verdict === 'unassigned') refuse({ reason: 'unassigned', key: item.storyRef as string })
-    if (verdict === 'otherOwner') {
-      const held = hold(item.storyRef as string)
-      held.comment = joined(held.comment, item.comment)
+    const key = verdict === 'otherOwner' ? item.storyRef : null
+    const choice = choiceFor(key, [...(key === null ? [] : [key]), ...(item.alternatives ?? [])], item.comment, status)
+    if (choice === undefined) {
+      refuse({ reason: 'noWorkItem', words: item.comment })
+    } else if (status === 'Completed' || choice.status !== 'Completed') {
       // Completed stands over In Progress, as it does on the member's own rows.
-      if (status === 'Completed' || held.status !== 'Completed') held.status = status
+      choice.status = status
     }
-    return verdict === 'ok'
+    return false
   })
   const completed = keepItems(output.completed, 'Completed')
   const inProgress = keepItems(output.inProgress, 'In Progress')
 
   const unlinkedBlockers: string[] = []
+  const alertNow: ExtractionOutput['blockers'] = []
   const blockers = output.blockers.filter((blocker) => {
     const verdict = check(blocker.storyRef)
-    if (verdict === 'missing') unlinkedBlockers.push(blocker.description)
-    if (verdict === 'unassigned') refuse({ reason: 'unassigned', key: blocker.storyRef as string })
-    if (verdict === 'otherOwner') {
-      const held = hold(blocker.storyRef as string)
-      held.blocker = joined(held.blocker, blocker.description)
-      if (held.status !== 'Completed') held.status = 'Blocked'
+    if (verdict === 'ok') {
+      alertNow.push(blocker)
+      return true
     }
-    return verdict === 'ok'
+    if (verdict === 'unassigned') {
+      refuse({ reason: 'unassigned', key: blocker.storyRef as string })
+      alertNow.push(blocker)
+      return false
+    }
+    const key = verdict === 'otherOwner' ? blocker.storyRef : null
+    const keys = [...(key === null ? [] : [key]), ...(blocker.alternatives ?? [])]
+    // Item 19: a blocker that fits no story at all is alerted at once.
+    const choice = keys.length === 0 ? undefined : choiceFor(key, keys, blocker.description, 'Blocked')
+    if (choice === undefined) {
+      unlinkedBlockers.push(blocker.description)
+      alertNow.push({ ...blocker, storyRef: null })
+      return false
+    }
+    choice.blocker = joined(choice.blocker, blocker.description)
+    if (choice.status !== 'Completed') choice.status = 'Blocked'
+    return false
   })
 
-  return { kept: { completed, inProgress, blockers }, refused, pending: [...pending.values()], ambiguous, unlinkedBlockers }
+  return { kept: { completed, inProgress, blockers }, refused, choices, unlinkedBlockers, alertNow }
 }
 
 /** Reads the real titles for every work item the extraction referred to. */
@@ -343,8 +393,7 @@ export async function processUpdate (
     understood: outcome !== 'notUnderstood',
     recorded: [],
     refused: [],
-    pending: [],
-    ambiguous: [],
+    choices: [],
     unlinkedBlockers: [],
     openItems: [],
     rows: 0,
@@ -441,14 +490,13 @@ export async function processUpdate (
     }
 
     const recorded: RecordedItem[] = collapseRows(incoming).map((row) => ({
-      win: row.win as string, title: row.description, status: row.status, blocker: row.anyBlocker
+      win: row.win as string, title: row.description, status: row.status, blocker: row.anyBlocker, said: row.comment
     }))
     result = base(incoming.length > 0 ? 'recorded' : 'nothingRecorded', extraction.durationMs, {
       ...common,
       recorded,
       refused: verified.refused,
-      pending: verified.pending,
-      ambiguous: verified.ambiguous,
+      choices: verified.choices,
       unlinkedBlockers: verified.unlinkedBlockers,
       rows: rows.length,
       added: incoming.length
@@ -457,11 +505,14 @@ export async function processUpdate (
 
   // FR-06 is triggered from the validated extraction, after anything that was
   // going to be filed is filed: a failed alert must never cost the member their
-  // update. Every blocker is alerted, written or not (item 19).
-  result.blockers = output.blockers.length
+  // update. Every blocker is alerted, written or not (item 19), except one on
+  // a choice card: that waits for the member's answer (items 14b, 38). With no
+  // sprint nothing can be matched, so every blocker is alerted.
+  const alertable = sprint === undefined ? output.blockers : verified.alertNow
+  result.blockers = alertable.length
   try {
     const alert = await sendBlockerAlert(
-      team, memberId, memberName, localDate, output.blockers, stories, receivedAt,
+      team, memberId, memberName, localDate, alertable, stories, receivedAt,
       extraction.openItems.map((item) => ({ key: item.key, title: item.title, url: item.url }))
     )
     result.alertSent = alert.sent
@@ -482,8 +533,7 @@ export async function processUpdate (
     rows: result.rows,
     added: result.added,
     refused: result.refused.length,
-    pending: result.pending.length,
-    ambiguous: result.ambiguous.length,
+    choices: result.choices.length,
     unlinkedBlockers: result.unlinkedBlockers.length,
     blockers: result.blockers,
     confidence: output.confidence,

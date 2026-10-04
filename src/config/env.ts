@@ -159,6 +159,12 @@ export const config = {
   },
 
   agent1: {
+    /**
+     * Agent 1's own model (SPEC-004 items 36, 38): gemini-3.5-flash in
+     * development, the eval and production alike, so the eval measures what
+     * runs (user decision, 1 Oct 2026). The summary keeps LLM_MODEL.
+     */
+    model: optional('AGENT1_MODEL', optional('LLM_PROVIDER', 'gemini') === 'gemini' ? 'gemini-3.5-flash' : ''),
     maxToolIterations: numeric('AGENT1_MAX_TOOL_ITERATIONS', 3),
     timeoutMs: numeric('AGENT1_TIMEOUT_MS', 20_000),
     maxRetries: numeric('AGENT1_MAX_RETRIES', 2),

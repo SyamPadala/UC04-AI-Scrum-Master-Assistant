@@ -136,7 +136,7 @@ export class GeminiClient implements LlmClient {
       const controller = new AbortController()
       const timer = setTimeout(() => { controller.abort() }, request.timeoutMs)
       try {
-        const response = await fetch(`${BASE}/models/${this.model}:generateContent`, {
+        const response = await fetch(`${BASE}/models/${request.model ?? this.model}:generateContent`, {
           method: 'POST',
           headers: { 'x-goog-api-key': this.apiKey, 'content-type': 'application/json' },
           body: JSON.stringify(payload),

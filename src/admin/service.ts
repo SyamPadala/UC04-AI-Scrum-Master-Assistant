@@ -13,7 +13,7 @@ import { trackerFor } from '../trackers/factory.js'
 import { assessReadiness, type ReadinessFacts, type ReadinessRow } from './readiness.js'
 import {
   allTeams, botTeams, clearChannelRef, configChangesFor, getChannelRef, getTeam, llmUsageForDates, recordConfigChange,
-  runsForDate, saveChannelRef, saveScrumMasterRef, saveTeam, scrumMasterOf, summaryHasRun, teamForMember
+  reopenStandup as markReopened, runsForDate, saveChannelRef, saveScrumMasterRef, saveTeam, scrumMasterOf, standupState, summaryHasRun, teamForMember
 } from '../store/firestore.js'
 import { checkSchedule, isValidTimezone, mayAdminister, mayManage, normaliseEmail, overlapProblem } from './validate.js'
 
@@ -107,7 +107,7 @@ export async function teamView (team: TeamConfig, actor: Actor): Promise<unknown
   const today = localDate(new Date(), team.timezone)
   const client = jira()
 
-  const [runs, channelRef, changes, jiraUsers, emails, scrumMaster] = await Promise.all([
+  const [runs, channelRef, changes, jiraUsers, emails, scrumMaster, standup] = await Promise.all([
     runsForDate(team.teamId, today),
     getChannelRef(team.teamId),
     configChangesFor(team.teamId),
@@ -120,7 +120,8 @@ export async function teamView (team: TeamConfig, actor: Actor): Promise<unknown
     // Members seeded before the page existed have no stored address; Graph has it.
     Promise.all(team.members.map(async (member) => member.email ??
       (await lookUpUser(member.memberId).catch(() => undefined))?.mail ?? null)),
-    scrumMasterOf(team)
+    scrumMasterOf(team),
+    standupState(team.teamId, today)
   ])
 
   return {
@@ -131,6 +132,13 @@ export async function teamView (team: TeamConfig, actor: Actor): Promise<unknown
     meIsAdmin: config.admin.userIds.includes(actor.oid),
     scrumMasterId: team.scrumMasterId,
     // A role, not a roster entry (SPEC-008 10f).
+    // SPEC-008 10l: closed by today's scheduled summary, or reopened.
+    standup: {
+      closed: standup.closed,
+      closedAt: standup.closedAt?.toISOString() ?? null,
+      reopenedAt: standup.reopenedAt?.toISOString() ?? null,
+      reopenedBy: standup.reopenedBy
+    },
     scrumMaster: scrumMaster === undefined
       ? null
       : { name: scrumMaster.displayName, email: scrumMaster.email ?? null, reachable: (scrumMaster.conversationRef ?? '') !== '' },
@@ -438,6 +446,23 @@ export async function setTracker (team: TeamConfig, rawKind: unknown, actor: Act
   return tracker.kind === 'jira'
     ? `Updates will now be added as comments on the Jira work items; those naming no work item go to ${tracker.standupIssueKey}.`
     : 'Updates will now be written to the SharePoint list.'
+}
+
+/**
+ * SPEC-008 10l: members may send updates again today. The summary is not sent
+ * again — its claim stays, marked reopened.
+ */
+export async function reopenStandup (team: TeamConfig, actor: Actor): Promise<string> {
+  const today = localDate(new Date(), team.timezone)
+  const state = await standupState(team.teamId, today)
+  if (!state.closed) throw new AdminError(409, "Today's stand-up is already open.")
+  await markReopened(team.teamId, today, actor.name)
+  await recordConfigChange({
+    teamId: team.teamId, changedBy: actor.name, changedAt: new Date(),
+    fields: [{ field: 'stand-up', from: 'closed', to: 'reopened' }]
+  })
+  console.log(JSON.stringify({ event: 'admin.standupReopened', teamId: team.teamId, actor: actor.oid, localDate: today }))
+  return "Today's stand-up is open again. Members can send updates for the rest of the day; the summary won't be sent again."
 }
 
 /** Behaviour 8: the same isolated manual run as the chat `run` command (A14). */

@@ -13,6 +13,8 @@ export interface Story {
   url: string
   /** Last time anything on the issue changed; A5 uses it to spot stalled work. */
   updated: Date
+  /** User Story and Acceptance Criteria text from the description (SPEC-004 item 32); null when empty. */
+  about?: string | null
 }
 
 export interface SprintData {

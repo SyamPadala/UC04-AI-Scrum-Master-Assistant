@@ -47,7 +47,8 @@ export class MockTracker implements Tracker {
         memberId: update.memberId,
         memberName: update.memberName,
         updatedOn: update.localDate,
-        row: { ...row, assignedTo: update.memberName }
+        // SPEC-002 2f: the story's owner is kept; who sent it is memberName.
+        row: { ...row, assignedTo: row.assignedTo !== '' ? row.assignedTo : update.memberName }
       }
       const at = stored.findIndex((s) => s.teamId === update.teamId &&
         s.memberName === update.memberName && rowKey(s.row) === rowKey(row))

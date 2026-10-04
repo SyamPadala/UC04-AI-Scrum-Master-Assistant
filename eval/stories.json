@@ -1,12 +1,72 @@
 [
-  { "key": "SCRUM-5", "title": "Implement application state machine in Onboarding Orchestrator", "status": "In Progress", "assignee": "Eval Member" },
-  { "key": "SCRUM-6", "title": "Expose create application endpoint", "status": "In Progress", "assignee": "Eval Member" },
-  { "key": "SCRUM-7", "title": "Expose submit application endpoint", "status": "In Progress", "assignee": "Eval Member" },
-  { "key": "SCRUM-20", "title": "Implement asynchronous screening service with HMAC-validated webhook callbacks and manual review routing", "status": "In Progress", "assignee": "Eval Member" },
-  { "key": "SCRUM-21", "title": "Build Risk Scoring Service with configurable weights and LOW/MEDIUM/HIGH banding", "status": "In Progress", "assignee": "Eval Member" },
-  { "key": "SCRUM-22", "title": "Implement Notification Service", "status": "In Progress", "assignee": "Eval Member" },
-  { "key": "SCRUM-30", "title": "Implement Synchronous Data Flow and Error Resilience Choreography", "status": "In Progress", "assignee": "Sailaja" },
-  { "key": "SCRUM-31", "title": "Implement Unified IHub Integration Middleware Request Handling", "status": "In Progress", "assignee": "Vardhan" },
-  { "key": "SCRUM-32", "title": "Build Core Architecture Pipelines for Ingress, Strategy, Transformation and Resilience", "status": "To Do", "assignee": "Pravallika" },
-  { "key": "SCRUM-33", "title": "Ensure Scalability, High Availability and Observability", "status": "To Do", "assignee": null }
+  {
+    "key": "SCRUM-5",
+    "title": "Implement application state machine in Onboarding Orchestrator",
+    "status": "In Progress",
+    "assignee": "Eval Member",
+    "about": "As a platform engineer, I want the onboarding orchestrator to move each application through DRAFT, SUBMITTED, SCREENING, REVIEW, APPROVED and REJECTED with guarded transitions, so that no application skips a step. Acceptance criteria: an invalid transition is rejected with 409; every transition is written to the audit log with the actor and time."
+  },
+  {
+    "key": "SCRUM-6",
+    "title": "Expose create application endpoint",
+    "status": "In Progress",
+    "assignee": "Eval Member",
+    "about": "As an applicant-facing client, I want POST /applications to create a draft, so that an applicant can start onboarding. Acceptance criteria: the body is validated against the JSON schema; 201 with the new id; a repeat request with the same idempotency key returns the original response."
+  },
+  {
+    "key": "SCRUM-7",
+    "title": "Expose submit application endpoint",
+    "status": "In Progress",
+    "assignee": "Eval Member",
+    "about": "As an applicant, I want POST /applications/{id}/submit to submit a completed draft, so that it moves to screening. Acceptance criteria: all mandatory documents must be attached; 202 Accepted; the application moves to SUBMITTED and a screening request is queued."
+  },
+  {
+    "key": "SCRUM-20",
+    "title": "Implement asynchronous screening service with HMAC-validated webhook callbacks and manual review routing",
+    "status": "In Progress",
+    "assignee": "Eval Member",
+    "about": "As a compliance officer, I want applications screened asynchronously by the vendor, with the result delivered by webhook, so that onboarding does not wait on the vendor. Acceptance criteria: each callback carries an HMAC-SHA256 signature checked against the shared secret; unsigned or mismatched callbacks are rejected; inconclusive results go to the manual review queue."
+  },
+  {
+    "key": "SCRUM-21",
+    "title": "Build Risk Scoring Service with configurable weights and LOW/MEDIUM/HIGH banding",
+    "status": "In Progress",
+    "assignee": "Eval Member",
+    "about": "As a risk analyst, I want each application scored from weighted factors (country, income, document checks) into LOW, MEDIUM or HIGH, so that decisions are consistent. Acceptance criteria: weights and band thresholds are read from configuration without a redeploy; the score and its factor breakdown are stored with the application."
+  },
+  {
+    "key": "SCRUM-22",
+    "title": "Implement Notification Service",
+    "status": "In Progress",
+    "assignee": "Eval Member",
+    "about": "As an applicant, I want an email and an SMS whenever my application changes state, so that I know what happens next. Acceptance criteria: a template per state and language; messages go through the notification provider with retries; delivery failures are logged."
+  },
+  {
+    "key": "SCRUM-30",
+    "title": "Implement Synchronous Data Flow and Error Resilience Choreography",
+    "status": "In Progress",
+    "assignee": "Sailaja",
+    "about": "As a system reliability engineer, I want synchronous requests to follow a strict validation, configuration, authentication, transformation and dispatch pipeline with an integrated circuit breaker and exponential backoff, so that resources are protected during partner outages. Acceptance criteria: transient failures trigger exponential backoff retries; breaching the failure threshold trips the circuit breaker to OPEN."
+  },
+  {
+    "key": "SCRUM-31",
+    "title": "Implement Unified IHub Integration Middleware Request Handling",
+    "status": "In Progress",
+    "assignee": "Vardhan",
+    "about": "As an upstream application developer, I want to submit standardised integration requests to one middleware layer, so that I do not manage each partner's authentication, schemas or protocols. Acceptance criteria: IHub orchestrates request validation, partner routing, credential retrieval, payload translation, resilient partner dispatch and response normalisation."
+  },
+  {
+    "key": "SCRUM-32",
+    "title": "Build Core Architecture Pipelines for Ingress, Strategy, Transformation and Resilience",
+    "status": "To Do",
+    "assignee": "Pravallika",
+    "about": "As a platform engineer, I want a modular architecture of an ingress validation gateway, file-based configuration discovery, authentication strategy factories (OAuth2, API key, mTLS), transformation adapters and an outbound dispatcher, so that the platform stays decoupled and extensible. Acceptance criteria: partner routing is loaded from configuration files and secrets are resolved from Azure Key Vault at start-up."
+  },
+  {
+    "key": "SCRUM-33",
+    "title": "Ensure Scalability, High Availability and Observability",
+    "status": "To Do",
+    "assignee": null,
+    "about": "As a platform architect, I want horizontal auto-scaling, a 99.95% availability SLA and P99 internal latency under 50 ms at 10,000 requests per minute on Kubernetes / Azure Container Apps, with dashboards and alerts in Application Insights, so that the platform scales without code changes."
+  }
 ]

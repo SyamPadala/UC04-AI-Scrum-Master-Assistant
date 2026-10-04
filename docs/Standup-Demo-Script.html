@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stand-up Demo Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#dde3e9;
+  --accent:#0f6e6a; --accent-soft:#e3f1f0; --code:#eef2f5;
+  --ok:#1c7a3e; --ok-soft:#e5f4ea; --warn:#9a5b06; --warn-soft:#fbf0dc; --bad:#b3261e; --bad-soft:#fbe7e5;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#11161c; --surface:#19212a; --ink:#e4e9ee; --muted:#9aa7b4; --line:#2b3642;
+    --accent:#4fc2ba; --accent-soft:#16312f; --code:#212b35;
+    --ok:#5fcf85; --ok-soft:#173222; --warn:#e7b35a; --warn-soft:#352812; --bad:#f08a82; --bad-soft:#3a1d1b;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#11161c; --surface:#19212a; --ink:#e4e9ee; --muted:#9aa7b4; --line:#2b3642;
+  --accent:#4fc2ba; --accent-soft:#16312f; --code:#212b35;
+  --ok:#5fcf85; --ok-soft:#173222; --warn:#e7b35a; --warn-soft:#352812; --bad:#f08a82; --bad-soft:#3a1d1b;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;padding-inline:16px;padding-block:28px 64px}
+.wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:28px;font-weight:700}
+h2{font-size:19px;font-weight:600}
+h3{font-size:16px;font-weight:600}
+p{margin:0}
+.lede{color:var(--muted);max-width:65ch}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600}
+header{display:flex;flex-direction:column;gap:8px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--muted);font-size:13px}
+section{display:flex;flex-direction:column;gap:14px}
+.table-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+.key{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:13px;font-weight:500;white-space:nowrap}
+.none{color:var(--muted);font-style:italic}
+.rules{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:70ch}
+.progress{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.bar{flex:1 1 200px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar span{display:block;height:100%;width:0;background:var(--ok);transition:width .2s}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.step.sm{border-style:dashed}
+.step[data-result="pass"]{border-color:var(--ok)}
+.step[data-result="fail"]{border-color:var(--bad)}
+.step-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.num{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:13px;color:var(--muted);min-width:2.2em}
+.who{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--accent);font-weight:600;font-size:13px;padding:2px 10px;border-radius:999px}
+.who.smrole{background:var(--warn-soft);color:var(--warn)}
+.shows{font-size:13px;color:var(--muted)}
+.label{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.say{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.say code{flex:1 1 260px;background:var(--code);border-radius:6px;padding:10px 12px;font:14px/1.5 "IBM Plex Mono",ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
+button{font:inherit;cursor:pointer}
+.copy{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:6px 14px;font-size:13px;font-weight:500}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy:focus-visible,.res button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+ul.expect{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.reply{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:13px}
+.note{font-size:13px;background:var(--warn-soft);color:var(--ink);border-radius:6px;padding:8px 12px}
+.res{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.res button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:6px;padding:4px 14px;font-size:13px;font-weight:600}
+.res button[aria-pressed="true"].pass{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.res button[aria-pressed="true"].fail{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.res .hint{font-size:12px;color:var(--muted)}
+.foot{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion: reduce){.bar span{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Scrum Team Alpha · Sprint 1 · 30 Sep 2026</span>
+    <h1>Stand-up Demo Script</h1>
+    <p class="lede">Each person types their line into their <strong>chat with Scrum Assistant</strong> in Teams, in the order below. Only the 5 people who own a story take part. Wait for the bot's reply before the next person starts. Copy the text exactly, then mark the step Pass or Fail.</p>
+    <div class="meta"><span>Jira project: AIDemo (SCRUM)</span><span>Tracker: Daily Status Tracker (SharePoint)</span><span>Scrum Master: Syam</span></div>
+  </header>
+
+  <section>
+    <h2>Who owns which story</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Member</th><th>Story</th><th>Title</th><th>Pts</th></tr></thead>
+        <tbody>
+          <tr><td>Santhosh</td><td class="key">SCRUM-30</td><td>Implement Unified IHub Integration Middleware Request Orchestration</td><td>8</td></tr>
+          <tr><td>Vardhan</td><td class="key">SCRUM-31</td><td>Implement Ingress Gateway, Strategy Pattern Auth, and Resilience Pipeline Architecture</td><td>13</td></tr>
+          <tr><td>Pravallika</td><td class="key">SCRUM-32</td><td>Orchestrate Synchronous Data Flow and Error Resilience Management</td><td>8</td></tr>
+          <tr><td>Madhavi</td><td class="key">SCRUM-33</td><td>Enforce Transport Security, Azure Key Vault Secret Management, and PII Redaction</td><td>5</td></tr>
+          <tr><td>Sailaja</td><td class="key">SCRUM-34</td><td>Implement Scalable, Highly Available, and Maintainable Non-Functional Controls</td><td>8</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Rules for everyone</h2>
+    <ul class="rules">
+      <li>Type in your <strong>one-to-one chat with Scrum Assistant</strong>, not the team channel.</li>
+      <li>Send <strong>one message</strong> per step. Don't send extra messages; the second message of the day updates the first.</li>
+      <li>You can name a story in plain words. Story keys also work, typed any way (<span class="key">scrum 31</span>, <span class="key">Scrum-31</span>).</li>
+      <li>If you see a card with buttons, press only the button the step asks for, and press it once.</li>
+      <li>Take a screenshot of anything that doesn't match the expected result.</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="progress"><strong id="count">0 of 15 checked</strong><div class="bar"><span id="fill"></span></div><button class="copy" id="reset" type="button">Clear my marks</button></div>
+  </section>
+
+  <section id="steps">
+    <h2>Round 1 · after the reminder</h2>
+
+    <article class="step sm" data-id="s1">
+      <div class="step-head"><span class="num">1</span><span class="who smrole">Scrum Master</span><h3>Get ready and send the reminder</h3></div>
+      <ul class="expect">
+        <li>Admin page → Scrum Team Alpha → <strong>Members</strong>: the roster has only the 5 people in the table above. Take Sai Krishna and Tiwari off for the demo, or they'll show as not responded.</li>
+        <li><strong>Readiness</strong> tab: active sprint, 5 stories with assignees, every chat reachable, all green.</li>
+        <li>Team status is <strong>Running</strong>.</li>
+        <li><strong>Run now → Reminder.</strong> All 5 members get the stand-up reminder in their Scrum Assistant chat.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+
+    <article class="step" data-id="s2">
+      <div class="step-head"><span class="num">2</span><span class="who">Santhosh</span><span class="shows">Plain words, own story, no key</span></div>
+      <div class="label">Type this</div>
+      <div class="say"><code>Working on the IHub integration middleware, the request orchestration flow is half done. Unit tests next.</code><button class="copy" type="button">Copy</button></div>
+      <div class="label">Expected</div>
+      <ul class="expect">
+        <li class="reply">Recorded your update, Santhosh:<br>✔ SCRUM-30 … — In Progress</li>
+        <li>Tracker: a SCRUM-30 row under Santhosh.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+
+    <article class="step" data-id="s3">
+      <div class="step-head"><span class="num">3</span><span class="who">Vardhan</span><span class="shows">Not a stand-up update</span></div>
+      <div class="label">Type this</div>
+      <div class="say"><code>asdf lol 👍</code><button class="copy" type="button">Copy</button></div>
+      <div class="label">Expected</div>
+      <ul class="expect">
+        <li class="reply">This doesn't look like a stand-up update, so it isn't counted as a response.</li>
+        <li>Nothing recorded. Vardhan still counts as not responded.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+
+    <article class="step" data-id="s4">
+      <div class="step-head"><span class="num">4</span><span class="who">Madhavi</span><span class="shows">Blocker on own story</span></div>
+      <div class="label">Type this</div>
+      <div class="say"><code>Blocked on Azure Key Vault access for the transport security work, waiting for IT to grant permissions</code><button class="copy" type="button">Copy</button></div>
+      <div class="label">Expected</div>
+      <ul class="expect">
+        <li class="reply">⚠ SCRUM-33 … — Blocked: …<br>→ Your Scrum Master has been told about the blocker.</li>
+        <li><strong>Scrum Master</strong> gets a blocker alert card within a few seconds, naming SCRUM-33.</li>
+        <li>Tracker: SCRUM-33 under Madhavi, status Blocked, blocker filled in.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+
+    <article class="step" data-id="s5">
+      <div class="step-head"><span class="num">5</span><span class="who">Sailaja</span><span class="shows">Blocker on someone else's story → Submit</span></div>
+      <div class="label">Type this</div>
+      <div class="say"><code>Working on the PII redaction for Madhavi's transport security story, it is blocked on Azure Key Vault access</code><button class="copy" type="button">Copy</button></div>
+      <div class="label">Expected</div>
+      <ul class="expect">
+        <li class="reply">SCRUM-33 is assigned to Madhavi Andoju, not you. Please confirm below if you still want it recorded.</li>
+        <li>A card: <em>“SCRUM-33 is assigned to Madhavi Andoju, not you · Submit your update anyway?”</em>, with the blocker shown once.</li>
+        <li><strong>Scrum Master gets no alert yet.</strong></li>
+        <li>Press <strong>Submit</strong>. The card changes to: <span class="reply">Recorded SCRUM-33 in the tracker. It is assigned to Madhavi Andoju; please ask your Scrum Master to assign it to you in Jira.</span></li>
+        <li><strong>Now</strong> the Scrum Master gets the blocker alert for SCRUM-33, from Sailaja.</li>
+        <li>Tracker: a row under Sailaja, comment starts <em>“(assigned to Madhavi Andoju)”</em>.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+
+    <article class="step" data-id="s6">
+      <div class="step-head"><span class="num">6</span><span class="who">Pravallika</span><span class="shows">Nothing to report</span></div>
+      <div class="label">Type this</div>
+      <div class="say"><code>Nothing to report today</code><button class="copy" type="button">Copy</button></div>
+      <div class="label">Expected</div>
+      <ul class="expect">
+        <li class="reply">Nothing recorded. A stand-up update needs at least one work item, so this isn't counted as a response.</li>
+        <li>No tracker row. Pravallika still counts as not responded.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+
+    <article class="step" data-id="s7">
+      <div class="step-head"><span class="num">7</span><span class="who">Santhosh</span><span class="shows">Work that matches no story</span></div>
+      <div class="label">Type this</div>
+      <div class="say"><code>Also updated the onboarding documentation for new joiners</code><button class="copy" type="button">Copy</button></div>
+      <div class="label">Expected</div>
+      <ul class="expect">
+        <li class="reply">✘ I couldn't find a work item for: "…". Your open items: SCRUM-30 …. Which one is it?</li>
+        <li>Nothing new in the tracker. His SCRUM-30 row from step 2 is unchanged.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+
+    <article class="step sm" data-id="s8">
+      <div class="step-head"><span class="num">8</span><span class="who smrole">Scrum Master</span><h3>Check the tracker, then follow up</h3></div>
+      <ul class="expect">
+        <li>Daily Status Tracker has 3 rows: Santhosh SCRUM-30 (In Progress), Madhavi SCRUM-33 (Blocked), Sailaja SCRUM-33 (Blocked, “assigned to Madhavi Andoju”).</li>
+        <li>Admin page → <strong>Run now → Follow-up.</strong> Only <strong>Vardhan and Pravallika</strong> get a follow-up. The other three get nothing.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+  </section>
+
+  <section>
+    <h2>Round 2 · after the follow-up</h2>
+
+    <article class="step" data-id="s9">
+      <div class="step-head"><span class="num">9</span><span class="who">Vardhan</span><span class="shows">Key typed loosely, story finished</span></div>
+      <div class="label">Type this</div>
+      <div class="say"><code>scrum 31 is done, the ingress gateway and resilience pipeline are merged to main</code><button class="copy" type="button">Copy</button></div>
+      <div class="label">Expected</div>
+      <ul class="expect">
+        <li class="reply">✔ SCRUM-31 … — Completed</li>
+        <li>Tracker: SCRUM-31 under Vardhan, status Completed.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+
+    <article class="step" data-id="s10">
+      <div class="step-head"><span class="num">10</span><span class="who">Pravallika</span><span class="shows">Own story plus someone else's → Cancel</span></div>
+      <div class="label">Type this</div>
+      <div class="say"><code>Error handling for the synchronous data flow is in progress. Also started implementing the retry logic in the IHub middleware request orchestration.</code><button class="copy" type="button">Copy</button></div>
+      <div class="label">Expected</div>
+      <ul class="expect">
+        <li class="reply">✔ SCRUM-32 … — In Progress<br>SCRUM-30 is assigned to Santhosh Paramasivam, not you. Please confirm below …</li>
+        <li>SCRUM-32 is recorded straight away. A card asks about SCRUM-30.</li>
+        <li>Press <strong>Cancel</strong>. The card changes to: <span class="reply">SCRUM-30 not recorded.</span></li>
+        <li>Tracker: only SCRUM-32 under Pravallika.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+
+    <article class="step" data-id="s11">
+      <div class="step-head"><span class="num">11</span><span class="who">Sailaja</span><span class="shows">Vague words that fit two stories → picker</span></div>
+      <div class="label">Type this</div>
+      <div class="say"><code>Also spent some time on the resilience part</code><button class="copy" type="button">Copy</button></div>
+      <div class="label">Expected</div>
+      <ul class="expect">
+        <li class="reply">Which story is "…"? Please choose below.</li>
+        <li>A card <em>“Which story is this?”</em> listing SCRUM-31 (Vardhan) and SCRUM-32 (Pravallika), possibly her own SCRUM-34, with <em>“Will be recorded as: In Progress”</em> and a <strong>None of these</strong> button.</li>
+        <li>Press <strong>None of these</strong>. The card changes to: <span class="reply">Not recorded.</span></li>
+      </ul>
+      <div class="res"></div>
+    </article>
+
+    <article class="step" data-id="s12">
+      <div class="step-head"><span class="num">12</span><span class="who">Santhosh</span><span class="shows">Blocker that names no story</span></div>
+      <div class="label">Type this</div>
+      <div class="say"><code>My VPN keeps dropping and I can't reach the dev environment</code><button class="copy" type="button">Copy</button></div>
+      <div class="label">Expected</div>
+      <ul class="expect">
+        <li class="reply">⚠ Your Scrum Master has been told about: "…". It isn't linked to a work item, so it hasn't gone into the tracker.</li>
+        <li><strong>Scrum Master</strong> gets a blocker alert from Santhosh that lists his open items (SCRUM-30), so it's clear which work is affected.</li>
+        <li>His SCRUM-30 row is unchanged.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+
+    <article class="step" data-id="s13">
+      <div class="step-head"><span class="num">13</span><span class="who">Madhavi</span><span class="shows">Second message: same story, updated in place</span></div>
+      <div class="label">Type this</div>
+      <div class="say"><code>Finished the PII redaction part, the rest is still waiting on Key Vault access</code><button class="copy" type="button">Copy</button></div>
+      <div class="label">Expected</div>
+      <ul class="expect">
+        <li class="reply">⚠ SCRUM-33 … — Blocked: …</li>
+        <li>Tracker: her SCRUM-33 row is <strong>updated in place</strong> (no second row), still Blocked, with the new comment.</li>
+        <li>The Scrum Master may get another alert for SCRUM-33, because the blocker is worded differently. The same wording twice in a day is alerted only once.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+
+    <article class="step sm" data-id="s14">
+      <div class="step-head"><span class="num">14</span><span class="who smrole">Scrum Master</span><h3>Final tracker and the summary</h3></div>
+      <ul class="expect">
+        <li>Tracker has 5 rows: Santhosh SCRUM-30 (In Progress), Vardhan SCRUM-31 (Completed), Pravallika SCRUM-32 (In Progress), Madhavi SCRUM-33 (Blocked), Sailaja SCRUM-33 (Blocked, same Key Vault blocker).</li>
+        <li>Admin page → <strong>Run now → Summary.</strong> The stakeholders (channel and/or email, as set up on the admin page) get the consolidated summary: completed, in progress, blockers, story points, and responses 5 of 5.</li>
+        <li>Admin page → <strong>Participation</strong>: all 5 responded today.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+
+    <article class="step sm" data-id="s15">
+      <div class="step-head"><span class="num">15</span><span class="who smrole">Anyone · optional</span><h3>Late update after the scheduled summary</h3></div>
+      <ul class="expect">
+        <li>Only after the <strong>scheduled</strong> summary time has passed; Run now does not close the stand-up. Anyone sends: <span class="reply">SCRUM-30 unit tests are done</span></li>
+        <li class="reply">Today's stand-up is closed — the daily summary has already gone out, so I have not recorded that. Please speak to your Scrum Master about anything you still need to report.</li>
+      </ul>
+      <div class="res"></div>
+    </article>
+  </section>
+
+  <p class="foot">Your Pass/Fail marks are saved in your own browser only. Send your screenshots of any failures to Syam.</p>
+</div>
+
+<script>
+(function () {
+  var KEY = 'standup-demo-marks-2026-09-30'
+  var marks = {}
+  try { marks = JSON.parse(localStorage.getItem(KEY) || '{}') || {} } catch (e) { marks = {} }
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.step'))
+  function save () { try { localStorage.setItem(KEY, JSON.stringify(marks)) } catch (e) {} }
+  function render () {
+    var done = 0
+    steps.forEach(function (step) {
+      var id = step.dataset.id, value = marks[id] || ''
+      if (value) { step.dataset.result = value; done++ } else { delete step.dataset.result }
+      step.querySelectorAll('.res button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.value === value)) })
+    })
+    document.getElementById('count').textContent = done + ' of ' + steps.length + ' checked'
+    document.getElementById('fill').style.width = (done / steps.length * 100) + '%'
+  }
+  steps.forEach(function (step) {
+    var box = step.querySelector('.res'), id = step.dataset.id
+    ;['pass', 'fail'].forEach(function (value) {
+      var b = document.createElement('button')
+      b.type = 'button'; b.className = value; b.dataset.value = value
+      b.id = 'mark-' + id + '-' + value
+      b.textContent = value === 'pass' ? 'Pass' : 'Fail'
+      b.addEventListener('click', function () {
+        marks[id] = marks[id] === value ? '' : value
+        save(); render()
+      })
+      box.appendChild(b)
+    })
+  })
+  document.querySelectorAll('.say .copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var code = btn.previousElementSibling, text = code.textContent
+      function selectIt () { var r = document.createRange(); r.selectNodeContents(code); var s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = 'Press Ctrl+C' }
+      try {
+        navigator.clipboard.writeText(text).then(function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy' }, 1500) }, selectIt)
+      } catch (e) { selectIt() }
+    })
+  })
+  document.getElementById('reset').addEventListener('click', function () { marks = {}; save(); render() })
+  render()
+})()
+</script>
+</body>
+</html>

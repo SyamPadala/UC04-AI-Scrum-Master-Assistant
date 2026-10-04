@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026 |
+| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026 |
 | **Delivers** | FR-02, FR-03, NFR Latency |
 | **Assumptions** | A8 (story resolution), A11 (messages combined per member per day) |
 | **Depends on** | SPEC-001, SPEC-002 |
@@ -101,6 +101,13 @@ Code decides and acts in every case; Agent 1 only reads the message.
       stand-up-closed notice.
     - The member's own items in the same message are recorded at once; only
       the other person's item waits for the button.
+14b. *Amended 30 Sep 2026 (demo-day test; user decision).* A blocker on
+    someone else's story is **not alerted at intake**. It is alerted on
+    **Submit**, with the story; **Cancel** sends nothing. Blockers on the
+    member's own story, or on no story, are still alerted at once (item 19).
+    When the blocker text equals the comment, the card shows it once.
+    Two members' rows on one story are kept as they are (option A): each row
+    shows who reported it.
 15. **Not a stand-up update** (e.g. *"asdf lol"*, *"thanks!"*). Agent 1 labels
     the message `kind: 'not_update'`. Nothing is recorded; the member is told:
     *"This doesn't look like a stand-up update, so it isn't counted as a
@@ -223,6 +230,123 @@ item 9, SPEC-008 Schedule); the eval's own usage counter (below);
 scope (`LLM_USAGE_SCOPE=eval`), so it can never use up the service's daily
 limit. A separate Gemini key for testing is recommended as a later step for
 the user.
+
+### Amendment 30 Sep 2026 (night) — intent, not keywords (approved by the user, 30 Sep 2026)
+
+*Why:* the 30 Sep demo audience's verdict was that the assistant matches
+keywords, not intent. That was true, and mostly our doing: a code guard
+(item 27) kept a match only when the member's words shared a word with the
+story **title**; Agent 1 saw titles only; the member's own stories were listed
+first and marked "yours"; and Agent 1 ran on the smallest model. Live case:
+Sailaja, *"added the circuit breaker and the backoff retries"* — the model
+guessed her own SCRUM-34, the guard rejected it for sharing no title word, and
+she got a picker. The work is in SCRUM-32's acceptance criteria.
+
+31. **Intent is the requirement** (user decision). Agent 1 reads what the
+    member did and finds the story that work belongs to, whatever words they
+    used. A message that shares **no word** with a story's title must still
+    match it when the work belongs to it.
+32. **Agent 1 sees what each story is about.** Each candidate is sent with its
+    title, owner, status and the **User Story** and **Acceptance Criteria**
+    text from its Jira description (read as plain text; everything from
+    "Design Traceability" on is dropped; at most 800 characters per story).
+    A story with no description is sent with its title only. Candidates are
+    listed **in key order**, the owner shown as plain information — the
+    sender's own stories are no longer listed first. *(Replaces item 22's
+    ordering. Above 40 candidates, the 30 "others" are chosen by overlap with
+    title and description.)*
+33. **The keyword guard is removed.** *(Replaces item 27's code guard; its
+    prompt rule on vague words stays.)* For every entry with a key, Agent 1
+    returns a short **reason** in its own words naming what in that story the
+    work belongs to (*"circuit breaker and backoff are in SCRUM-32's
+    acceptance criteria"*). Code rejects a match only when the reason is
+    missing or made of vague words alone ("my task", "the ticket", "my
+    work"); a rejected match is treated as unsure (item 34c). The reason is
+    never written to Firestore, the tracker or the logs.
+34. **Which story — decided by these rules** (user decisions, 30 Sep 2026):
+    - **a. Her own story matches** → recorded straight away. No card, and no
+      check of whether other stories would match too.
+    - **b. Exactly one story matches, and it is someone else's** → the 14a
+      card (Submit / Cancel), as today.
+    - **c. Several stories match, none of them hers** → one card, *"Which
+      story is '<their words>'?"*, listing every match (key, title, owner,
+      "Will be recorded as: <status>"), at most **4**, plus **None of these**.
+      After a pick, a **confirmation** before anything is written: the 14a
+      card for someone else's story; *"Record your update against SCRUM-34
+      (yours)?"* **Submit / Cancel** for her own. *(Replaces item 24's "the
+      choice is the confirmation".)*
+    - **d. Nothing matches** → item 13 (not recorded; her open items listed).
+    - **Blockers** follow a and b. A blocker that fits several stories, or
+      none, is a blocker with no work item (item 19, unchanged by the user's
+      decision of 30 Sep).
+35. **No part of a message is dropped** (issue #6). Every piece of work in the
+    message appears in exactly one entry. Clauses run together without "and",
+    "also" or punctuation are still separate: *"blocked on Azure Key Vault
+    access implement scalable functional requirement"* is a blocker on one
+    story **and** work on another. *(Sailaja, 5:13 and 5:15: the second clause
+    vanished; with "also worked on" at 5:17 it was recorded.)*
+36. **A stronger model for Agent 1** (user: "no issues to use it"). Agent 1
+    uses `AGENT1_MODEL`, default `gemini-3.5-flash`; Agent 2 keeps
+    `LLM_MODEL`. If the eval shows it is not enough, `gemini-3.5-pro` is the
+    next step. No fallback: a failure retries the same model, then fails.
+37. **Eval.** `eval/stories.json` gains the stories' User Story and
+    Acceptance Criteria text. New cases:
+    - **intent** — about 8 messages written from acceptance criteria that
+      share no word with any title (e.g. "added the circuit breaker and the
+      backoff retries" → SCRUM-32; "load tested it at 10k requests a minute"
+      → the scalability story);
+    - **run-on** — Sailaja's three message shapes above (no joining word, a
+      comma, "also worked on"), rewritten against the eval's fixed stories,
+      each expecting both stories;
+    - **own first** — a message matching the member's own story and, less
+      well, someone else's → own story, no alternatives.
+    Passing: overall accuracy ≥ 90%, and every intent and run-on case correct.
+    One run is about 70 live calls; it is run only with the user's go-ahead.
+
+38. *Added 1 Oct 2026 (user decision; replaces 34b, 34c and, for work
+    items, item 13's text list).* **One card whenever the update is not
+    clearly her own story.** If the model picks one story, the member could
+    never choose another (user: "what if she is giving an update for
+    SCRUM-31? She will never see that story"). So:
+    - **Her own story fits** → recorded straight away (34a, unchanged).
+    - **Otherwise** — it fits someone else's story, several stories, or none
+      of hers — one card lists **her own open stories first, then every
+      other story it could fit**, at most 5 rows (other people's matches are
+      always kept; her own fill the rest). Unassigned stories are not offered
+      (item 14).
+      > *Your update didn't match a story assigned to you.*
+      > *These stories could fit "<her words>":*
+      > *Will be recorded as: <status>* (and the blocker, if any)
+      > **SCRUM-34** <title> — assigned to you **[Submit]**
+      > **SCRUM-32** <title> — not assigned to you (Pravallika) **[Submit]**
+      > **SCRUM-31** <title> — not assigned to you (Vardhan) **[Submit]**
+      > **[None of these]**
+      When every row is hers (vague words), the heading is *"Which of your
+      stories is this?"*.
+    - **Submit** records it at once — the card already says whose story it
+      is, so there is no second confirmation. Someone else's story is
+      recorded under her name with "(assigned to <owner>)", as 14a.
+    - **None of these** records nothing.
+    - **Blockers** use the same card. Submit writes the Blocked row and then
+      alerts the Scrum Master with that story (as 14b). None of these writes
+      nothing but **still alerts** the Scrum Master, as a blocker with no
+      story (SPEC-005 2a). A blocker on her own story is alerted at once; a
+      blocker that fits no story at all ("my laptop is broken") is alerted at
+      once (item 19, unchanged).
+    - Work that fits nothing and a member with no open stories → item 13's
+      text reply, as before.
+    - Agent 1 lists every story the work could plausibly belong to in
+      "alternatives" (up to four) alongside its best pick, for work items and
+      blockers alike, unless it is clearly her own story.
+    - Card rules as 14a: data in the buttons, Jira re-read on Submit, twice
+      records once, expired or closed records nothing.
+    - Agent 1's answer limit is 8,192 tokens (a thinking model's reasoning
+      counts against it). Agent 1 runs on `gemini-3.5-flash` in development,
+      the eval and production alike, so the eval measures what runs (user
+      decision, 1 Oct 2026). The summary (Agent 2) keeps `LLM_MODEL`.
+
+**Also in this round, outside SPEC-004:** tracker resilience (SPEC-002 item
+5a); Reopen stand-up (SPEC-008 10l).
 
 ## Interface
 

@@ -15,25 +15,31 @@ function words (text: string): Set<string> {
   return new Set(text.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3))
 }
 
+/** Key order: SCRUM-2 before SCRUM-10. */
+function byKey (a: Story, b: Story): number {
+  return a.key.localeCompare(b.key, undefined, { numeric: true })
+}
+
 /**
- * The stories the model may choose from (SPEC-004 item 22): every open story in
- * the sprint, the member's own first. Trimmed only for an unusually large
- * sprint: own stories and keyed ones always stay, then the titles sharing the
- * most words with the message.
+ * The stories the model may choose from (SPEC-004 items 22, 32): every open
+ * story in the sprint, in key order — listing the member's own first leaned the
+ * model towards them. Trimmed only for an unusually large sprint: own stories
+ * and keyed ones always stay, then the stories whose title and description
+ * share the most words with the message.
  */
 export function candidateStories (all: Story[], jiraAccountId: string, text: string, keyed: string[]): Story[] {
   const own = all.filter((s) => jiraAccountId !== '' && s.assigneeAccountId === jiraAccountId)
   const others = all.filter((s) => !own.includes(s))
-  if (all.length <= MAX_CANDIDATES) return [...own, ...others]
+  if (all.length <= MAX_CANDIDATES) return [...all].sort(byKey)
 
   const said = words(text)
-  const score = (story: Story): number => [...words(story.title)].filter((w) => said.has(w)).length
+  const score = (story: Story): number => [...words(`${story.title} ${story.about ?? ''}`)].filter((w) => said.has(w)).length
   const mustKeep = others.filter((s) => keyed.includes(s.key))
   const ranked = others
     .filter((s) => !mustKeep.includes(s))
     .sort((a, b) => score(b) - score(a))
     .slice(0, OTHERS_WHEN_TRIMMED)
-  return [...own, ...mustKeep, ...ranked]
+  return [...own, ...mustKeep, ...ranked].sort(byKey)
 }
 
 /**
@@ -47,14 +53,18 @@ export function restrictToKnownKeys (output: ExtractionOutput, offered: Set<stri
     return {
       ...entry,
       storyRef,
-      alternatives: storyRef !== null ? [] : [...new Set(entry.alternatives.filter((key) => offered.has(key)))].slice(0, 3)
+      // Item 38: kept alongside a pick too, so a card can offer every story it could fit.
+      alternatives: [...new Set(entry.alternatives.filter((key) => offered.has(key) && key !== storyRef))].slice(0, 4)
     }
   }
   return {
     ...output,
     completed: output.completed.map(item),
     inProgress: output.inProgress.map(item),
-    blockers: output.blockers.map((b) => ({ ...b, storyRef: known(b.storyRef) }))
+    blockers: output.blockers.map((b) => {
+      const storyRef = known(b.storyRef)
+      return { ...b, storyRef, alternatives: [...new Set(b.alternatives.filter((key) => offered.has(key) && key !== storyRef))].slice(0, 4) }
+    })
   }
 }
 
@@ -72,47 +82,49 @@ const VAGUE = new Set([
   'deploy', 'deployed', 'deployment', 'auth'
 ])
 
-/** The stems (first four letters) of an item's meaningful words. */
-function stems (text: string): Set<string> {
-  return new Set(text.toLowerCase().split(/[^a-z0-9]+/)
-    .filter((w) => w.length >= 4 && !VAGUE.has(w))
-    .map((w) => w.slice(0, 4)))
+/**
+ * Words that fill a reason without saying anything about the work: "matches
+ * their story", "related to the ticket". A reason made only of these (and
+ * VAGUE words) names nothing specific.
+ */
+const FILLER = new Set([
+  'story', 'stories', 'acceptance', 'criteria', 'title', 'titles', 'description', 'about', 'user', 'member', 'person', 'their', 'they',
+  'them', 'this', 'that', 'these', 'those', 'match', 'matches', 'matched', 'matching', 'related', 'relates', 'relating', 'belongs',
+  'belong', 'mentions', 'mentioned', 'mention', 'refers', 'refer', 'says', 'said', 'fits', 'fit', 'which', 'because', 'words',
+  'message', 'update', 'assigned', 'owner', 'yours', 'your', 'only', 'clearly', 'likely', 'probably', 'most', 'same', 'where',
+  'what', 'there', 'here', 'into', 'onto', 'part', 'parts', 'scrum', 'sprint', 'open', 'current'
+])
+
+/** True when a reason names something specific — at least one word that is neither vague nor filler. */
+export function reasonIsSpecific (reason: string | null | undefined): boolean {
+  if (reason === null || reason === undefined) return false
+  return reason.toLowerCase().split(/[^a-z]+/)
+    .some((w) => w.length >= 4 && !VAGUE.has(w) && !FILLER.has(w))
 }
 
 /**
- * SPEC-004 item 27: a story the member did not name by key is accepted only if
- * their words for it share a meaningful word with its title, or with the text
- * of an open blocker on it. Otherwise nothing is guessed: an item becomes a
- * "Which story is this?" question offering that story; a blocker loses its
- * story and is alerted as a blocker with no work item.
+ * SPEC-004 item 33: a key the member did not type is kept only when Agent 1
+ * says what in that story the work belongs to. A missing or vague reason
+ * means the model guessed: the entry becomes a question (item 34c) offering
+ * that story, and a blocker becomes one with no work item (item 19).
+ *
+ * Replaces item 27's title-word guard, which rejected any match that did not
+ * repeat a word from the title — the right story included.
  */
-export function requireEvidence (
-  output: ExtractionOutput,
-  stories: Map<string, Story>,
-  typed: Set<string>,
-  activeBlockers: Array<{ workItem: string | null, description: string }> = []
-): ExtractionOutput {
-  const evidence = (key: string, words: string): boolean => {
-    if (typed.has(key)) return true
-    const story = stories.get(key)
-    // A typed key outside the sprint has no title here; only typed keys get that far.
-    if (story === undefined) return false
-    const known = stems([story.title, ...activeBlockers.filter((b) => b.workItem === key).map((b) => b.description)].join(' '))
-    return [...stems(words)].some((stem) => known.has(stem))
-  }
+export function requireReason (output: ExtractionOutput, typed: Set<string>): ExtractionOutput {
   const item = (entry: ExtractionOutput['completed'][number]): ExtractionOutput['completed'][number] => {
-    if (entry.storyRef === null || evidence(entry.storyRef, entry.comment)) return entry
+    if (entry.storyRef === null || typed.has(entry.storyRef) || reasonIsSpecific(entry.reason)) return entry
     console.log(JSON.stringify({ event: 'agent1.unsupportedMatch', key: entry.storyRef }))
-    return { ...entry, storyRef: null, alternatives: [entry.storyRef, ...entry.alternatives.filter((k) => k !== entry.storyRef)].slice(0, 3) }
+    return { ...entry, storyRef: null, alternatives: [entry.storyRef, ...entry.alternatives.filter((k) => k !== entry.storyRef)].slice(0, 4) }
   }
   const completed = output.completed.map(item)
   const inProgress = output.inProgress.map(item)
-  // A blocker on a story the same message already names (with evidence) is supported by it.
+  // A blocker on a story the same message already names (with a reason) is supported by it.
   const supported = new Set([...completed, ...inProgress].map((e) => e.storyRef).filter((k): k is string => k !== null))
   const blockers = output.blockers.map((b) => {
-    if (b.storyRef === null || supported.has(b.storyRef) || evidence(b.storyRef, b.description)) return b
+    if (b.storyRef === null || typed.has(b.storyRef) || supported.has(b.storyRef) || reasonIsSpecific(b.reason)) return b
     console.log(JSON.stringify({ event: 'agent1.unsupportedMatch', key: b.storyRef, blocker: true }))
-    return { ...b, storyRef: null }
+    return { ...b, storyRef: null, alternatives: [b.storyRef, ...b.alternatives.filter((k) => k !== b.storyRef)].slice(0, 4) }
   })
   return { ...output, completed, inProgress, blockers }
 }
@@ -130,6 +142,8 @@ export function requireEvidence (
  */
 
 export interface Agent1Options {
+  /** SPEC-004 item 36: Agent 1's own model; empty or absent means LLM_MODEL. */
+  model?: string
   maxToolIterations: number
   timeoutMs: number
   maxRetries: number
@@ -177,15 +191,20 @@ export async function extractUpdate (
         title: story.title,
         status: story.status,
         owner: story.assignee,
-        mine: openItems.includes(story)
+        mine: openItems.includes(story),
+        about: story.about ?? null
       })),
       input.activeBlockers ?? []
     ),
     tools: storyTools,
     maxToolIterations: options.maxToolIterations,
-    maxOutputTokens: 1024,
+    // Room for a thinking model's reasoning as well as the JSON: at 1024,
+    // gemini-3.5-flash ran out mid-answer on 20 of 69 eval cases (1 Oct 2026).
+    maxOutputTokens: 8192,
     timeoutMs: options.timeoutMs,
-    label: 'agent1'
+    label: 'agent1',
+    // Item 36: a stronger model than the summary's; empty means LLM_MODEL.
+    ...(options.model === undefined || options.model === '' ? {} : { model: options.model })
   }
   const executeTool = createStoryToolExecutor(pm, input.jiraAccountId)
 
@@ -196,10 +215,10 @@ export async function extractUpdate (
     try {
       const response = await llm.complete(request, executeTool)
       return {
-        // Items 23 and 27: only offered or typed keys, and only with evidence in the words.
-        output: requireEvidence(
+        // Items 23 and 33: only offered or typed keys, and only with a specific reason.
+        output: requireReason(
           restrictToKnownKeys(parseExtraction(response.text), new Set(candidates.map((s) => s.key)), typed),
-          new Map(candidates.map((s) => [s.key, s])), typed, input.activeBlockers ?? []
+          typed
         ),
         openItems,
         candidates,

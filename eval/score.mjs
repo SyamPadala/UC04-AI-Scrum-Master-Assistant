@@ -117,6 +117,7 @@ for (const testCase of selected) {
       ms: extraction.durationMs,
       cached: extraction.roundTrips === 0,
       note: testCase.note,
+      tag: testCase.tag,
       // Keys only, so a miss can be diagnosed from the output alone.
       got: { kind: output.kind, alternatives: [...altsOf('completed'), ...altsOf('inProgress')], completed: keysOf(output.completed), inProgress: keysOf(output.inProgress), blockers: keysOf(output.blockers.map((b) => ({ storyRef: b.storyRef }))) }
     }
@@ -124,7 +125,7 @@ for (const testCase of selected) {
     row = {
       id: testCase.id, completed: false, inProgress: false, blockers: false,
       confidence: false, kind: false, pass: false, ms: Date.now() - started, cached: false,
-      note: testCase.note, error: error.message
+      note: testCase.note, tag: testCase.tag, error: error.message
     }
   }
 
@@ -167,12 +168,17 @@ console.log(`  confidence   : ${fieldScore('confidence').toFixed(1)}%  (reported
 console.log(`latency mean   : ${Math.round(totalMs / results.length)}ms`)
 console.log(`latency worst  : ${slowest}ms  (budget 30000ms, Latency NFR)`)
 console.log(`calls billed   : ${liveCalls} of ${results.length}`)
-console.log(`provider/model : ${llm.provider} / ${llm.model}`)
+const agentModel = config.agent1.model === '' ? llm.model : config.agent1.model
+console.log(`provider/model : ${llm.provider} / ${agentModel}`)
+// SPEC-004 item 37: every intent, run-on and own-first case must pass, whatever the overall figure.
+const mustPass = results.filter((row) => row.tag !== undefined)
+const mustFail = mustPass.filter((row) => !row.pass)
+console.log(`must-pass cases: ${mustPass.length - mustFail.length} of ${mustPass.length}${mustFail.length === 0 ? '' : ' — failed: ' + mustFail.map((row) => `${row.id} (${row.tag})`).join(', ')}  (target all, SPEC-004 item 37)`)
 
 const report = {
   runAt: new Date().toISOString(),
   provider: llm.provider,
-  model: llm.model,
+  model: config.agent1.model === '' ? llm.model : config.agent1.model,
   subset: smoke ? 'smoke' : 'full',
   cases: results.length,
   accuracy,

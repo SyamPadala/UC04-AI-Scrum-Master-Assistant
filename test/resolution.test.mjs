@@ -11,7 +11,7 @@ const { normaliseKeysInText, keysInText, canonicalKey } = await import('../dist/
 const { candidateStories, restrictToKnownKeys } = await import('../dist/agents/updateProcessor.js')
 const { parseExtraction } = await import('../dist/agents/schema.js')
 const { updateProcessorUser } = await import('../dist/agents/prompts/updateProcessor.js')
-const { processUpdate } = await import('../dist/jobs/updateIntake.js')
+const { processUpdate, verifyItems } = await import('../dist/jobs/updateIntake.js')
 const { parseStoryPick, parseForeignItemPayload, isForeignItemPress, recordForeignItem } = await import('../dist/jobs/foreignItem.js')
 const { storyPickerCard, STORY_PICK_ACTION } = await import('../dist/cards/storyPicker.js')
 const { intakeReply } = await import('../dist/bot/replies.js')
@@ -46,13 +46,15 @@ test('item 21: a key the model returns in any case is canonicalised', () => {
 })
 
 // ── item 22 ──────────────────────────────────────────────────────────────
-test("item 22: the whole sprint is offered, the member's own first, each with its owner", () => {
+test('items 22, 32: the whole sprint is offered in key order, each with its owner and what it is about', () => {
   const offered = candidateStories(SPRINT, 'j1', 'anything', [])
-  assert.deepEqual(offered.map((s) => s.key), ['SCRUM-27', 'SCRUM-26', 'SCRUM-24', 'SCRUM-28'])
+  assert.deepEqual(offered.map((s) => s.key), ['SCRUM-24', 'SCRUM-26', 'SCRUM-27', 'SCRUM-28'], 'key order, not own first')
   const prompt = updateProcessorUser('Santhosh', 'x', offered.map((s) => ({
-    key: s.key, title: s.title, status: s.status, owner: s.assignee, mine: s.assigneeAccountId === 'j1'
+    key: s.key, title: s.title, status: s.status, owner: s.assignee, mine: s.assigneeAccountId === 'j1',
+    about: s.key === 'SCRUM-26' ? 'Acceptance criteria:\n- failures trip the circuit breaker' : null
   })))
-  assert.match(prompt, /SCRUM-27 \[In Progress\] \(yours\)/)
+  assert.match(prompt, /SCRUM-27 \[In Progress\] \(assigned to you\)/)
+  assert.match(prompt, /\n  About: Acceptance criteria: - failures trip the circuit breaker\n/, 'about on one line under its story')
   assert.match(prompt, /SCRUM-26 \[In Progress\] \(assigned to Sailaja\)/)
   assert.match(prompt, /SCRUM-28 \[In Progress\] \(unassigned\)/)
 })
@@ -64,7 +66,7 @@ test('item 22: a very large sprint keeps own, keyed and best-matching stories', 
   big.push(story('SCRUM-502', 'Typed by key', 'other-y', 'Someone'))
   const offered = candidateStories(big, 'j1', 'fixed the payment reconciliation job', ['SCRUM-502']).map((s) => s.key)
   assert.ok(offered.length <= 32, `trimmed to ${offered.length}`)
-  assert.equal(offered[0], 'SCRUM-501', 'own story first')
+  assert.ok(offered.includes('SCRUM-501'), 'own story always stays')
   assert.ok(offered.includes('SCRUM-502'), 'a keyed story always stays')
   assert.ok(offered.includes('SCRUM-500'), 'the best title match stays')
 })
@@ -106,12 +108,11 @@ async function intake (modelOutput, text = 'message') {
 const update = (parts) => ({ completed: [], inProgress: [], blockers: [], confidence: 'high', kind: 'update', ...parts })
 
 test("item 22: another member's story described in words reaches the confirmation card", async () => {
-  const { result, prompt, stored } = await intake(update({ completed: [{ storyRef: 'SCRUM-26', comment: 'completed the synchronous data flow' }] }),
+  const { result, prompt, stored } = await intake(update({ completed: [{ storyRef: 'SCRUM-26', comment: 'completed the synchronous data flow', reason: 'synchronous data flow is the title' }] }),
     'completed the implementation of Synchronous Data Flow')
   assert.match(prompt, /SCRUM-26 .*assigned to Sailaja/, 'the model was shown the story')
   assert.deepEqual(stored, [])
-  assert.equal(result.pending[0].key, 'SCRUM-26')
-  assert.equal(result.pending[0].owner, 'Sailaja')
+  assert.deepEqual(result.choices[0].options.map((o) => [o.key, o.owner, o.mine]), [['SCRUM-27', 'Santhosh', true], ['SCRUM-26', 'Sailaja', false]])
 })
 
 test('item 21 through the intake: the model sees the canonical key', async () => {
@@ -125,14 +126,15 @@ test('item 24: unsure words become a "Which story is this?" question, never a gu
   }))
   assert.deepEqual(stored, [])
   assert.deepEqual(result.refused, [], 'not reported as "no work item"')
-  assert.deepEqual(result.ambiguous[0].options.map((o) => o.key), ['SCRUM-24', 'SCRUM-26'])
+  assert.deepEqual(result.choices[0].options.map((o) => o.key), ['SCRUM-27', 'SCRUM-24', 'SCRUM-26'], 'her own first (item 38)')
   assert.match(reply, /^Which story is "finished the integration work"\? Please choose below\./)
 })
 
-test('item 24: no alternatives still means "no work item found"', async () => {
-  const { result } = await intake(update({ completed: [{ storyRef: null, comment: 'fixed the login page' }] }))
-  assert.deepEqual(result.refused, [{ reason: 'noWorkItem', words: 'fixed the login page' }])
-  assert.deepEqual(result.ambiguous, [])
+test('item 13: with no alternatives and no stories of her own, it is still "no work item found"', () => {
+  const output = parseExtraction(JSON.stringify({ completed: [{ storyRef: null, comment: 'fixed the login page' }], inProgress: [], blockers: [] }))
+  const verified = verifyItems(output, new Map(SPRINT.map((s) => [s.key, s])), 'nobody')
+  assert.deepEqual(verified.refused, [{ reason: 'noWorkItem', words: 'fixed the login page' }])
+  assert.deepEqual(verified.choices, [])
 })
 
 // ── item 24: the picker card ─────────────────────────────────────────────
@@ -170,8 +172,9 @@ test('item 24: picking their own story records it plainly', async () => {
 
 test("item 24: picking someone else's story is the confirmation — recorded with its owner", async () => {
   const { reply, stored } = await pick(card.actions[1].data)
-  assert.equal(stored[0].rows[0].comment, '(assigned to Sailaja) finished the integration work')
-  assert.match(reply, /assigned to Sailaja; please ask your Scrum Master/)
+  assert.equal(stored[0].rows[0].assignedTo, 'Sailaja')
+  assert.equal(stored[0].rows[0].comment, 'finished the integration work')
+  assert.match(reply, /under Sailaja, as updated by you/)
 })
 
 test('item 24: "None of these" and an unassigned story record nothing', async () => {

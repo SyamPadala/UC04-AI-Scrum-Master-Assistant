@@ -13,20 +13,32 @@ import { canonicalKey } from './keys.js'
 /** A key in canonical form ('scrum-7' → 'SCRUM-7', SPEC-004 item 21), or null (A8). */
 const storyRef = z.string().trim().min(1).transform(canonicalKey).nullable().catch(null)
 
+/**
+ * Why the model chose that story, in its own words (SPEC-004 item 33). Code
+ * rejects a match whose reason is missing or vague. Never stored or logged.
+ */
+const reason = z.string().trim().nullish().transform((v) => v === undefined || v === null || v === '' ? null : v).catch(null)
+
 const itemSchema = z.object({
   /** Work item key such as 'SCRUM-7', or null when the member named none (A8). */
   storyRef,
   comment: z.string().trim().min(1),
   /**
-   * When the words could mean more than one story: up to three candidate keys,
-   * with storyRef null (SPEC-004 item 24). Code asks the member; nothing is guessed.
+   * When the words could mean more than one story: up to four candidate keys,
+   * with storyRef null (SPEC-004 items 24, 34c). Code asks the member; nothing is guessed.
    */
-  alternatives: z.array(z.string().trim().min(1).transform(canonicalKey)).max(3).catch([]).default([])
+  alternatives: z.array(z.string().trim().min(1).transform(canonicalKey)).catch([]).default([]).transform((keys) => keys.slice(0, 4)),
+  reason
 })
+
+/** Up to four other stories the work could belong to (SPEC-004 items 24, 38). */
+const alternatives = z.array(z.string().trim().min(1).transform(canonicalKey)).catch([]).default([]).transform((keys) => keys.slice(0, 4))
 
 const blockerSchema = z.object({
   description: z.string().trim().min(1),
-  storyRef
+  storyRef,
+  reason,
+  alternatives
 })
 
 export const extractionSchema = z.object({

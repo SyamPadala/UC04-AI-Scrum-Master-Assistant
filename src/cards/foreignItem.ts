@@ -18,20 +18,26 @@ export interface ForeignItemPayload {
   item: PendingItem
 }
 
-export function foreignItemCard (item: PendingItem, teamId: string, localDate: string, memberId: string): unknown {
+/**
+ * `mine`: the confirmation after the member picked their own story on "Which
+ * story is this?" (SPEC-004 item 34c). The buttons and what Submit does are the same.
+ */
+export function foreignItemCard (item: PendingItem, teamId: string, localDate: string, memberId: string, mine = false): unknown {
   const data = (choice: 'submit' | 'cancel'): ForeignItemPayload =>
     ({ action: FOREIGN_ITEM_ACTION, choice, teamId, localDate, memberId, item })
-  const said = [item.comment, item.blocker === null ? null : `Blocked: ${item.blocker}`].filter((part) => part !== null).join(' · ')
+  // The model often gives the blocker as the comment too; it is shown once.
+  const comment = item.comment !== null && item.comment.trim() === (item.blocker ?? '').trim() ? null : item.comment
+  const said = [comment, item.blocker === null ? null : `Blocked: ${item.blocker}`].filter((part) => part !== null).join(' · ')
 
   return {
     type: 'AdaptiveCard',
     $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
     version: '1.4',
     body: [
-      { type: 'TextBlock', text: `${item.key} is assigned to ${item.owner}, not you`, weight: 'Bolder', wrap: true },
+      { type: 'TextBlock', text: mine ? `Record your update against ${item.key} (yours)?` : `${item.key} is assigned to ${item.owner}, not you`, weight: 'Bolder', wrap: true },
       ...(item.title === null ? [] : [{ type: 'TextBlock', text: item.title, isSubtle: true, spacing: 'None', wrap: true }]),
       ...(said === '' ? [] : [{ type: 'TextBlock', text: `Your update: ${said}`, spacing: 'Small', wrap: true }]),
-      { type: 'TextBlock', text: 'Submit your update anyway?', spacing: 'Medium', wrap: true }
+      { type: 'TextBlock', text: mine ? `Will be recorded as: ${item.status}` : 'Submit your update anyway?', spacing: 'Medium', wrap: true }
     ],
     actions: [
       { type: 'Action.Submit', title: 'Submit', style: 'positive', data: data('submit') },

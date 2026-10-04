@@ -4,14 +4,14 @@ Deviations from `docs/rules/coding-rules.md` and `process-rules.md`, recorded
 deliberately, to be fixed when the user decides. Not a backlog of ideas — every
 item is a rule the repo already binds itself to.
 
-**Last reviewed:** 25 Sep 2026, after the LLM-call review.
+**Last reviewed:** 4 Oct 2026 (item 2 narrowed to the Teams adapter).
 
 ## Open
 
 | # | Rule | What was done instead | Where |
 |---|---|---|---|
 | 1 | 11 — external payloads parsed through a schema at the boundary | Teams activities and Graph responses are still cast and trusted. Jira and both LLM providers *are* parsed through Zod. | `bot/handler.ts`, `graph/client.ts`, `trackers/sharepoint.ts` |
-| 2 | 20 — retry with backoff on 429 and 5xx, honour `Retry-After` | Graph and the Teams adapter still have no retries. Jira and the LLM providers use `util/retry.ts`. | `graph/client.ts`, `bot/adapter.ts` |
+| 2 | 20 — retry with backoff on 429 and 5xx, honour `Retry-After` | The Teams adapter still has no retries. Graph is closed (see below); Jira and the LLM providers use `util/retry.ts`. | `bot/adapter.ts` |
 | 3 | 9 — no module-level singletons holding live clients | The Firestore client and the Teams adapter are still created at module load. The LLM client, the Jira client and the tracker are now injected. | `store/firestore.ts`, `bot/adapter.ts` |
 | 4 | 25 — structured JSON logs with `teamId`, `jobType`, `correlationId` | New code logs structured JSON with `teamId`; there is still no `correlationId`, and the older modules log plain strings. | `jobs/reminder.ts`, `graph/client.ts` |
 | 5 | 27 — time every tracker write | Agent calls and the whole update path are timed. Tracker writes on their own are not, so the Latency NFR cannot be split into its parts. | `trackers/sharepoint.ts` |
@@ -38,6 +38,7 @@ item is a rule the repo already binds itself to.
 | 16 | FR-07 — the summary lists **active** blockers | A blocker stays in the summary, whatever day it was raised, until the same member reports that item again without one (SPEC-006 4a, `BLOCKER_LOOKBACK_DAYS`). Closed 25 Sep 2026. |
 | 17 | FR-07/FR-08 — the summary is read by stakeholders | Agent 2 returns the sections as validated JSON; code lays them out as an Adaptive Card in the channel and an HTML email. Closed 25 Sep 2026. |
 | 18 | A member's name is their own | A Teams event with no sender name no longer overwrites the stored name. Closed 25 Sep 2026. |
+| 2 (Graph) | 20 — retry with backoff on 429 and 5xx, honour `Retry-After` | Graph calls time out at 15 s and retry twice (2 s, 5 s), honouring `Retry-After`; a create is retried only on 429; the member is told when the tracker is slow (SPEC-002 5a). Closed 1 Oct 2026. The Teams adapter part stays open. |
 
 ## Notes on the open items
 

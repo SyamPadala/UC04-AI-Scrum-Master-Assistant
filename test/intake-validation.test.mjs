@@ -97,17 +97,18 @@ test('item 12: no active sprint writes nothing, tells the member and alerts the 
   assert.doesNotMatch(reply, /^Recorded/)
 })
 
-test('item 13: an item with no work item is not written and the member is shown their open items', async () => {
+test('items 13, 38: work that fits no story is not written; the card offers her own stories', async () => {
   const { result, stored, reply } = await run(update({ inProgress: [{ storyRef: null, comment: 'started analysing the story' }] }))
   assert.equal(result.outcome, 'nothingRecorded')
   assert.deepEqual(stored, [])
-  assert.match(reply, /couldn't find a work item for: "started analysing the story"/)
-  assert.match(reply, /SCRUM-27 Enforce Transport Security/)
+  assert.deepEqual(result.choices, [{ words: 'started analysing the story', status: 'In Progress', blocker: null, options: [{"key":"SCRUM-27","title":"Enforce Transport Security","owner":"Santhosh","mine":true}] }])
+  assert.match(reply, /Which story is "started analysing the story"\? Please choose below\./)
 })
 
-test('item 13: a key that does not exist in Jira is treated as no work item', async () => {
+test('items 13, 38: a key that does not exist in Jira is treated as no work item', async () => {
   const { result } = await run(update({ completed: [{ storyRef: 'SCRUM-999', comment: 'done' }] }))
-  assert.deepEqual(result.refused, [{ reason: 'noWorkItem', words: 'done' }])
+  assert.deepEqual(result.refused, [])
+  assert.deepEqual(result.choices[0].options.map((o) => o.key), ['SCRUM-27'])
 })
 
 test("item 14: an unassigned work item is refused; 14a: someone else's is held for confirmation", async () => {
@@ -117,11 +118,13 @@ test("item 14: an unassigned work item is refused; 14a: someone else's is held f
   }))
   assert.deepEqual(stored, [], 'neither is written yet')
   assert.deepEqual(result.refused, [{ reason: 'unassigned', key: 'SCRUM-28' }])
-  assert.deepEqual(result.pending, [{
-    key: 'SCRUM-25', title: 'Build Core Architecture', owner: 'Pravallika', status: 'Completed', comment: 'finished', blocker: null
-  }])
+  // Item 38: her own story first, then the other person's.
+  assert.deepEqual(result.choices, [{ words: 'finished', status: 'Completed', blocker: null, options: [
+    {"key":"SCRUM-27","title":"Enforce Transport Security","owner":"Santhosh","mine":true},
+    { key: 'SCRUM-25', title: 'Build Core Architecture', owner: 'Pravallika', mine: false }
+  ] }])
   assert.match(reply, /SCRUM-28 is not assigned to you, so it can't be updated\. Please reach out to your Scrum Master\./)
-  assert.match(reply, /SCRUM-25 is assigned to Pravallika, not you\. Please confirm below/)
+  assert.match(reply, /Which story is "finished"\? Please choose below/)
   assert.doesNotMatch(reply, /\? SCRUM-25/, 'no stray question mark (item 29)')
 })
 
@@ -133,8 +136,8 @@ test('item 18: a mixed message records the verified item and refuses the rest', 
   assert.equal(result.outcome, 'recorded')
   assert.deepEqual(stored[0].rows.map((r) => r.win), ['SCRUM-27'])
   assert.match(reply, /✔ SCRUM-27 Enforce Transport Security — Completed/)
-  assert.match(reply, /SCRUM-25 is assigned to Pravallika, not you/)
-  assert.equal(result.pending.length, 1, 'the other person\'s item waits for the card')
+  assert.match(reply, /Which story is "helping"\? Please choose below/)
+  assert.equal(result.choices.length, 1, 'the other person\'s item waits for the card')
 })
 
 test('item 17: the confirmation lists WIN, title and status for each recorded item', async () => {
@@ -173,4 +176,17 @@ test('a missing kind is read as an update, which with nothing in it asks which i
   const { result } = await run({ completed: [], inProgress: [], blockers: [], confidence: 'low' })
   assert.equal(result.outcome, 'notUnderstood')
   assert.equal(result.understood, false)
+})
+
+test("item 14b: a blocker on someone else's story is held for the card, not alerted at intake", async () => {
+  const { result } = await run(update({
+    inProgress: [{ storyRef: 'SCRUM-27', comment: 'on it' }],
+    blockers: [
+      { storyRef: 'SCRUM-25', description: 'waiting for the load balancer config' },
+      { storyRef: 'SCRUM-27', description: 'waiting for credentials' }
+    ]
+  }))
+  assert.equal(result.choices[0].blocker, 'waiting for the load balancer config')
+  assert.equal(result.choices[0].status, 'Blocked')
+  assert.equal(result.blockers, 1, 'only the own-story blocker goes to the alert now')
 })

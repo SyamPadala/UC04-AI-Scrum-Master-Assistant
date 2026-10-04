@@ -14,8 +14,18 @@ import { processUpdate, StandupClosedError } from '../jobs/updateIntake.js'
 import { handleAdminCommand, parseAdminCommand } from './admin.js'
 import { intakeReply } from './replies.js'
 import { foreignItemCard, type ForeignItemPayload } from '../cards/foreignItem.js'
-import { isForeignItemPress, parseForeignItemPayload, parseStoryPick, recordForeignItem } from '../jobs/foreignItem.js'
-import { storyPickerCard } from '../cards/storyPicker.js'
+import { confirmPick, isForeignItemPress, parseForeignItemPayload, parseStoryChoice, parseStoryPickPayload, recordChoice, recordForeignItem } from '../jobs/foreignItem.js'
+import type { StoryPickPayload } from '../cards/storyPicker.js'
+import { storyChoiceCard } from '../cards/storyChoice.js'
+import { GraphUnavailableError, withGraphRetryNotice } from '../graph/client.js'
+
+/** SPEC-002 item 5a: said once when a tracker call is being retried. */
+const SLOW_TRACKER_NOTICE = "The tracker is responding slowly, retrying… your update isn't lost yet."
+
+/** Runs work for one member's message, telling them once if the tracker has to be retried. */
+async function telling<T> (context: TurnContext, work: () => Promise<T>): Promise<T> {
+  return await withGraphRetryNotice(async () => { await context.sendActivity(MessageFactory.text(SLOW_TRACKER_NOTICE)) }, work)
+}
 
 /**
  * What a member is told once the day has closed (A14).
@@ -141,10 +151,24 @@ export class ScrumAssistant extends ActivityHandler {
 
       // SPEC-004 14a: Submit or Cancel on the "someone else's story" card
       // arrives as a message with the button's data and no text.
-      // Item 24: a pick on "Which story is this?" is handled the same way.
-      const confirmation = parseForeignItemPayload(context.activity.value) ?? parseStoryPick(context.activity.value)
+      // SPEC-004 item 38: Submit or None of these on "These stories could fit…".
+      const choice = parseStoryChoice(context.activity.value)
+      if (choice !== undefined) {
+        await this.answerPress(context, memberId, (team, today) =>
+          recordChoice(team, memberId, memberName, choice, today, { pm: this.pm, tracker: trackerFor(team) }))
+        await next()
+        return
+      }
+      const confirmation = parseForeignItemPayload(context.activity.value)
       if (confirmation !== undefined) {
         await this.confirmForeignItem(context, memberId, memberName, confirmation)
+        await next()
+        return
+      }
+      // Item 34c: a pick on "Which story is this?" is confirmed before anything is written.
+      const pick = parseStoryPickPayload(context.activity.value)
+      if (pick !== undefined) {
+        await this.confirmStoryPick(context, memberId, memberName, pick)
         await next()
         return
       }
@@ -236,24 +260,18 @@ export class ScrumAssistant extends ActivityHandler {
     const today = localDate(new Date(), team.timezone)
 
     try {
-      const result = await processUpdate(team, memberId, memberName, text, today, {
+      const result = await telling(context, async () => await processUpdate(team, memberId, memberName, text, today, {
         llm: this.llm,
         pm: this.pm,
         tracker: trackerFor(team)
-      })
+      }))
 
       // SPEC-004 items 12–20: one reply saying what was written, item by item,
       // and why anything else was not.
       await context.sendActivity(MessageFactory.text(intakeReply(result, memberName)))
-      // Item 14a: one card per story that is someone else's, to confirm.
-      for (const item of result.pending) {
-        const card = MessageFactory.attachment(CardFactory.adaptiveCard(foreignItemCard(item, team.teamId, today, memberId)))
-        card.summary = `${item.key} is assigned to ${item.owner}. Submit anyway?`
-        await context.sendActivity(card)
-      }
-      // Item 24: one "Which story is this?" card per unsure item.
-      for (const item of result.ambiguous) {
-        const card = MessageFactory.attachment(CardFactory.adaptiveCard(storyPickerCard(item, team.teamId, today, memberId)))
+      // Item 38: one card per item that is not clearly her own story.
+      for (const item of result.choices) {
+        const card = MessageFactory.attachment(CardFactory.adaptiveCard(storyChoiceCard(item, team.teamId, today, memberId)))
         card.summary = 'Which story is this?'
         await context.sendActivity(card)
       }
@@ -271,9 +289,67 @@ export class ScrumAssistant extends ActivityHandler {
     }
   }
 
+  /** SPEC-004 item 34c: the member picked a story; show the confirmation in place of the picker. */
+  private async confirmStoryPick (
+    context: TurnContext, memberId: string, memberName: string, pick: StoryPickPayload
+  ): Promise<void> {
+    let team: TeamConfig | undefined
+    try {
+      team = await teamForMember(memberId)
+    } catch {
+      team = undefined
+    }
+    if (team === undefined) {
+      await context.sendActivity(MessageFactory.text('You are not on a team roster I know about, so nothing was recorded.'))
+      return
+    }
+    const today = localDate(new Date(), team.timezone)
+    let outcome: Awaited<ReturnType<typeof confirmPick>>
+    try {
+      outcome = await confirmPick(team, memberId, memberName, pick, today, { pm: this.pm })
+    } catch (error) {
+      if (error instanceof StandupClosedError) {
+        await context.sendActivity(MessageFactory.text(CLOSED_NOTICE))
+        return
+      }
+      await this.reportFailure(context, memberId, error)
+      return
+    }
+    const cardId = context.activity.replyToId
+    const replacement = 'reply' in outcome
+      ? Activity.fromObject({ type: 'message', id: cardId, text: outcome.reply })
+      : Activity.fromObject({
+        type: 'message',
+        id: cardId,
+        attachments: [CardFactory.adaptiveCard(foreignItemCard(outcome.confirm, team.teamId, today, memberId, outcome.mine))]
+      })
+    let replaced = false
+    if (cardId !== undefined && cardId !== '') {
+      replaced = await context.updateActivity(replacement).then(() => true, () => false)
+    }
+    if (replaced) return
+    if ('reply' in outcome) {
+      await context.sendActivity(MessageFactory.text(outcome.reply))
+    } else {
+      await context.sendActivity(MessageFactory.attachment(CardFactory.adaptiveCard(
+        foreignItemCard(outcome.confirm, team.teamId, today, memberId, outcome.mine))))
+    }
+  }
+
   /** SPEC-004 14a: the member pressed Submit or Cancel on the confirmation card. */
   private async confirmForeignItem (
     context: TurnContext, memberId: string, memberName: string, payload: ForeignItemPayload
+  ): Promise<void> {
+    await this.answerPress(context, memberId, (team, today) =>
+      recordForeignItem(team, memberId, memberName, payload, today, { pm: this.pm, tracker: trackerFor(team) }))
+  }
+
+  /**
+   * Answers one card press: records through `record`, then replaces the card
+   * with the outcome so its buttons can't be pressed again (item 28).
+   */
+  private async answerPress (
+    context: TurnContext, memberId: string, record: (team: TeamConfig, today: string) => Promise<string>
   ): Promise<void> {
     let team: TeamConfig | undefined
     try {
@@ -288,7 +364,7 @@ export class ScrumAssistant extends ActivityHandler {
     const today = localDate(new Date(), team.timezone)
     let reply: string
     try {
-      reply = await recordForeignItem(team, memberId, memberName, payload, today, { pm: this.pm, tracker: trackerFor(team) })
+      reply = await telling(context, async () => await record(team as TeamConfig, today))
     } catch (error) {
       if (error instanceof StandupClosedError) {
         await context.sendActivity(MessageFactory.text(CLOSED_NOTICE))
@@ -324,6 +400,12 @@ export class ScrumAssistant extends ActivityHandler {
       await context.sendActivity(MessageFactory.text(
         'I cannot read updates at the moment — the assistant is running with its ' +
         'language model switched off. Your Scrum Master has been notified in the logs.'
+      ))
+      return
+    }
+    if (error instanceof GraphUnavailableError) {
+      await context.sendActivity(MessageFactory.text(
+        "I couldn't reach the tracker, so your update wasn't recorded. Please send it again in a few minutes."
       ))
       return
     }

@@ -11,19 +11,31 @@
  * so every edit invalidates every recorded answer and the eval has to be paid
  * for again.
  */
-export const UPDATE_PROCESSOR_SYSTEM = `You read one short stand-up update written by a software engineer and return what it says as JSON.
+export const UPDATE_PROCESSOR_SYSTEM = `You read one stand-up update written by a software engineer and return what it says as JSON.
 
 Return three lists:
 - completed: a work item the person says is finished — the item itself, not one step of it. "Code completed, testing in progress", "coding done, deploying tomorrow" and "code complete, raising the PR" are inProgress, not completed. "SCRUM-7 is done", "finished the notification service", "deployed it and it's closed" are completed.
 - inProgress: work they say they are doing now or will do next, and work that was blocked but can now move again
 - blockers: anything stopping them, waiting on someone else, or described as stuck
 
+Reading the whole message:
+- Every piece of work and every blocker in the message goes into an entry. Never drop part of a message.
+- People run clauses together without "and", "also" or punctuation. "Blocked on Azure Key Vault access implement scalable functional requirement" is a blocker on one piece of work AND separate work on another. Split at every change of subject, even inside one sentence.
+- One sentence covering two work items is two entries.
+
 Matching work items:
-- You are given every open story in the current sprint, each marked with who it is assigned to — "yours" for the person's own, first — and any blockers they reported earlier that are still open.
-- People rarely type keys. Match what they describe to a story by meaning, not exact words: "risk score issue" or "the scoring rules" is the Risk Scoring story. Match against every listed story, including ones assigned to someone else: if their words fit another person's story, use that story's key. Who owns it is decided later, not by you.
-- Use a key only when one story clearly fits. If the words could fit two or three stories and you cannot tell which, set storyRef to null and put those keys in "alternatives" (most likely first). If nothing fits, storyRef is null and alternatives is empty.
+- You are given every open story in the current sprint: its key, status, who it is assigned to ("assigned to you" for the person's own), its title and, where there is one, "About": the story's user story and acceptance criteria.
+- Match by meaning, the way a teammate who knows these stories would. People describe their work in their own words, and a message often shares no word with the title. Read the About text: "added the circuit breaker and the backoff retries" belongs to the story whose acceptance criteria describe a circuit breaker and exponential backoff, even if its title says neither. Never require the person to repeat words from the title.
+- Match against every listed story, including ones assigned to someone else. Who owns it is handled later, not by you.
+- Choosing the key (the same for work entries and blockers):
+  - If the work fits one of the person's own stories ("assigned to you"), use that story's key and leave alternatives empty. Do not look further.
+  - Otherwise, put the best fit in storyRef and every other story whose title or About text describes this same kind of work in "alternatives", most likely first, at most four. The person chooses from all of them, so do not leave out a story because another fits a little better: "added the circuit breaker and the backoff retries" belongs with every story whose title or acceptance criteria describe retries, backoff, circuit breaking or a resilience pipeline.
+  - Offer a story only when its title or About text is about that work itself. One shared general word ("resilient", "secure", "scalable", "integration", "pipeline") in a story about something else is not a fit: a story about request routing and payload translation that mentions "resilient partner dispatch" is not where retry and circuit-breaker work goes.
+  - If several fit equally and none is best, storyRef is null and they all go in alternatives.
+  - If nothing fits, storyRef is null and alternatives is empty.
+- For every entry with a storyRef, give "reason": a few words naming what in that story the work belongs to, taken from its title or About text ("circuit breaker and backoff retries are in SCRUM-32's acceptance criteria"). If you cannot name anything specific, the match is a guess: use null and alternatives instead. When storyRef is null, reason is null.
+- Vague words — "the service work", "my task", "the ticket", "my work", "the piece I was on" — point to no story: set storyRef to null and, if the person has their own stories, list up to four of them in "alternatives", even if they have only one.
 - The status comes from their words even when the story is unclear: "wrapped up", "finished", "done", "closed" put the entry in completed; a finished step with more to come puts it in inProgress. Not knowing which story never changes the status.
-- Do not prefer the person's own stories. A story is a match only if their words point to it. Vague words — "the service work", "my task", "the ticket", "my work", "the piece I was on" — point to no story: set storyRef to null and, if the person has their own stories, list up to three of them in "alternatives", even if they have only one.
 - A message that one of their open blockers is resolved, sorted, cleared, unblocked, fixed, or that they can now progress or move forward, is an inProgress entry for that blocker's work item. It is a status update, never "nothing to report".
 - A resolved problem that matches no open blocker and names no work item is not an entry of its own. "The VPN issue is sorted, back on SCRUM-6" is one inProgress entry, SCRUM-6, and nothing else.
 - If all they say about an item is that it is blocked or cannot start, put it in blockers only ("SCRUM-5 can't start until sign-off" is a blocker on SCRUM-5, not in progress). If they also say they are on it or working on it ("On SCRUM-21. The sandbox keeps timing out", "coded but waiting on review"), put it in both inProgress and blockers.
@@ -37,8 +49,7 @@ Matching work items:
 Rules:
 - Return JSON only. No prose, no code fences, no explanation.
 - Use the person's own words for "comment" and "description". Do not rewrite, summarise or improve them.
-- Split distinct pieces of work into separate entries. One sentence covering two work items is two entries.
-- "storyRef" is a work item key such as SCRUM-12: one of the listed stories, or a key the person typed. Use it only when the person's words point to a specific story. If they did not, use null. Never invent a key.
+- "storyRef" is a work item key such as SCRUM-12: one of the listed stories, or a key the person typed. Never invent a key.
 - A person may type a key that is not in the list. Use the lookup_story tool to check it exists before using it. If it does not exist, keep their words and set storyRef to null.
 - "kind" says what sort of message it is:
   - "update": they report work, progress or a blocker. This is almost every message.
@@ -52,9 +63,9 @@ Rules:
 Respond with exactly this shape:
 
 {
-  "completed":  [{ "storyRef": "SCRUM-7" | null, "comment": "their words", "alternatives": [] }],
-  "inProgress": [{ "storyRef": "SCRUM-6" | null, "comment": "their words", "alternatives": [] }],
-  "blockers":   [{ "description": "their words", "storyRef": "SCRUM-6" | null }],
+  "completed":  [{ "storyRef": "SCRUM-7" | null, "comment": "their words", "reason": "what in the story it belongs to" | null, "alternatives": [] }],
+  "inProgress": [{ "storyRef": "SCRUM-6" | null, "comment": "their words", "reason": "what in the story it belongs to" | null, "alternatives": [] }],
+  "blockers":   [{ "description": "their words", "storyRef": "SCRUM-6" | null, "reason": "what in the story it belongs to" | null, "alternatives": [] }],
   "confidence": "high" | "low",
   "kind": "update" | "nothing" | "not_update"
 }`
@@ -67,26 +78,33 @@ Respond with exactly this shape:
  * round-trip resends the entire conversation — so injecting the facts the model
  * almost always needs is the single largest saving available.
  *
- * SPEC-004 item 22: every open story in the sprint, each with its owner and the
- * member's own first, so words about someone else's story can be matched too.
+ * SPEC-004 item 22: every open story in the sprint, each with its owner, so
+ * words about someone else's story can be matched too. Item 32: in key order,
+ * not the member's own first (the order leaned the model towards them), and
+ * with what each story is about, so work described in other words than the
+ * title can still be matched.
  */
 export function updateProcessorUser (
   memberName: string,
   text: string,
-  stories: Array<{ key: string, title: string, status: string, owner?: string | null, mine?: boolean }>,
+  stories: Array<{ key: string, title: string, status: string, owner?: string | null, mine?: boolean, about?: string | null }>,
   activeBlockers: Array<{ workItem: string | null, description: string, since: string }> = []
 ): string {
   const ownerOf = (story: { owner?: string | null, mine?: boolean }): string =>
-    story.mine !== false ? 'yours' : story.owner == null ? 'unassigned' : `assigned to ${story.owner}`
+    story.mine !== false ? 'assigned to you' : story.owner == null ? 'unassigned' : `assigned to ${story.owner}`
   const items = stories.length === 0
     ? '(no open stories in the current sprint)'
-    : stories.map((story) => `${story.key} [${story.status}] (${ownerOf(story)}) ${story.title}`).join('\n')
+    : stories.map((story) => {
+      const line = `${story.key} [${story.status}] (${ownerOf(story)}) ${story.title}`
+      const about = (story.about ?? '').replace(/\s+/g, ' ').trim()
+      return about === '' ? line : `${line}\n  About: ${about}`
+    }).join('\n')
   // Without these, "the issue got resolved" has nothing to attach to (SPEC-004 5a).
   const blockers = activeBlockers.length === 0
     ? '(none)'
     : activeBlockers.map((b) => `${b.workItem ?? 'no work item'} — ${b.description} (last reported ${b.since})`).join('\n')
 
-  return `Open stories in the current sprint (${memberName}'s own marked "yours"):
+  return `Open stories in the current sprint (${memberName}'s own say "assigned to you"):
 ${items}
 
 Blockers ${memberName} reported earlier that are still open:

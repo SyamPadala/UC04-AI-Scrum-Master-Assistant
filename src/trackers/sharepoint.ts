@@ -24,8 +24,19 @@ const FIELD = {
   assignedTo: 'AssignedTo',
   comment: 'Comment',
   status: 'Status',
-  anyBlocker: 'AnyBlocker'
+  anyBlocker: 'AnyBlocker',
+  /** Who sent the update (SPEC-002 2f). Empty on rows written before 1 Oct 2026. */
+  updatedBy: 'UpdatedBy'
 } as const
+
+/**
+ * The member a row belongs to — who sent the update. Rows written before the
+ * Updated By column existed only have AssignedTo, which then was the sender.
+ */
+function reporterOf (item: ListItem): string {
+  const by = String(item.fields[FIELD.updatedBy] ?? '')
+  return by !== '' ? by : String(item.fields[FIELD.assignedTo] ?? '')
+}
 
 const GRAPH_ROOT = 'https://graph.microsoft.com/v1.0'
 
@@ -40,6 +51,13 @@ export class SharePointTracker implements Tracker {
     private readonly listId: string,
     private readonly memberNames?: readonly string[]
   ) {}
+
+  /**
+   * The list as read for this instance. An instance serves one message or one
+   * job, so today's rows, open blockers and the write all come from one read
+   * (SPEC-002 item 5a) instead of three. A write clears it.
+   */
+  private read: Promise<ListItem[]> | undefined
 
   private get base (): string {
     return `/sites/${this.siteId}/lists/${this.listId}`
@@ -56,7 +74,9 @@ export class SharePointTracker implements Tracker {
         [FIELD.date]: `${update.localDate}T12:00:00Z`,
         [FIELD.win]: row.win ?? '',
         [FIELD.description]: row.description ?? (row.win === null ? 'General' : ''),
-        [FIELD.assignedTo]: update.memberName,
+        // SPEC-002 2f: AssignedTo is the story's owner as in Jira; Updated By is who sent it.
+        [FIELD.assignedTo]: row.assignedTo !== '' ? row.assignedTo : update.memberName,
+        [FIELD.updatedBy]: update.memberName,
         [FIELD.comment]: row.comment ?? '',
         [FIELD.status]: row.status,
         // Written every time: a report without a blocker clears it (SPEC-002 2d).
@@ -69,13 +89,14 @@ export class SharePointTracker implements Tracker {
         await graphRequest('PATCH', `${this.base}/items/${current.id}/fields`, fields)
       }
     }
+    this.read = undefined
   }
 
   async readToday (teamId: string, localDate: string): Promise<StandupUpdate[]> {
     const byMember = new Map<string, TrackerRow[]>()
     for (const item of await this.allItems()) {
       if (dateOf(item) !== localDate) continue
-      const name = String(item.fields[FIELD.assignedTo] ?? '')
+      const name = reporterOf(item)
       byMember.set(name, [...(byMember.get(name) ?? []), toRow(item.fields)])
     }
     return [...byMember.entries()].map(([memberName, rows]) => ({
@@ -89,7 +110,7 @@ export class SharePointTracker implements Tracker {
     // can appear several times; only the latest says whether it is still blocked.
     const latest = new Map<string, ListItem>()
     for (const item of items) {
-      const key = `${String(item.fields[FIELD.assignedTo] ?? '')}|${String(item.fields[FIELD.win] ?? '')}`
+      const key = `${reporterOf(item)}|${String(item.fields[FIELD.win] ?? '')}`
       const seen = latest.get(key)
       if (seen === undefined || dateOf(item) > dateOf(seen)) latest.set(key, item)
     }
@@ -98,7 +119,7 @@ export class SharePointTracker implements Tracker {
       .filter(({ row }) => row.anyBlocker !== null)
       .map(({ item, row }) => ({
         memberId: '',
-        member: row.assignedTo,
+        member: reporterOf(item),
         workItem: row.win,
         description: row.anyBlocker as string,
         since: dateOf(item)
@@ -107,17 +128,25 @@ export class SharePointTracker implements Tracker {
 
   /** Removes every row of one member. For the smoke check's clean-up only; the daily cycle never deletes. */
   async deleteRowsOf (memberName: string): Promise<number> {
-    const mine = (await this.allItems()).filter((item) => String(item.fields[FIELD.assignedTo] ?? '') === memberName)
+    const mine = (await this.allItems()).filter((item) => reporterOf(item) === memberName)
     for (const item of mine) await graphRequest('DELETE', `${this.base}/items/${item.id}`)
+    this.read = undefined
     return mine.length
   }
 
   /** This team's rows, following Graph's paging. The list stays small: one row per member per item. */
   private async allItems (): Promise<ListItem[]> {
-    const all = await this.everyItem()
+    this.read ??= this.everyItem()
+    let all: ListItem[]
+    try {
+      all = await this.read
+    } catch (error) {
+      this.read = undefined
+      throw error
+    }
     if (this.memberNames === undefined) return all
     const mine = new Set(this.memberNames)
-    return all.filter((item) => mine.has(String(item.fields[FIELD.assignedTo] ?? '')))
+    return all.filter((item) => mine.has(reporterOf(item)))
   }
 
   private async everyItem (): Promise<ListItem[]> {
@@ -140,7 +169,7 @@ function dateOf (item: ListItem): string {
 
 function latestFor (items: ListItem[], memberName: string, key: string): ListItem | undefined {
   return items
-    .filter((item) => String(item.fields[FIELD.assignedTo] ?? '') === memberName &&
+    .filter((item) => reporterOf(item) === memberName &&
       String(item.fields[FIELD.win] ?? '') === key)
     .sort((a, b) => dateOf(b).localeCompare(dateOf(a)))[0]
 }

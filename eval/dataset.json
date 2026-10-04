@@ -911,5 +911,164 @@
       "confidence": "high",
       "kind": "update"
     }
+  },
+  {
+    "id": "e60",
+    "tag": "intent",
+    "note": "item 31: no title word — guarded transitions are in SCRUM-5's acceptance criteria (own)",
+    "text": "Added the guard so a case can't jump from draft straight to approved",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-5"
+      ],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e61",
+    "tag": "intent",
+    "note": "item 31: signature against the shared secret is SCRUM-20 (own)",
+    "text": "Got the vendor's signed results verified against the shared secret",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-20"
+      ],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e62",
+    "tag": "intent",
+    "note": "item 31: weights/thresholds from config is SCRUM-21 (own); still testing = in progress",
+    "text": "Weights and band thresholds now come from config, no redeploy needed. Still testing it.",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-21"
+      ],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e63",
+    "tag": "intent",
+    "note": "item 31, live 30 Sep (Sailaja): circuit breaker + backoff are in SCRUM-30's acceptance criteria, someone else's story",
+    "text": "added the circuit breaker and the backoff retries",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-30"
+      ],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e64",
+    "tag": "intent",
+    "note": "item 31: OAuth2/mTLS strategy factories are SCRUM-32 (someone else's)",
+    "text": "Set up the OAuth2 and mTLS strategy factories",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-32"
+      ],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e65",
+    "tag": "intent",
+    "note": "item 31: 10k requests a minute and P99 are SCRUM-33 (unassigned)",
+    "text": "Load tested at 10k requests a minute, P99 is under 50 ms",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-33"
+      ],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e66",
+    "tag": "run-on",
+    "note": "item 35, like Sailaja 5:13: a blocker then new work with no joining word",
+    "text": "Waiting on the vendor to rotate the webhook secret implement the email templates for rejected applications",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-22"
+      ],
+      "blockers": [
+        "SCRUM-20"
+      ],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e67",
+    "tag": "run-on",
+    "note": "item 35, like Sailaja 5:15: joined by a comma only",
+    "text": "Blocked on the vendor sandbox for screening ,started the SMS templates",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-22"
+      ],
+      "blockers": [
+        "SCRUM-20"
+      ],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e68",
+    "tag": "run-on",
+    "note": "item 35, like Sailaja 5:17: joined by \"also worked on\"",
+    "text": "Blocked on the vendor sandbox for screening also worked on the SMS templates",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-22"
+      ],
+      "blockers": [
+        "SCRUM-20"
+      ],
+      "confidence": "high",
+      "kind": "update"
+    }
+  },
+  {
+    "id": "e69",
+    "tag": "own-first",
+    "note": "item 34a: retries fit the member's own SCRUM-22 and, less well, SCRUM-30 — own story, no alternatives",
+    "text": "Added retries when the notification provider times out",
+    "expect": {
+      "completed": [],
+      "inProgress": [
+        "SCRUM-22"
+      ],
+      "blockers": [],
+      "confidence": "high",
+      "kind": "update",
+      "alternatives": {
+        "inProgress": []
+      }
+    }
   }
 ]

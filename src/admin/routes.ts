@@ -5,7 +5,7 @@ import { authorizeUrl, completeSignIn } from './auth.js'
 import { cookie, readCookie, seal, unseal } from './session.js'
 import { adminPage } from './page.js'
 import {
-  AdminError, addMember, addStakeholder, channelOptions, createTeam, linkJira, removeMember, removeStakeholder, runNow,
+  AdminError, addMember, addStakeholder, channelOptions, createTeam, linkJira, removeMember, removeStakeholder, reopenStandup, runNow,
   llmUsage, readiness, setChannel, setScrumMaster, setTracker, teamFor, teamsFor, teamView, updateSchedule, type Actor
 } from './service.js'
 
@@ -172,6 +172,9 @@ export function adminRouter (): express.Router {
 
   router.get('/api/teams/:teamId/readiness', handle(async (request, _response, actor) =>
     await readiness(await teamFor(actor, request.params.teamId))))
+
+  router.post('/api/teams/:teamId/reopen', handle(async (request, _response, actor) =>
+    ({ message: await reopenStandup(await teamFor(actor, request.params.teamId), actor) })))
 
   router.post('/api/teams/:teamId/run/:jobType', handle(async (request, _response, actor) =>
     ({ message: await runNow(await teamFor(actor, request.params.teamId), request.params.jobType, actor) })))

@@ -34,6 +34,10 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
       lines.push(item.blocker === null
         ? `✔ ${item.win}${title} — ${item.status}`
         : `⚠ ${item.win}${title} — Blocked: ${item.blocker}`)
+      // Her words for this item, wherever they were in the message, so she can
+      // see which part went to which story (1 Oct 2026). Not repeated when
+      // they are the blocker already shown.
+      if (item.said != null && item.said !== '' && item.said !== item.blocker) lines.push(`_"${item.said}"_`)
     }
   } else if (result.refused.length > 0 || result.unlinkedBlockers.length > 0) {
     // Item 29: a heading only when something was turned down; a question
@@ -52,13 +56,8 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
     }
   }
 
-  // Item 14a: the card that follows this reply asks them to confirm.
-  for (const item of result.pending) {
-    lines.push(`${item.key} is assigned to ${item.owner}, not you. Please confirm below if you still want it recorded.`)
-  }
-
-  // Item 24: the card that follows asks which story they meant.
-  for (const item of result.ambiguous) {
+  // Item 38: the card that follows lists the stories it could be.
+  for (const item of result.choices) {
     lines.push(`Which story is "${item.words}"? Please choose below.`)
   }
 

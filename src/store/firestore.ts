@@ -297,8 +297,30 @@ export async function saveFlag (flag: NonResponderFlag): Promise<void> {
  * succeeded cannot be explained to a team.
  */
 export async function summaryHasRun (teamId: string, localDate: string): Promise<boolean> {
+  return (await standupState(teamId, localDate)).closed
+}
+
+/**
+ * Whether today's stand-up is closed (A14), and whether someone reopened it
+ * (SPEC-008 10l). Reopening marks the summary's claim rather than deleting it,
+ * so the scheduler still sees the summary as done and does not send it again.
+ */
+export async function standupState (teamId: string, localDate: string): Promise<{
+  closed: boolean, closedAt: Date | null, reopenedAt: Date | null, reopenedBy: string | null
+}> {
   const doc = await db.collection('runs').doc(runId(teamId, localDate, 'summary')).get()
-  return doc.exists
+  if (!doc.exists) return { closed: false, closedAt: null, reopenedAt: null, reopenedBy: null }
+  const data = doc.data() as { startedAt?: { toDate: () => Date }, reopenedAt?: { toDate: () => Date }, reopenedBy?: string }
+  const reopenedAt = data.reopenedAt?.toDate() ?? null
+  return { closed: reopenedAt === null, closedAt: data.startedAt?.toDate() ?? null, reopenedAt, reopenedBy: data.reopenedBy ?? null }
+}
+
+/** SPEC-008 10l. False when there was nothing to reopen. */
+export async function reopenStandup (teamId: string, localDate: string, by: string): Promise<boolean> {
+  const ref = db.collection('runs').doc(runId(teamId, localDate, 'summary'))
+  if (!(await ref.get()).exists) return false
+  await ref.set({ reopenedAt: new Date(), reopenedBy: by }, { merge: true })
+  return true
 }
 
 /** Today's job outcomes for the status card. */

@@ -22,12 +22,12 @@ const payload = (over = {}) => ({
 })
 
 async function submit (p, options = {}) {
-  const { closed = false, times = 1 } = options
+  const { closed = false, times = 1, alerts = [] } = options
   // 'in', not a default: an explicit undefined means "not found in Jira".
   const lookup = 'lookup' in options ? options.lookup : story('j2', 'Pravallika')
   const file = path.join(tmpdir(), `uc04-foreign-${Date.now()}-${Math.random()}.json`)
   const tracker = new MockTracker(file)
-  const deps = { pm: { lookupStory: async () => lookup }, tracker, summaryHasRun: async () => closed }
+  const deps = { pm: { lookupStory: async () => lookup }, tracker, summaryHasRun: async () => closed, sendBlockerAlert: async (...args) => { alerts.push(args); return { sent: true, suppressed: 0 } } }
   try {
     let reply
     for (let i = 0; i < times; i++) reply = await recordForeignItem(TEAM, 'm1', 'Santhosh', p, '2026-09-29', deps)
@@ -45,14 +45,15 @@ test('the card carries the item in its buttons and round-trips through validatio
   assert.equal(parseForeignItemPayload(undefined), undefined)
 })
 
-test('Submit records under the sender, says whose story it is, and asks for it to be assigned', async () => {
+test('Submit records under the Jira owner, says who sent it, and keeps the row the sender\'s (SPEC-002 2f)', async () => {
   const { reply, stored } = await submit(payload())
   const row = stored[0].rows[0]
   assert.equal(row.win, 'SCRUM-25')
-  assert.equal(row.assignedTo, 'Santhosh')
-  assert.equal(row.comment, '(assigned to Pravallika) finished it')
+  assert.equal(row.assignedTo, 'Pravallika')
+  assert.equal(row.comment, 'finished it')
+  assert.equal(stored[0].memberName, 'Santhosh', 'the sender\'s row, so their participation counts')
   assert.equal(row.status, 'Completed')
-  assert.match(reply, /Recorded SCRUM-25 in the tracker\. It is assigned to Pravallika; please ask your Scrum Master to assign it to you in Jira\./)
+  assert.equal(reply, 'Recorded SCRUM-25 in the tracker under Pravallika, as updated by you.')
 })
 
 test('Submit pressed twice records one row', async () => {
@@ -97,4 +98,27 @@ test('SPEC-005 2a: a blocker on a named story shows no open-items line', () => {
   const texts = JSON.stringify(blockerAlertCard('A', 'd',
     [{ description: 'x', storyRef: 'SCRUM-25', storyTitle: 'T' }], [{ key: 'SCRUM-27', title: 'Other' }]))
   assert.doesNotMatch(texts, /open items/)
+})
+
+test('item 14b: Submit on a blocked item alerts the Scrum Master with the story; Cancel alerts nothing', async () => {
+  const blocked = { ...ITEM, status: 'Blocked', comment: null, blocker: 'waiting for the LB config' }
+  const alerts = []
+  await submit(payload({ item: blocked }), { alerts })
+  assert.equal(alerts.length, 1)
+  assert.deepEqual(alerts[0][4], [{ description: 'waiting for the LB config', storyRef: 'SCRUM-25' }])
+  assert.equal(alerts[0][5].get('SCRUM-25').title, 'Build Core Architecture')
+  const cancelled = []
+  await submit(payload({ choice: 'cancel', item: blocked }), { alerts: cancelled })
+  assert.equal(cancelled.length, 0)
+  const plain = []
+  await submit(payload(), { alerts: plain })
+  assert.equal(plain.length, 0, 'no blocker, no alert')
+})
+
+test('the card shows the text once when the comment and the blocker are the same', () => {
+  const same = { ...ITEM, status: 'Blocked', comment: 'waiting for the LB config', blocker: 'waiting for the LB config' }
+  const texts = foreignItemCard(same, 'team-1', '2026-09-29', 'm1').body.map((b) => b.text)
+  assert.ok(texts.includes('Your update: Blocked: waiting for the LB config'))
+  const different = { ...same, comment: 'set up the pool' }
+  assert.ok(foreignItemCard(different, 'team-1', '2026-09-29', 'm1').body.some((b) => b.text === 'Your update: set up the pool · Blocked: waiting for the LB config'))
 })

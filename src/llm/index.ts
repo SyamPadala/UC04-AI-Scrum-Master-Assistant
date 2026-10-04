@@ -37,7 +37,8 @@ class GuardedLlm implements LlmClient {
   get model (): string { return this.inner.model }
 
   async complete (request: LlmRequest, executeTool?: ToolExecutor): Promise<LlmResponse> {
-    const key = cacheKey(this.inner.provider, this.inner.model, request)
+    const model = request.model ?? this.inner.model
+    const key = cacheKey(this.inner.provider, model, request)
 
     if (config.llm.cache) {
       const recorded = await this.cache.read(key)
@@ -72,7 +73,7 @@ class GuardedLlm implements LlmClient {
     log('llm.call', {
       label: request.label,
       provider: this.inner.provider,
-      model: this.inner.model,
+      model,
       roundTrips: response.roundTrips,
       inputTokens: response.usage.inputTokens,
       outputTokens: response.usage.outputTokens,
@@ -81,7 +82,7 @@ class GuardedLlm implements LlmClient {
     await recordLlmUsage(today, request.label, response.usage)
 
     if (config.llm.cache) {
-      await this.cache.write(key, this.inner.provider, this.inner.model, request.label, response)
+      await this.cache.write(key, this.inner.provider, model, request.label, response)
     }
     return response
   }

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026 |
+| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026; amendment of 30 Sep 2026 (10l) approved 30 Sep 2026 |
 | **Delivers** | NFR Configuration; supports FR-08 (stakeholder list), FR-10 (per-team settings) |
 | **Assumptions** | A9 (configuration via a web admin panel, amended 24 Sep 2026) |
 | **Depends on** | SPEC-001 |
@@ -163,6 +163,17 @@ Dev team tab. Not an FR of its own: it serves FR-10 and the Configuration NFR.*
     `setup`, `help` work as before; `status`, `pause`, `resume`, `run` work
     when they run one team, and point to the admin page when they run several.
     Readiness (10d) adds a **Scrum Master chat** check.
+10l. *Added 30 Sep 2026 (approved by the user, 30 Sep 2026; demo-day issue #8).*
+    **Reopen stand-up.** Once the scheduled summary has run, the stand-up is
+    closed (A14) and late updates are refused. The team's page shows
+    *"Stand-up closed at 18:00 (summary sent)"* with a **Reopen stand-up**
+    button, for admins and the team's Scrum Master.
+    - Reopening marks today's summary record as reopened (who, when); it
+      does **not** delete it, so the scheduler does not send the summary
+      again. Members can send updates for the rest of the day.
+    - The page then shows *"Reopened by <name> at <time>"*.
+    - Recorded in the change log. The next day closes as usual.
+    - Run now → Summary still does not close the stand-up (A14 unchanged).
 
 **Migration.** Scrum Team Alpha has its Scrum Master (Syam) on the roster. On
 deploy his stored chat is copied to `scrumMasters/`, and he is removed from

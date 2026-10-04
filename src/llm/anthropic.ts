@@ -95,7 +95,7 @@ export class AnthropicClient implements LlmClient {
 
   private async post (request: LlmRequest, messages: Message[]): Promise<z.infer<typeof responseSchema>> {
     const payload: Record<string, unknown> = {
-      model: this.model,
+      model: request.model ?? this.model,
       system: request.system,
       messages,
       max_tokens: request.maxOutputTokens ?? 2048,

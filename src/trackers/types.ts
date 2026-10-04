@@ -6,7 +6,11 @@ export interface TrackerRow {
   win: string | null
   /** The work item's title from Jira/ADO — never the member's own words. */
   description: string | null
-  /** Member display name, taken from Teams. */
+  /**
+   * Whose story it is, as in Jira (SPEC-002 2f, 1 Oct 2026). For the member's
+   * own stories and General rows this is the member. Who sent the update is
+   * the StandupUpdate's memberName, stored in the tracker's Updated By column.
+   */
   assignedTo: string
   /** What the member said about this item, in their words; null on a blocker-only row. */
   comment: string | null
