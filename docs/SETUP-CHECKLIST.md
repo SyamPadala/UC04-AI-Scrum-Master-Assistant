@@ -231,6 +231,12 @@ app is not installed for them.
 Account and project already exist: `api-project-631634995359`, Rs28,663 trial
 credit. These items are the services inside it.
 
+**Credit window** (recorded 5 Oct 2026): free trial started 21 Sep 2026, credits
+expire **17 Dec 2026**. The account is upgraded to paid, so after that date (or
+once the credit is spent) charges go to the card automatically. To close: shut
+down the project (IAM & Admin → Settings), then close the billing account
+(Billing → Account management).
+
 - [x] **11. Firestore database** — DONE 18 Sep 2026
       Native mode, Standard edition, single region `asia-south1` (Mumbai).
       Cloud Run must be deployed to the same region. The location is permanent.
