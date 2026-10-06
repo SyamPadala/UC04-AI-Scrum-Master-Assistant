@@ -6,7 +6,8 @@ import { cookie, readCookie, seal, unseal } from './session.js'
 import { adminPage } from './page.js'
 import {
   AdminError, addMember, addStakeholder, channelOptions, createTeam, linkJira, removeMember, removeStakeholder, reopenStandup, runNow,
-  llmUsage, readiness, setChannel, setScrumMaster, setTracker, teamFor, teamsFor, teamView, updateSchedule, type Actor
+  llmUsage, onboarding, readiness, setChannel, setScrumMaster, setTeamsTeam, setTracker, teamFor, teamsFor, teamsTeamOptions, teamView,
+  tickTrackerAccess, updateSchedule, provisionMember, finishLeaver, type Actor
 } from './service.js'
 
 /**
@@ -175,6 +176,27 @@ export function adminRouter (): express.Router {
 
   router.post('/api/teams/:teamId/reopen', handle(async (request, _response, actor) =>
     ({ message: await reopenStandup(await teamFor(actor, request.params.teamId), actor) })))
+
+  // SPEC-008 10m: Teams team per scrum team and the onboarding checklist.
+  router.get('/api/teams-teams', handle(async (_request, _response, actor) => await teamsTeamOptions(actor)))
+
+  router.put('/api/teams/:teamId/teams-team', handle(async (request, _response, actor) =>
+    ({ message: await setTeamsTeam(await teamFor(actor, request.params.teamId), (request.body as { groupId?: unknown }).groupId, actor) })))
+
+  router.get('/api/teams/:teamId/onboarding', handle(async (request, _response, actor) =>
+    await onboarding(await teamFor(actor, request.params.teamId))))
+
+  router.put('/api/teams/:teamId/members/:memberId/tracker-access', handle(async (request, _response, actor) =>
+    ({ message: await tickTrackerAccess(await teamFor(actor, request.params.teamId), request.params.memberId, (request.body as { done?: unknown }).done, actor) })))
+
+  // SPEC-008 10n: retry the automatic onboarding steps; finish an offboarding.
+  router.post('/api/teams/:teamId/members/:memberId/provision', handle(async (request, _response, actor) => {
+    const team = await teamFor(actor, request.params.teamId)
+    return { message: await provisionMember(team.teamId, request.params.memberId, actor) }
+  }))
+
+  router.post('/api/teams/:teamId/leaving/:memberId/finish', handle(async (request, _response, actor) =>
+    ({ message: await finishLeaver(await teamFor(actor, request.params.teamId), request.params.memberId, actor) })))
 
   router.post('/api/teams/:teamId/run/:jobType', handle(async (request, _response, actor) =>
     ({ message: await runNow(await teamFor(actor, request.params.teamId), request.params.jobType, actor) })))

@@ -1,16 +1,19 @@
 import { randomUUID } from 'node:crypto'
 import type { ConversationReference } from '@microsoft/agents-activity'
-import type { BotTeam, JobType, Member, TeamConfig } from '../types.js'
+import type { BotTeam, JobType, Leaver, Member, TeamConfig } from '../types.js'
 import { config } from '../config/env.js'
 import { localDate } from '../config/time.js'
 import { graphRequest } from '../graph/client.js'
 import { JiraClient } from '../pm/jira.js'
+import type { Story } from '../pm/types.js'
 import { runJobNow } from '../jobs/tick.js'
 import { DEFAULT_WORKING_DAYS } from '../jobs/schedule.js'
 import { channelReference, listTeamChannels } from '../bot/channels.js'
 import { chatState } from '../bot/reachability.js'
 import { trackerFor } from '../trackers/factory.js'
 import { assessReadiness, type ReadinessFacts, type ReadinessRow } from './readiness.js'
+import { addToTeamsTeam, installApp, reason, removeFromTeamsTeam, uninstallApp } from './provision.js'
+import { assessOnboarding, type OnboardingFacts, type OnboardingStep, type Unknown } from './onboarding.js'
 import {
   allTeams, botTeams, clearChannelRef, configChangesFor, getChannelRef, getTeam, llmUsageForDates, recordConfigChange,
   reopenStandup as markReopened, runsForDate, saveChannelRef, saveScrumMasterRef, saveTeam, scrumMasterOf, standupState, summaryHasRun, teamForMember
@@ -167,6 +170,8 @@ export async function teamView (team: TeamConfig, actor: Actor): Promise<unknown
       channelId: team.stakeholders.channelId ?? null,
       channelConnected: channelRef !== undefined
     },
+    leaving: team.leaving ?? [],
+    teamsTeam: team.teamsGroupId === undefined ? null : { id: team.teamsGroupId, name: team.teamsGroupName ?? team.teamsGroupId },
     tracker: team.tracker.kind,
     trackerDetail: team.tracker.kind === 'jira' ? `${config.jira.baseUrl}/browse/${team.tracker.standupIssueKey}` : null,
     trackerOptions: [
@@ -214,8 +219,12 @@ export async function addMember (team: TeamConfig, rawEmail: unknown, actor: Act
     displayName: user.displayName ?? email,
     email: user.mail ?? user.userPrincipalName ?? email
   }
-  await applyChange(team, { members: [...team.members, member] }, actor.name)
-  return `Added ${member.displayName}. They will receive reminders once the Teams app is installed for them.`
+  // Rejoining ends an unfinished offboarding (10n).
+  const leaving = (team.leaving ?? []).filter((l) => l.memberId !== user.id)
+  await applyChange(team, { members: [...team.members, member], ...(leaving.length === (team.leaving ?? []).length ? {} : { leaving }) }, actor.name)
+  // SPEC-008 10n: every onboarding step the assistant can do, done now.
+  const provisioned = await provisionMember(team.teamId, member.memberId, actor)
+  return `Added ${member.displayName}. ${provisioned}`
 }
 
 export async function removeMember (team: TeamConfig, memberId: string, actor: Actor): Promise<string> {
@@ -226,8 +235,24 @@ export async function removeMember (team: TeamConfig, memberId: string, actor: A
   if (memberId === team.scrumMasterId && (member.conversationRef ?? '') !== '') {
     await saveScrumMasterRef(member.memberId, member.displayName, member.conversationRef as string)
   }
-  await applyChange(team, { members: team.members.filter((m) => m.memberId !== memberId) }, actor.name)
-  return `Removed ${member.displayName}. Rows they already wrote stay in the tracker.`
+  // SPEC-008 10n: removed completely; what can't be done automatically is their offboarding checklist.
+  const items = await offboard(team, member)
+  const leaver: Leaver = {
+    memberId: member.memberId,
+    displayName: member.displayName,
+    ...(member.email === undefined ? {} : { email: member.email }),
+    removedBy: actor.name,
+    removedAt: new Date().toISOString(),
+    items
+  }
+  const fresh = await getTeam(team.teamId) ?? team
+  await applyChange(fresh, {
+    members: fresh.members.filter((m) => m.memberId !== memberId),
+    leaving: [...(fresh.leaving ?? []).filter((l) => l.memberId !== memberId), leaver]
+  }, actor.name)
+  const auto = items.filter((i) => i.state === 'auto').length
+  const manual = items.length - auto
+  return `Removed ${member.displayName}. ${auto} offboarding step${auto === 1 ? '' : 's'} done automatically, ${manual} to do by hand — see Leaving on the Dev team tab.`
 }
 
 export async function linkJira (team: TeamConfig, memberId: string, rawAccountId: unknown, actor: Actor): Promise<string> {
@@ -300,6 +325,10 @@ export async function createTeam (actor: Actor, raw: Record<string, unknown>): P
   const overlap = overlapProblem('makeScrumMaster', user.id, user.displayName ?? 'That person', teams)
   if (overlap !== undefined) throw new AdminError(409, overlap)
 
+  // SPEC-008 10m: optional here; it can be set later on the Dev team tab.
+  const rawGroup = String(raw.teamsGroupId ?? '').trim()
+  const group = rawGroup === '' ? undefined : await checkTeamsTeam(rawGroup, teams)
+
   const team: TeamConfig = {
     teamId: randomUUID(),
     name,
@@ -319,7 +348,8 @@ export async function createTeam (actor: Actor, raw: Record<string, unknown>): P
     tracker: config.sharepoint.siteId !== ''
       ? { kind: 'sharepoint', siteId: config.sharepoint.siteId, listId: config.sharepoint.listId }
       : { kind: 'jira', projectKey: config.jira.projectKey, standupIssueKey: config.jira.standupIssueKey },
-    stakeholders: { emails: [] }
+    stakeholders: { emails: [] },
+    ...(group === undefined ? {} : { teamsGroupId: group.id, teamsGroupName: group.name })
   }
   await saveTeam(team)
   await recordConfigChange({
@@ -555,4 +585,333 @@ export async function readiness (team: TeamConfig): Promise<{ checkedAt: string,
   })
   console.log(JSON.stringify({ event: 'admin.readiness', teamId: team.teamId, red: rows.filter((r) => !r.ok).map((r) => r.check) }))
   return { checkedAt: new Date().toISOString(), rows }
+}
+
+// ── SPEC-008 10m: Teams team per scrum team, and the onboarding checklist ──
+
+interface GraphGroup { id: string, displayName?: string | null, resourceProvisioningOptions?: string[] | null }
+
+const short = (error: unknown): string => {
+  const text = error instanceof Error ? error.message : String(error)
+  // Graph's 403 text is long and does not name the permission that is missing.
+  return / 403 /.test(text) ? 'the Graph app is missing the GroupMember.Read.All permission.' : text.slice(0, 120)
+}
+
+/** Every Teams team in the tenant, for the dropdown. Needs GroupMember.Read.All. */
+export async function teamsTeamOptions (actor: Actor): Promise<{ teams: Array<{ id: string, name: string }> }> {
+  if (!mayAdminister(actor.oid, config.admin.userIds) && (await teamsFor(actor)).length === 0) {
+    throw new AdminError(403, 'You are not the Scrum Master of any team.')
+  }
+  try {
+    const found = await graphRequest<{ value: GraphGroup[] }>(
+      'GET', "/groups?$filter=resourceProvisioningOptions/Any(x:x eq 'Team')&$select=id,displayName&$top=999"
+    )
+    const teams = found.value.map((g) => ({ id: g.id, name: g.displayName ?? g.id }))
+    teams.sort((a, b) => a.name.localeCompare(b.name))
+    return { teams }
+  } catch (error) {
+    throw new AdminError(502, `Teams teams could not be listed: ${short(error)}`)
+  }
+}
+
+/** Set explicitly, or the team's own id (Scrum Team Alpha was created from its Teams team). */
+function resolvedGroupId (team: TeamConfig): string {
+  return team.teamsGroupId ?? team.teamId
+}
+
+/** The group, when it is a Teams team that no other scrum team uses. */
+async function checkTeamsTeam (groupId: string, teams: TeamConfig[], exceptTeamId?: string): Promise<{ id: string, name: string }> {
+  let group: GraphGroup
+  try {
+    group = await graphRequest<GraphGroup>('GET', `/groups/${encodeURIComponent(groupId)}?$select=id,displayName,resourceProvisioningOptions`)
+  } catch (error) {
+    if (error instanceof Error && error.message.includes(' 404 ')) throw new AdminError(400, 'That Teams team does not exist in this tenant.')
+    throw new AdminError(502, `The Teams team could not be read: ${short(error)}`)
+  }
+  if (!(group.resourceProvisioningOptions ?? []).includes('Team')) throw new AdminError(400, 'That group is not a Teams team.')
+  const holder = teams.find((t) => t.teamId !== exceptTeamId && resolvedGroupId(t) === group.id)
+  if (holder !== undefined) throw new AdminError(409, `${group.displayName ?? 'That Teams team'} is already used by ${holder.name}.`)
+  return { id: group.id, name: group.displayName ?? group.id }
+}
+
+/** Admin only: the scrum team's Teams team, or '' to clear it. */
+export async function setTeamsTeam (team: TeamConfig, rawGroupId: unknown, actor: Actor): Promise<string> {
+  if (!mayAdminister(actor.oid, config.admin.userIds)) throw new AdminError(403, 'Only an admin can set the Teams team.')
+  const groupId = String(rawGroupId ?? '').trim()
+  if (groupId === '') {
+    if (team.teamsGroupId === undefined) return 'Nothing changed.'
+    const { teamsGroupId: _id, teamsGroupName: _name, ...rest } = team
+    await saveTeam(rest)
+    await recordConfigChange({
+      teamId: team.teamId, changedBy: actor.name, changedAt: new Date(),
+      fields: [{ field: 'teamsGroupId', from: team.teamsGroupId, to: null }]
+    })
+    return 'Teams team cleared.'
+  }
+  const group = await checkTeamsTeam(groupId, await allTeams(), team.teamId)
+  const changed = await applyChange(team, { teamsGroupId: group.id, teamsGroupName: group.name }, actor.name)
+  return changed.length === 0 ? 'Nothing changed.' : `${team.name} is linked to the Teams team ${group.name}.`
+}
+
+/** The team's Teams team, or undefined when none is set (or its own id is not one). */
+async function teamsTeamOf (team: TeamConfig): Promise<{ id: string, name: string } | Unknown | undefined> {
+  if (team.teamsGroupId !== undefined) return { id: team.teamsGroupId, name: team.teamsGroupName ?? team.teamsGroupId }
+  try {
+    const group = await graphRequest<GraphGroup>('GET', `/groups/${encodeURIComponent(team.teamId)}?$select=id,displayName,resourceProvisioningOptions`)
+    return (group.resourceProvisioningOptions ?? []).includes('Team') ? { id: group.id, name: group.displayName ?? group.id } : undefined
+  } catch (error) {
+    // A team made on the admin page has a random id: no such group, so none is set.
+    if (error instanceof Error && (error.message.includes(' 404 ') || error.message.includes(' 400 '))) return undefined
+    return { error: short(error) }
+  }
+}
+
+async function hasTeamsLicence (memberId: string): Promise<boolean | Unknown> {
+  try {
+    const found = await graphRequest<{ value: Array<{ servicePlans?: Array<{ servicePlanName?: string, provisioningStatus?: string }> }> }>(
+      'GET', `/users/${encodeURIComponent(memberId)}/licenseDetails?$select=servicePlans`
+    )
+    return found.value.some((licence) => (licence.servicePlans ?? []).some((plan) =>
+      (plan.servicePlanName ?? '').startsWith('TEAMS') && plan.provisioningStatus === 'Success'))
+  } catch (error) {
+    return { error: short(error) }
+  }
+}
+
+/**
+ * SPEC-008 10m: each member's onboarding steps, read when the Dev team tab
+ * opens. Read-only; a source that fails shows as "Could not check" on its step.
+ */
+export async function onboarding (team: TeamConfig): Promise<{
+  teamsTeam: { id: string, name: string } | null
+  teamsTeamError: string | null
+  members: Record<string, { steps: OnboardingStep[], done: number, total: number }>
+}> {
+  const client = jira()
+  const teamsTeam = await teamsTeamOf(team)
+  const group = teamsTeam !== undefined && !('error' in teamsTeam) ? teamsTeam : undefined
+
+  const groupMembers = async (): Promise<Set<string> | Unknown | undefined> => {
+    if (teamsTeam === undefined) return undefined
+    if ('error' in teamsTeam) return teamsTeam
+    try {
+      const found = await graphRequest<{ value: Array<{ id: string }> }>('GET', `/groups/${encodeURIComponent(teamsTeam.id)}/members?$select=id&$top=999`)
+      return new Set(found.value.map((m) => m.id))
+    } catch (error) {
+      return { error: short(error) }
+    }
+  }
+
+  // The tracker is on the Teams team's own site when that site's library belongs to the group.
+  const trackerOnGroupSite = async (): Promise<boolean> => {
+    if (group === undefined || team.tracker.kind !== 'sharepoint') return false
+    try {
+      const drive = await graphRequest<{ owner?: { group?: { id?: string } } }>('GET', `/sites/${team.tracker.siteId}/drive?$select=owner`)
+      return drive.owner?.group?.id === group.id
+    } catch {
+      return false
+    }
+  }
+
+  const sprintStories = async (): Promise<Story[] | 'noSprint' | Unknown> => {
+    if (client === undefined) return { error: 'Jira is not configured on this server.' }
+    try {
+      const data = await client.getSprintData()
+      return data === undefined ? 'noSprint' : data.items
+    } catch (error) {
+      return { error: short(error) }
+    }
+  }
+
+  const [members, onSite, stories, licences, chats] = await Promise.all([
+    groupMembers(),
+    trackerOnGroupSite(),
+    sprintStories(),
+    Promise.all(team.members.map(async (m) => await hasTeamsLicence(m.memberId))),
+    Promise.all(team.members.map(async (m) => await chatState(m.conversationRef).catch((error: unknown): Unknown => ({ error: short(error) }))))
+  ])
+
+  const result: Record<string, { steps: OnboardingStep[], done: number, total: number }> = {}
+  team.members.forEach((m, index) => {
+    const facts: OnboardingFacts = {
+      teamsTeamName: group?.name,
+      licence: licences[index],
+      inTeamsTeam: members === undefined ? undefined : members instanceof Set ? members.has(m.memberId) : members,
+      chat: chats[index],
+      linked: (m.jiraAccountId ?? '') !== '',
+      story: Array.isArray(stories)
+        ? stories.some((s) => s.assigneeAccountId === m.jiraAccountId && s.statusCategory !== 'Done')
+        : stories,
+      tracker: onSite ? { via: 'group' } : { via: 'hand', tick: m.onboarding?.trackerAccess ?? null }
+    }
+    result[m.memberId] = assessOnboarding(facts)
+  })
+  return {
+    teamsTeam: group ?? null,
+    teamsTeamError: teamsTeam !== undefined && 'error' in teamsTeam ? teamsTeam.error : null,
+    members: result
+  }
+}
+
+/** SPEC-008 10m: tick or untick tracker access by hand, when it can't be checked. */
+export async function tickTrackerAccess (team: TeamConfig, memberId: string, rawDone: unknown, actor: Actor): Promise<string> {
+  const member = team.members.find((m) => m.memberId === memberId)
+  if (member === undefined) throw new AdminError(404, 'That person is not on the team.')
+  const done = rawDone === true
+  const members = team.members.map((m): Member => {
+    if (m.memberId !== memberId) return m
+    const { onboarding: _old, ...rest } = m
+    return done ? { ...rest, onboarding: { trackerAccess: { by: actor.name, at: new Date().toISOString() } } } : rest
+  })
+  await applyChange(team, { members }, actor.name)
+  return done ? `Tracker access ticked for ${member.displayName}.` : `Tracker access unticked for ${member.displayName}.`
+}
+
+// ── SPEC-008 10n: automatic onboarding and offboarding ─────────────────────
+
+/**
+ * Does every onboarding step the assistant can (Teams team, app, Jira). A step
+ * that fails is reported and can be retried; it never undoes the steps that
+ * worked.
+ */
+export async function provisionMember (teamId: string, memberId: string, actor: Actor): Promise<string> {
+  const team = await getTeam(teamId)
+  const member = team?.members.find((m) => m.memberId === memberId)
+  if (team === undefined || member === undefined) throw new AdminError(404, 'That person is not on the team.')
+
+  const done: string[] = []
+  const problems: string[] = []
+
+  const teamsTeam = await teamsTeamOf(team)
+  if (teamsTeam === undefined) {
+    problems.push('Teams team: not set for this team')
+  } else if ('error' in teamsTeam) {
+    problems.push(`Teams team: ${teamsTeam.error}`)
+  } else {
+    try {
+      if (await addToTeamsTeam(teamsTeam.id, memberId) === 'added') done.push(`added to ${teamsTeam.name}`)
+    } catch (error) {
+      problems.push(`Teams team: ${reason(error)}`)
+    }
+  }
+
+  try {
+    if (await installApp(memberId) === 'added') done.push('Scrum Assistant installed')
+  } catch (error) {
+    problems.push(`App: ${reason(error)}`)
+  }
+
+  // Only when the team uses Jira (10n); a member already linked is left alone.
+  let jiraAccountId = member.jiraAccountId
+  const client = jira()
+  if (client !== undefined && (jiraAccountId ?? '') === '') {
+    const email = member.email ?? (await lookUpUser(memberId).catch(() => undefined))?.mail ?? undefined
+    if (email === undefined) {
+      problems.push('Jira: no email address for them')
+    } else {
+      try {
+        let accountId = await client.findUserByEmail(email)
+        if (accountId === undefined) {
+          accountId = await client.inviteUser(email)
+          done.push('invited to Jira')
+        }
+        const holder = team.members.find((m) => m.jiraAccountId === accountId && m.memberId !== memberId)
+        if (holder !== undefined) {
+          problems.push(`Jira: that account is already linked to ${holder.displayName}`)
+        } else {
+          jiraAccountId = accountId
+          done.push('linked to Jira')
+        }
+      } catch (error) {
+        problems.push(`Jira: ${reason(error)}`)
+      }
+    }
+  }
+
+  if (jiraAccountId !== member.jiraAccountId && jiraAccountId !== undefined) {
+    const members = team.members.map((m): Member => m.memberId === memberId ? { ...m, jiraAccountId } : m)
+    await applyChange(team, { members }, actor.name)
+  }
+  console.log(JSON.stringify({ event: 'admin.provisioned', teamId, memberId, done: done.length, problems: problems.length }))
+
+  const parts = [
+    done.length === 0 ? 'Nothing new to do automatically.' : `Done: ${done.join(', ')}.`,
+    problems.length === 0 ? '' : `Not done: ${problems.join('; ')}. Use Retry on their onboarding once fixed.`
+  ]
+  return parts.filter((p) => p !== '').join(' ')
+}
+
+/**
+ * Removes a member completely, the same way for everyone (user decision,
+ * 5 Oct 2026): out of the Teams team, app uninstalled, Jira access removed.
+ * What can't be done automatically — the licence, the Atlassian account, a
+ * step that failed — is their offboarding checklist. Never throws: a failed
+ * step becomes a "to do by hand" item.
+ */
+async function offboard (team: TeamConfig, member: Member): Promise<Leaver['items']> {
+  const items: Leaver['items'] = []
+  const teamsTeam = await teamsTeamOf(team)
+  const group = teamsTeam !== undefined && !('error' in teamsTeam) ? teamsTeam : undefined
+
+  let teamsRemoved = false
+  if (group === undefined) {
+    items.push({ label: 'Teams team', state: 'manual', detail: teamsTeam === undefined
+      ? "No Teams team is set for this team. Remove them from the team's Teams team by hand."
+      : `Could not check (${(teamsTeam as Unknown).error}). Remove them from the team's Teams team by hand.` })
+  } else {
+    try {
+      const outcome = await removeFromTeamsTeam(group.id, member.memberId)
+      teamsRemoved = true
+      items.push({ label: 'Teams team', state: 'auto', detail: outcome === 'removed' ? `Removed from ${group.name}` : `Was not in ${group.name}` })
+    } catch (error) {
+      items.push({ label: 'Teams team', state: 'manual', detail: `Could not remove them (${reason(error)}). Remove them from ${group.name} in Teams.` })
+    }
+  }
+
+  try {
+    const outcome = await uninstallApp(member.memberId)
+    items.push({ label: 'Scrum Assistant app', state: 'auto', detail: outcome === 'removed' ? 'Uninstalled' : 'Was not installed' })
+  } catch (error) {
+    items.push({ label: 'Scrum Assistant app', state: 'manual', detail: `Could not uninstall it (${reason(error)}). Uninstall it for them in the Teams admin center.` })
+  }
+
+  const client = jira()
+  if (client !== undefined) {
+    try {
+      const email = member.email ?? (await lookUpUser(member.memberId).catch(() => undefined))?.mail ?? undefined
+      const accountId = (member.jiraAccountId ?? '') !== ''
+        ? member.jiraAccountId as string
+        : email === undefined ? undefined : await client.findUserByEmail(email)
+      if (accountId === undefined) {
+        items.push({ label: 'Jira access', state: 'auto', detail: 'No Jira account found for them' })
+      } else if (accountId === await client.myAccountId()) {
+        // The assistant's own Jira account: removing it would cut off every team.
+        items.push({ label: 'Jira access', state: 'manual', detail: "This is the account the assistant uses for Jira, so it was not removed." })
+      } else {
+        await client.removeUser(accountId)
+        items.push({ label: 'Jira access', state: 'auto', detail: 'Removed from the Jira site' })
+        items.push({ label: 'Atlassian account', state: 'manual', detail: 'Their Atlassian account itself stays. Close it in Atlassian administration if they are leaving.' })
+      }
+    } catch (error) {
+      items.push({ label: 'Jira access', state: 'manual', detail: `Could not remove it (${reason(error)}). Remove them in Jira's user management.` })
+    }
+  }
+
+  const onGroupSite = group !== undefined && team.tracker.kind === 'sharepoint' &&
+    await graphRequest<{ owner?: { group?: { id?: string } } }>('GET', `/sites/${team.tracker.siteId}/drive?$select=owner`)
+      .then((drive) => drive.owner?.group?.id === group.id).catch(() => false)
+  items.push(onGroupSite && teamsRemoved
+    ? { label: 'Tracker access', state: 'auto', detail: `Ended with ${group?.name ?? 'the Teams team'} membership. Their rows stay in the tracker.` }
+    : { label: 'Tracker access', state: 'manual', detail: 'Remove their tracker access. Their rows stay in the tracker.' })
+
+  items.push({ label: 'Microsoft 365 licence', state: 'manual', detail: 'Remove their licence in the Microsoft 365 admin center if they are leaving the organisation.' })
+  return items
+}
+
+/** 10n: the offboarding checklist is done; the person leaves the Leaving list. */
+export async function finishLeaver (team: TeamConfig, memberId: string, actor: Actor): Promise<string> {
+  const leaver = (team.leaving ?? []).find((l) => l.memberId === memberId)
+  if (leaver === undefined) throw new AdminError(404, 'That person is not on the Leaving list.')
+  await applyChange(team, { leaving: (team.leaving ?? []).filter((l) => l.memberId !== memberId) }, actor.name)
+  return `Offboarding of ${leaver.displayName} marked finished.`
 }

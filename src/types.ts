@@ -21,6 +21,21 @@ export interface Member {
   jiraAccountId?: string
   /** Set when the app is installed for this person; without it they cannot be messaged. */
   conversationRef?: string
+  /**
+   * Onboarding steps ticked by hand on the admin page (SPEC-008 10m): who and
+   * when. Metadata only. Tracker access is ticked when it can't be checked.
+   */
+  onboarding?: { trackerAccess?: { by: string, at: string } }
+}
+
+/** SPEC-008 10n: a removed member's offboarding checklist, until it is marked finished. */
+export interface Leaver {
+  memberId: string
+  displayName: string
+  email?: string
+  removedBy: string
+  removedAt: string
+  items: Array<{ label: string, state: 'auto' | 'manual', detail: string }>
 }
 
 /** A team's Scrum Master as the jobs need them: who, and how to reach them. */
@@ -68,6 +83,15 @@ export interface TeamConfig {
   habitualWindowDays: number
   tracker: TrackerConfig
   stakeholders: { channelId?: string, emails: string[] }
+  /**
+   * The team's Teams team, a Microsoft 365 group (SPEC-008 10m), set by an
+   * admin. Absent: the team's own id, when that is a Teams team (Scrum Team
+   * Alpha was created from its Teams team).
+   */
+  teamsGroupId?: string
+  teamsGroupName?: string
+  /** SPEC-008 10n: members removed whose offboarding is not yet marked finished. Metadata only. */
+  leaving?: Leaver[]
 }
 
 export type RunOutcome = 'success' | 'partial' | 'failed' | 'skipped'

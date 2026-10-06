@@ -286,4 +286,43 @@ export class JiraClient implements PmClient {
       .filter((user) => user.accountType === 'atlassian' && user.active !== false)
       .map((user) => ({ accountId: user.accountId, displayName: user.displayName ?? user.accountId }))
   }
+
+  /** SPEC-008 10n: the Jira account using this email, or undefined. Needs a site admin token. */
+  async findUserByEmail (email: string): Promise<string | undefined> {
+    const users = await this.get(`/rest/api/3/user/search?query=${encodeURIComponent(email)}`, userListSchema, 'user search')
+    return users.find((user) => user.accountType === 'atlassian' && user.active !== false)?.accountId
+  }
+
+  private myAccountIdCache?: string
+
+  /** The account this client signs in as, so it is never removed (10n). */
+  async myAccountId (): Promise<string> {
+    if (this.myAccountIdCache === undefined) {
+      const me = await this.get('/rest/api/3/myself', z.looseObject({ accountId: z.string() }), 'myself')
+      this.myAccountIdCache = me.accountId
+    }
+    return this.myAccountIdCache
+  }
+
+  /** SPEC-008 10n: invites the person to this Jira site and returns their account. */
+  async inviteUser (email: string): Promise<string> {
+    const response = await fetch(`${this.options.baseUrl}/rest/api/3/user`, {
+      method: 'POST',
+      headers: { authorization: this.authHeader, accept: 'application/json', 'content-type': 'application/json' },
+      body: JSON.stringify({ emailAddress: email, products: ['jira-software'] })
+    })
+    if (!response.ok) throw await httpErrorFrom(response)
+    const body = await response.json() as { accountId?: string }
+    if (body.accountId === undefined) throw new Error('Jira invite: no account id in the answer')
+    return body.accountId
+  }
+
+  /** SPEC-008 10n: removes the person from this Jira site. Their Atlassian account itself stays. */
+  async removeUser (accountId: string): Promise<void> {
+    const response = await fetch(`${this.options.baseUrl}/rest/api/3/user?accountId=${encodeURIComponent(accountId)}`, {
+      method: 'DELETE',
+      headers: { authorization: this.authHeader }
+    })
+    if (!response.ok && response.status !== 404) throw await httpErrorFrom(response)
+  }
 }

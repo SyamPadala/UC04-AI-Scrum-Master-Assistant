@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026; amendment of 30 Sep 2026 (10l) approved 30 Sep 2026 |
+| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026; amendment of 30 Sep 2026 (10l) approved 30 Sep 2026; 10m, 10n approved 5 Oct 2026 |
 | **Delivers** | NFR Configuration; supports FR-08 (stakeholder list), FR-10 (per-team settings) |
 | **Assumptions** | A9 (configuration via a web admin panel, amended 24 Sep 2026) |
 | **Depends on** | SPEC-001 |
@@ -174,6 +174,78 @@ Dev team tab. Not an FR of its own: it serves FR-10 and the Configuration NFR.*
     - The page then shows *"Reopened by <name> at <time>"*.
     - Recorded in the change log. The next day closes as usual.
     - Run now → Summary still does not close the stand-up (A14 unchanged).
+10m. *Added 5 Oct 2026 (approved by the user, 5 Oct 2026; LATER.md L7, user
+    decision: checklist only).* **Onboarding checklist per member.** On the
+    Dev team tab each member shows *Onboarding 4 of 6* (or *Ready*); opening
+    it lists the steps below, each done / not done with what to do next. The
+    page **performs none of the steps**. One new **read-only** Graph
+    permission, **GroupMember.Read.All** (the user grants it, 5 Oct 2026).
+
+    | Step | How it is known | When not done |
+    |---|---|---|
+    | M365 licence with Teams | checked: Graph `licenseDetails` (User.Read.All, already granted) | *"Assign a licence in the Microsoft 365 admin center."* |
+    | Added to the team's Teams team | checked: member of the team's Microsoft 365 group (GroupMember.Read.All) | *"Add them to <Teams team> in Teams."* |
+    | Scrum Assistant app installed | checked: the member has a working chat (same as the Teams chats readiness check) | *"Install the app for them, or ask them to open Scrum Assistant and send 'help'."* |
+    | Jira account linked | checked: `jiraAccountId` set (10d Jira links) | *"Invite them to Jira, then link them here."* |
+    | Story assigned in the sprint | checked: an open sprint story has their Jira account | *"Assign them a story in Jira. Until then updates are saved as general updates (SPEC-004 item 39)."* |
+    | Tracker access | checked: when the SharePoint tracker's site belongs to the team's group (its drive owner), group membership **is** site access. Otherwise (another site, Excel, Jira comment) **ticked by hand** | *"Add them to <Teams team>"* / *"Give them access to the tracker, then tick."* |
+
+    - **Teams team per scrum team.** The admin picks it from a dropdown of the
+      tenant's Teams teams, in the New team form (optional) and on the Dev team tab;
+      the Scrum Master sees it read-only. Stored on the team (group id). Not set
+      and the team's own id is a Teams team (Scrum Team Alpha, created from
+      its Teams team `97b9628b-…`) → that one is used. A Teams team already
+      used by another scrum team is refused. Not set → steps
+      2 and 6 show *"Teams team not set"*, never done.
+    - A hand tick records who and when on the member (Firestore, metadata
+      only) and goes in the change log; it can be unticked.
+    - Checked steps are read when the tab opens, like readiness (10d); a
+      step that can't be checked shows *"Could not check"*, never done.
+    - Admins and the team's Scrum Master see and tick it (Roles table).
+    - Not in scope: adding to the Teams team, installing the app, sending the
+      Jira invite or a welcome message (L7's automated part stays parked).
+10n. *Added 5 Oct 2026 (approved by the user, 5 Oct 2026; L7, user decision:
+    "implement all the checklist items automatically except the M365
+    licence"; on remove, "what we added should be removed, or else listed").*
+    **Automatic onboarding and offboarding.** *(Extends 10m.)*
+
+    **On Add member** the assistant does, in order, every step it can:
+
+    | Step | Done by the assistant | Needs |
+    |---|---|---|
+    | 1 Licence | **no** — manual, as 10m | — |
+    | 2 Teams team | adds them as a member of the team's Teams team | **TeamMember.ReadWrite.All** (new, Graph app) |
+    | 3 App | installs Scrum Assistant for them (as `scripts/install-app.mjs`) | bot app's existing install permission |
+    | 4 Jira | only when the team uses Jira: finds their Jira account by email, or invites them to the site; then links it | Jira token is a site admin (checked 5 Oct) |
+    | 5 Story | **no** — the Scrum Master's planning decision; the badge reminds | — |
+    | 6 Tracker | through step 2 when the tracker is on the Teams team's site; otherwise a hand tick (10m) | — |
+
+    - A step that can't run yet (no licence → no app install, Jira seat
+      limit reached, a Graph error) is shown on the checklist with the reason
+      and a **Retry** button; the add itself still succeeds.
+
+    **On Remove member** the member is removed **completely, the same way for
+    everyone**, whoever added their access (user decision, 5 Oct 2026: *"delete
+    him completely; if some team needs him they will add him as per their
+    process"*):
+
+    | Access | On remove |
+    |---|---|
+    | Teams team membership | removed from the Teams team |
+    | App install | uninstalled |
+    | Jira access | removed from the Jira site (linked account, or found by email); the Atlassian account itself can't be deleted by API — listed. The assistant's own Jira account is never removed. |
+
+    - What can't be done automatically — the M365 licence, the Atlassian
+      account, a step that failed — goes on an **Offboarding checklist**: the
+      removed member stays listed under *Leaving* on the Dev team tab with
+      each item *Done automatically* or *To do by hand*, until an admin or the
+      Scrum Master marks it finished.
+    - Their tracker rows stay (as today).
+    - Every add and undo is logged and in the change log.
+    - Admins and the team's Scrum Master (Roles table).
+
+    *Note:* Jira Free allows 10 users; 8 are used (5 Oct). An invite past the
+    limit fails and the checklist says *"Jira has no free seat"*.
 
 **Migration.** Scrum Team Alpha has its Scrum Master (Syam) on the roster. On
 deploy his stored chat is copied to `scrumMasters/`, and he is removed from

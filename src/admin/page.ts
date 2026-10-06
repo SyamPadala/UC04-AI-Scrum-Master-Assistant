@@ -259,6 +259,7 @@ export function adminPage (userName: string): string {
     <p class="muted">The team starts Paused with an empty roster. The Scrum Master runs it but is not on the roster. Nothing is sent until you switch it to Running.</p>
     <div class="field"><label for="nt-name">Team name</label><input id="nt-name" name="name" required maxlength="60" placeholder="Scrum Team Beta"></div>
     <div class="field"><label for="nt-tz">Timezone</label><input id="nt-tz" name="timezone" value="Asia/Kolkata" required></div>
+    <div class="field"><label for="nt-teams">Teams team</label><select id="nt-teams"><option value="">Not set</option></select><small>The team's own Teams team. Used for the onboarding checklist; can be set later.</small></div>
     <div class="field"><label for="nt-sm">Scrum Master email</label><input id="nt-sm" name="scrumMasterEmail" type="email" placeholder="Leave empty to be the Scrum Master yourself"><small>May already run other teams, but must not be on any team's roster.</small></div>
     <p class="error" id="nt-error" role="alert" hidden style="color:var(--bad);margin:0"></p>
     <div class="dialog-actions">
@@ -320,16 +321,28 @@ export function adminPage (userName: string): string {
       </div>
       <div class="card">
         <div class="card-head">
-          <div><h2>Members</h2><p>A member can be messaged once the Teams app is installed for them.</p></div>
+          <div><h2>Teams team</h2><p>The team's own Teams team. Membership is checked for each member's onboarding.</p></div>
+        </div>
+        <div class="card-body" id="teams-team-row"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div><h2>Members</h2><p>Adding a member also adds them to the Teams team, installs the app and links Jira, where it can.</p></div>
           <form class="inline-add" id="add-member">
             <input type="email" name="email" placeholder="name@SyamPadala.onmicrosoft.com" required aria-label="Member email">
             <button class="btn" type="submit">${icon('plus')} Add</button>
           </form>
         </div>
         <table>
-          <thead><tr><th>Member</th><th>Teams</th><th class="hide-sm">Jira account</th><th></th></tr></thead>
+          <thead><tr><th>Member</th><th>Teams</th><th class="hide-sm">Jira account</th><th>Onboarding</th><th></th></tr></thead>
           <tbody id="members"></tbody>
         </table>
+      </div>
+      <div class="card" id="leaving-card" hidden>
+        <div class="card-head">
+          <div><h2>Leaving</h2><p>Removed members. The assistant removed what it could; the rest is to do by hand.</p></div>
+        </div>
+        <div class="card-body" id="leaving"></div>
       </div>
     </section>
 
@@ -624,13 +637,164 @@ export function adminPage (userName: string): string {
       jiraCell.append(select)
       tr.append(jiraCell)
 
+      // SPEC-008 10m: filled in by loadOnboarding once the checks return.
+      const onboardCell = el('td')
+      onboardCell.append(badge('Checking…', 'plain'))
+      onboardCell.dataset.member = m.memberId
+      tr.append(onboardCell)
+
       const actions = el('td', null, 'right')
       actions.append(removeButton('Remove ' + m.displayName, (event) => {
-        if (!confirm('Remove ' + m.displayName + ' from the roster? They will stop receiving reminders.')) return
+        if (!confirm('Remove ' + m.displayName + ' from the roster? They are also removed from the Teams team, the app is uninstalled and their Jira access is removed.')) return
         act(event.currentTarget, () => api('DELETE', '/teams/' + teamId + '/members/' + encodeURIComponent(m.memberId))).catch(() => {})
       }))
       tr.append(actions)
       body.append(tr)
+      const details = el('tr')
+      details.hidden = true
+      details.dataset.details = m.memberId
+      const cell = el('td')
+      cell.colSpan = 5
+      details.append(cell)
+      body.append(details)
+    }
+  }
+
+  // SPEC-008 10m: the Teams team, set by an admin; read-only for a Scrum Master.
+  let teamsTeams = null
+  async function teamsTeamList () {
+    if (teamsTeams === null) teamsTeams = (await api('GET', '/teams-teams')).teams
+    return teamsTeams
+  }
+  function renderTeamsTeam () {
+    const row = $('teams-team-row')
+    row.replaceChildren()
+    const line = el('div')
+    line.style.display = 'flex'; line.style.alignItems = 'center'; line.style.gap = '12px'; line.style.flexWrap = 'wrap'
+    const shown = view.teamsTeam || onboardingTeam
+    if (!view.meIsAdmin) {
+      line.append(shown ? el('b', shown.name) : el('span', 'Not set. An admin sets it.', 'muted'))
+      row.append(line)
+      return
+    }
+    const select = document.createElement('select')
+    select.setAttribute('aria-label', 'Teams team')
+    select.style.flex = '1'; select.style.minWidth = '0'
+    select.append(new Option(shown ? shown.name : 'Loading Teams teams…', shown ? shown.id : ''))
+    const save = el('button', 'Save', 'btn')
+    save.type = 'button'
+    save.addEventListener('click', () => act(save, () => api('PUT', '/teams/' + teamId + '/teams-team', { groupId: select.value })).catch(() => {}))
+    line.append(select, save)
+    row.append(line)
+    teamsTeamList().then((teams) => {
+      const current = shown ? shown.id : ''
+      select.replaceChildren(new Option('Not set', ''), ...teams.map((t) => new Option(t.name, t.id)))
+      select.value = current
+    }).catch((e) => {
+      select.replaceChildren(new Option(e.message, shown ? shown.id : ''))
+      save.disabled = true
+    })
+  }
+
+  let onboardingTeam = null
+  async function loadOnboarding () {
+    const forTeam = teamId
+    onboardingTeam = null
+    let result
+    try {
+      result = await api('GET', '/teams/' + forTeam + '/onboarding')
+    } catch (e) {
+      document.querySelectorAll('#members td[data-member]').forEach((cell) => { cell.replaceChildren(badge('Could not check', 'bad')); cell.title = e.message })
+      return
+    }
+    if (forTeam !== teamId) return
+    onboardingTeam = result.teamsTeam
+    // Not set explicitly, but the team's own id is its Teams team (Scrum Team Alpha).
+    if (!view.teamsTeam && result.teamsTeam) renderTeamsTeam()
+    for (const cell of document.querySelectorAll('#members td[data-member]')) {
+      const memberId = cell.dataset.member
+      const member = result.members[memberId]
+      if (!member) continue
+      const ready = member.done === member.total
+      const button = el('button', null, 'btn ghost small')
+      button.type = 'button'
+      button.append(badge(ready ? 'Ready' : member.done + ' of ' + member.total, ready ? 'ok' : 'warn'))
+      button.setAttribute('aria-expanded', 'false')
+      const details = document.querySelector('#members tr[data-details="' + memberId + '"]')
+      button.addEventListener('click', () => {
+        details.hidden = !details.hidden
+        button.setAttribute('aria-expanded', String(!details.hidden))
+      })
+      cell.replaceChildren(button)
+      renderSteps(details.firstChild, memberId, member.steps)
+    }
+  }
+
+  function renderSteps (cell, memberId, steps) {
+    const list = el('div')
+    list.style.display = 'grid'; list.style.gap = '8px'; list.style.padding = '4px 0 8px'
+    for (const step of steps) {
+      const line = el('div')
+      line.style.display = 'flex'; line.style.alignItems = 'center'; line.style.gap = '10px'; line.style.flexWrap = 'wrap'
+      line.append(badge(step.state === 'done' ? 'Done' : step.state === 'unknown' ? 'Could not check' : 'To do',
+        step.state === 'done' ? 'ok' : step.state === 'unknown' ? 'bad' : 'warn'))
+      line.append(el('b', step.label))
+      line.append(el('span', step.detail, 'muted'))
+      if (step.manual) {
+        const label = el('label')
+        label.style.display = 'flex'; label.style.alignItems = 'center'; label.style.gap = '6px'; label.style.marginLeft = 'auto'
+        const box = document.createElement('input')
+        box.type = 'checkbox'
+        box.checked = step.state === 'done'
+        box.addEventListener('change', () => act(box, () =>
+          api('PUT', '/teams/' + teamId + '/members/' + encodeURIComponent(memberId) + '/tracker-access', { done: box.checked })).catch(() => {}))
+        label.append(box, el('span', 'Done'))
+        line.append(label)
+      }
+      list.append(line)
+    }
+    // SPEC-008 10n: run the automatic steps again once whatever blocked them is fixed.
+    if (steps.some((st) => st.state !== 'done' && ['teamsTeam', 'app', 'jira'].includes(st.key))) {
+      const retry = el('button', 'Retry automatic steps', 'btn ghost small')
+      retry.type = 'button'
+      retry.style.justifySelf = 'start'
+      retry.addEventListener('click', () => act(retry, () =>
+        api('POST', '/teams/' + teamId + '/members/' + encodeURIComponent(memberId) + '/provision')).catch(() => {}))
+      list.append(retry)
+    }
+    cell.replaceChildren(list)
+  }
+
+  // SPEC-008 10n: removed members' offboarding checklists.
+  function renderLeaving () {
+    const leaving = view.leaving || []
+    $('leaving-card').hidden = leaving.length === 0
+    const box = $('leaving')
+    box.replaceChildren()
+    for (const l of leaving) {
+      const block = el('div')
+      block.style.display = 'grid'; block.style.gap = '8px'; block.style.padding = '8px 0 14px'
+      const head = el('div')
+      head.style.display = 'flex'; head.style.alignItems = 'center'; head.style.gap = '12px'; head.style.flexWrap = 'wrap'
+      head.append(person(l.displayName, 'Removed by ' + l.removedBy + ' on ' + new Date(l.removedAt).toLocaleDateString()))
+      const finish = el('button', 'Mark finished', 'btn ghost small')
+      finish.type = 'button'
+      finish.style.marginLeft = 'auto'
+      finish.addEventListener('click', () => {
+        if (!confirm('Mark the offboarding of ' + l.displayName + ' as finished? They leave this list.')) return
+        act(finish, () => api('POST', '/teams/' + teamId + '/leaving/' + encodeURIComponent(l.memberId) + '/finish')).catch(() => {})
+      })
+      head.append(finish)
+      block.append(head)
+      for (const item of l.items) {
+        const line = el('div')
+        line.style.display = 'flex'; line.style.alignItems = 'center'; line.style.gap = '10px'; line.style.flexWrap = 'wrap'
+        line.append(badge(item.state === 'auto' ? 'Done automatically' : 'To do by hand', item.state === 'auto' ? 'ok' : 'warn'))
+        line.append(el('b', item.label))
+        line.append(el('span', item.detail, 'muted'))
+        block.append(line)
+      }
+      box.append(block)
     }
   }
 
@@ -856,6 +1020,9 @@ export function adminPage (userName: string): string {
     if (!teamId) return
     view = await api('GET', '/teams/' + teamId)
     renderStats(); renderStandup(); renderScrumMaster(); renderMembers(); renderStakeholders(); renderSchedule(); renderActivity()
+    renderTeamsTeam()
+    renderLeaving()
+    loadOnboarding()
   }
 
   document.querySelectorAll('nav button').forEach((tab) => tab.addEventListener('click', () => {
@@ -982,13 +1149,18 @@ export function adminPage (userName: string): string {
   }
 
   const dialog = $('new-team')
-  $('new-team-btn').addEventListener('click', () => { $('new-team-form').reset(); $('nt-tz').value = 'Asia/Kolkata'; $('nt-error').hidden = true; dialog.showModal() })
+  $('new-team-btn').addEventListener('click', () => {
+    $('new-team-form').reset(); $('nt-tz').value = 'Asia/Kolkata'; $('nt-error').hidden = true; dialog.showModal()
+    teamsTeamList().then((teams) => {
+      $('nt-teams').replaceChildren(new Option('Not set', ''), ...teams.map((t) => new Option(t.name, t.id)))
+    }).catch((e) => { $('nt-teams').replaceChildren(new Option('Not set (' + e.message + ')', '')) })
+  })
   $('nt-cancel').addEventListener('click', () => dialog.close())
   $('new-team-form').addEventListener('submit', (event) => {
     event.preventDefault()
     // Read by id: on a form, f.name is the form's own name attribute, not the
     // "name" input, which sent every team without a name (found 28 Sep 2026).
-    const body = { name: $('nt-name').value, timezone: $('nt-tz').value, scrumMasterEmail: $('nt-sm').value }
+    const body = { name: $('nt-name').value, timezone: $('nt-tz').value, scrumMasterEmail: $('nt-sm').value, teamsGroupId: $('nt-teams').value }
     const button = $('nt-create')
     const error = $('nt-error')
     error.hidden = true
