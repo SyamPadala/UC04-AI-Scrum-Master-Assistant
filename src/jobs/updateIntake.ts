@@ -46,6 +46,8 @@ export interface ChoiceItem {
   status: RowStatus
   blocker: string | null
   options: Array<{ key: string, title: string, owner: string | null, mine: boolean }>
+  /** Item 40: a blocker that fit no story; None of these files it as a General row. */
+  noStory?: boolean
 }
 
 /** At most this many stories on one choice card (item 38). */
@@ -90,7 +92,7 @@ export interface IntakeResult {
   refused: Refusal[]
   /** Items that are not clearly her own story, awaiting her choice on a card (item 38). */
   choices: ChoiceItem[]
-  /** Blockers not tied to a verified work item: not written, but alerted (item 19). */
+  /** Blockers not tied to a verified work item: not written, but alerted (item 19; item 40 when she has no open story). */
   unlinkedBlockers: string[]
   /** The member's open sprint items, offered back when a work item was not found (item 13). */
   openItems: Array<{ key: string, title: string }>
@@ -338,8 +340,11 @@ export function verifyItems (
     }
     const key = verdict === 'otherOwner' ? blocker.storyRef : null
     const keys = [...(key === null ? [] : [key]), ...(blocker.alternatives ?? [])]
-    // Item 19: a blocker that fits no story at all is alerted at once.
-    const choice = keys.length === 0 ? undefined : choiceFor(key, keys, blocker.description, 'Blocked')
+    // Item 40: a blocker that fits no story at all asks which of her own open
+    // stories it blocks; None of these files it as a General row. Only with no
+    // open story of her own is it alerted at once, unfiled (item 19).
+    const choice = choiceFor(key, keys, blocker.description, 'Blocked')
+    if (choice !== undefined && keys.length === 0) choice.noStory = true
     if (choice === undefined) {
       unlinkedBlockers.push(blocker.description)
       alertNow.push({ ...blocker, storyRef: null })

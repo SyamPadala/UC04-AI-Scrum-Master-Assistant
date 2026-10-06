@@ -233,6 +233,32 @@ test('item 38: a blocker — Submit writes the Blocked row then alerts with the 
   assert.match(none.reply, /Scrum Master has been told about the blocker/)
 })
 
+test('item 40: a blocker that named no story — the card asks which story it is blocking', () => {
+  const card = storyChoiceCard({ ...CHOICE, words: 'DB access not working', status: 'Blocked', blocker: 'DB access not working', noStory: true, options: [CHOICE.options[0]] }, 't', '2026-09-30', 'm1')
+  assert.equal(card.body[0].text, 'Which story is "DB access not working" blocking?')
+  assert.equal(card.body[1].text, 'Will be recorded as: Blocked: DB access not working')
+  assert.equal(card.actions[0].data.item.noStory, true)
+})
+
+test('item 40: Submit puts the blocker on that story and alerts with it', async () => {
+  const blocked = { words: 'DB access not working', status: 'Blocked', blocker: 'DB access not working', noStory: true, options: [CHOICE.options[0]] }
+  const { reply, stored, alerts } = await press(rowPick(0), blocked)
+  assert.equal(stored[0].rows[0].win, 'SCRUM-34')
+  assert.equal(stored[0].rows[0].status, 'Blocked')
+  assert.equal(stored[0].rows[0].anyBlocker, 'DB access not working')
+  assert.deepEqual(alerts[0][4], [{ description: 'DB access not working', storyRef: 'SCRUM-34' }])
+  assert.equal(reply, 'Recorded SCRUM-34 in the tracker.')
+})
+
+test('item 40: None of these files it as a General row (Blocked), then alerts with no story', async () => {
+  const blocked = { words: 'DB access not working', status: 'Blocked', blocker: 'DB access not working', noStory: true, options: [CHOICE.options[0]] }
+  const { reply, stored, alerts } = await press(nonePick, blocked)
+  assert.equal(stored[0].rows.length, 1)
+  assert.deepEqual(stored[0].rows[0], { win: null, description: null, assignedTo: 'sailaja', comment: null, status: 'Blocked', anyBlocker: 'DB access not working' })
+  assert.deepEqual(alerts[0][4], [{ description: 'DB access not working', storyRef: null }])
+  assert.equal(reply, 'Saved as a general update. ⚠ Blocker: "DB access not working". Your Scrum Master has been told.')
+})
+
 test('item 38: None of these on work records nothing and alerts nobody', async () => {
   const { reply, stored, alerts } = await press(nonePick)
   assert.equal(reply, 'Not recorded.')

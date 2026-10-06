@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026 |
+| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026; item 39 approved 4 Oct 2026; item 40 approved 5 Oct 2026 |
 | **Delivers** | FR-02, FR-03, NFR Latency |
 | **Assumptions** | A8 (story resolution), A11 (messages combined per member per day) |
 | **Depends on** | SPEC-001, SPEC-002 |
@@ -395,6 +395,33 @@ code decides from Jira on every update.
       Blockers section — the Scrum Master is alerted at once instead. With
       no sprint, SPEC-006's existing rule applies (no sprint figures, the gap
       stated).
+
+### Amendment 5 Oct 2026 — blocker with no story asks the member (approved by the user, 5 Oct 2026)
+
+*Why:* live test 5 Oct, Madhavi: *"DB access not working"* → Agent 1 found no
+story → item 19 alerted the Scrum Master at once and nothing was written. The
+member was never asked which of her tickets it blocks, so the blocker is not
+on any story. User decision, 5 Oct 2026: show her a card, and the blocker is
+recorded against the ticket she submits. *(Reverses the 30 Sep decision to
+keep item 19 — issue #5.)*
+
+40. **Blocker that fits no story, member has an open story → card.**
+    - The same card as item 38, listing **her own open stories** (at most 5,
+      key order), headed *"Which story is '<her words>' blocking?"*, with
+      *"Will be recorded as: Blocked"* and the blocker text, plus
+      **None of these**.
+    - **Submit** → Blocked row on that story with `AnyBlocker` set (merged
+      into her row for that story if one exists today, item 7), **then** the
+      usual alert with the story (as 14b).
+    - **None of these** → a **General** row (item 39: `WIN` empty,
+      Description *General*, Status *Blocked*, `AnyBlocker` set), then the
+      usual alert as a blocker with no story (SPEC-005 2a).
+    - Card rules as 14a/38: data in the buttons, Jira re-read on Submit,
+      twice records once, expired or closed records nothing.
+    - **Unchanged:** a member with no open story → item 39 (General row,
+      alerted at once); a blocker that fits a story → items 34a/38.
+    - *Replaces item 19 and item 38's "a blocker that fits no story at all is
+      alerted at once" for members with an open story.*
 
 ## Interface
 

@@ -19,13 +19,14 @@ export interface StoryChoicePayload {
   teamId: string
   localDate: string
   memberId: string
-  item: { words: string, status: RowStatus, blocker: string | null }
+  item: { words: string, status: RowStatus, blocker: string | null, noStory?: boolean }
 }
 
 export function storyChoiceCard (item: ChoiceItem, teamId: string, localDate: string, memberId: string): unknown {
   const data = (pick: string | null): StoryChoicePayload =>
-    ({ action: STORY_CHOICE_ACTION, pick, teamId, localDate, memberId, item: { words: item.words, status: item.status, blocker: item.blocker } })
+    ({ action: STORY_CHOICE_ACTION, pick, teamId, localDate, memberId, item: { words: item.words, status: item.status, blocker: item.blocker, ...(item.noStory === true ? { noStory: true } : {}) } })
   const allMine = item.options.every((option) => option.mine)
+  const noStory = item.noStory === true
   const recordedAs = item.blocker === null ? item.status : `Blocked: ${item.blocker}`
 
   return {
@@ -35,11 +36,14 @@ export function storyChoiceCard (item: ChoiceItem, teamId: string, localDate: st
     body: [
       {
         type: 'TextBlock',
-        text: allMine ? 'Which of your stories is this?' : "Your update didn't match a story assigned to you.",
+        // Item 40: a blocker that named no story asks which of hers it blocks.
+        text: noStory
+          ? `Which story is "${item.words}" blocking?`
+          : allMine ? 'Which of your stories is this?' : "Your update didn't match a story assigned to you.",
         weight: 'Bolder',
         wrap: true
       },
-      { type: 'TextBlock', text: `These stories could fit "${item.words}":`, spacing: 'Small', wrap: true },
+      ...(noStory ? [] : [{ type: 'TextBlock', text: `These stories could fit "${item.words}":`, spacing: 'Small', wrap: true }]),
       { type: 'TextBlock', text: `Will be recorded as: ${recordedAs}`, isSubtle: true, size: 'Small', spacing: 'Small', wrap: true },
       ...item.options.map((option) => ({
         type: 'ColumnSet',

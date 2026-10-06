@@ -68,7 +68,9 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
 
   // Item 38: the card that follows lists the stories it could be.
   for (const item of result.choices) {
-    lines.push(`Which story is "${item.words}"? Please choose below.`)
+    lines.push(item.noStory === true
+      ? `Which story is "${item.words}" blocking? Please choose below.`
+      : `Which story is "${item.words}"? Please choose below.`)
   }
 
   // A blocker already alerted earlier today is one the Scrum Master has heard.

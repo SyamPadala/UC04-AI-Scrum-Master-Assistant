@@ -208,13 +208,16 @@ test('item 16: "nothing to report" is not written and says so', async () => {
   assert.match(reply, /^Nothing recorded\./)
 })
 
-test('item 19: a blocker with no work item is not written but is still passed to the alert', async () => {
+test('item 40: a blocker with no work item asks which of her stories it blocks; nothing written or alerted yet', async () => {
   const { result, stored, reply } = await run(update({ blockers: [{ storyRef: null, description: 'my laptop is broken' }] }))
   assert.deepEqual(stored, [])
-  assert.deepEqual(result.unlinkedBlockers, ['my laptop is broken'])
-  assert.equal(result.blockers, 1, 'the alert was asked to send it')
-  // No Scrum Master on this roster, so the reply must not claim they heard.
-  assert.match(reply, /"my laptop is broken" isn't linked to a work item.*couldn't reach your Scrum Master/)
+  assert.deepEqual(result.unlinkedBlockers, [], 'no longer alerted at once (replaces item 19)')
+  assert.equal(result.blockers, 0, 'the alert waits for her answer')
+  assert.equal(result.choices.length, 1)
+  assert.equal(result.choices[0].noStory, true)
+  assert.equal(result.choices[0].status, 'Blocked')
+  assert.ok(result.choices[0].options.length > 0 && result.choices[0].options.every((o) => o.mine), 'her own open stories only')
+  assert.match(reply, /Which story is "my laptop is broken" blocking\? Please choose below\./)
 })
 
 test('a missing kind is read as an update, which with nothing in it asks which item', async () => {

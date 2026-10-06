@@ -5,7 +5,7 @@ import type { Tracker, TrackerRow } from '../trackers/types.js'
 import { FOREIGN_ITEM_ACTION, type ForeignItemPayload } from '../cards/foreignItem.js'
 import { STORY_PICK_ACTION, type StoryPickPayload } from '../cards/storyPicker.js'
 import { STORY_CHOICE_ACTION, type StoryChoicePayload } from '../cards/storyChoice.js'
-import { mergeRows, StandupClosedError } from './updateIntake.js'
+import { generalRow, mergeRows, StandupClosedError } from './updateIntake.js'
 import { summaryHasRun } from '../store/firestore.js'
 import { sendBlockerAlert } from './blockerAlert.js'
 
@@ -58,7 +58,8 @@ const choiceSchema = z.object({
   item: z.object({
     words: z.string(),
     status: z.enum(['Completed', 'In Progress', 'Blocked']),
-    blocker: z.string().nullish().transform((v) => v ?? null)
+    blocker: z.string().nullish().transform((v) => v ?? null),
+    noStory: z.boolean().nullish().transform((v) => v === true)
   })
 })
 
@@ -91,7 +92,8 @@ export function parseStoryChoice (value: unknown): StoryChoicePayload | undefine
  * Submit records at once — the card said whose story it is — through the same
  * path as 14a (Jira re-read, "(assigned to …)", merged rows, alert on a
  * blocker). None records nothing, but a blocker still reaches the Scrum
- * Master, as one with no story.
+ * Master, as one with no story. Item 40: None on a blocker that named no story
+ * files it as her General row first.
  */
 export async function recordChoice (
   team: TeamConfig,
@@ -124,6 +126,22 @@ export async function recordChoice (
 
   if (blocker === null) return 'Not recorded.'
   if (choice.localDate !== today) return 'This card has expired. Please send the update again.'
+
+  // Item 40: a blocker that named no story, and she says it is none of hers —
+  // it goes into her General row (item 39), then the usual no-story alert.
+  let filed = false
+  if (choice.item.noStory === true) {
+    if (await (deps.summaryHasRun ?? summaryHasRun)(team.teamId, today)) throw new StandupClosedError(today)
+    const row = generalRow({ completed: [], inProgress: [], blockers: [{ description: blocker, storyRef: null, reason: null, alternatives: [] }] }, senderName)
+    const existing = (await deps.tracker.readToday(team.teamId, today)).find((u) => u.memberName === senderName)?.rows ?? []
+    await deps.tracker.write({
+      teamId: team.teamId, memberId: senderId, memberName: senderName, localDate: today,
+      rows: mergeRows(existing, [row]), rawText: '', capturedAt: new Date()
+    })
+    console.log(JSON.stringify({ event: 'storyChoice.general', teamId: team.teamId, memberId: senderId }))
+    filed = true
+  }
+
   const member = team.members.find((m) => m.memberId === senderId)
   const openItems = member?.jiraAccountId === undefined || member.jiraAccountId === ''
     ? []
@@ -134,13 +152,17 @@ export async function recordChoice (
       openItems.map((item) => ({ key: item.key, title: item.title, url: item.url }))
     )
     if (alert.sent || alert.reason === 'all blockers already alerted today') {
-      return 'Not recorded in the tracker. Your Scrum Master has been told about the blocker.'
+      return filed
+        ? `Saved as a general update. ⚠ Blocker: "${blocker}". Your Scrum Master has been told.`
+        : 'Not recorded in the tracker. Your Scrum Master has been told about the blocker.'
     }
     console.log(JSON.stringify({ event: 'storyChoice.alertNotSent', teamId: team.teamId, reason: alert.reason }))
   } catch (error) {
     console.error(JSON.stringify({ event: 'blockerAlert.failed', teamId: team.teamId, memberId: senderId, error: String(error) }))
   }
-  return "Not recorded, and I couldn't reach your Scrum Master about the blocker. Please tell them directly."
+  return filed
+    ? `Saved as a general update. ⚠ Blocker: "${blocker}". It is in the tracker, but I couldn't reach your Scrum Master about it.`
+    : "Not recorded, and I couldn't reach your Scrum Master about the blocker. Please tell them directly."
 }
 
 /**
