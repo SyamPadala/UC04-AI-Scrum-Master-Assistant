@@ -666,7 +666,8 @@ export async function readiness (team: TeamConfig): Promise<{ checkedAt: string,
         return { name: member.displayName, linked, chat: 'error', chatError: error instanceof Error ? error.message.slice(0, 120) : String(error) }
       }
     })),
-    trackerFor(team).readToday(team.teamId, today)
+    // M11: an unset tracker reads as empty, but it is not ready.
+    (team.tracker.kind === 'unset' ? Promise.reject(new Error("no tracker list chosen yet — pick this team's own list on the Schedule tab")) : trackerFor(team).readToday(team.teamId, today))
       .then(() => ({ ok: true }))
       .catch((error: unknown) => ({ ok: false, error: error instanceof Error ? error.message.slice(0, 160) : String(error) })),
     summaryHasRun(team.teamId, today),
