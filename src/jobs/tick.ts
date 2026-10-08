@@ -74,6 +74,8 @@ async function runClaimedJob (
   try {
     const { outcome, detail } = await executeJob(team, jobType, today, llm, pm, 'scheduled')
     await completeRun(team.teamId, today, jobType, outcome, startedAt, detail)
+    // M14: what the "a scheduled job failed" alert watches.
+    console.log(JSON.stringify({ event: 'job.finished', teamId: team.teamId, jobType, localDate: today, outcome }))
     return { teamId: team.teamId, jobType, outcome, detail }
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error)
@@ -86,6 +88,7 @@ async function runClaimedJob (
     // until midnight — 288 attempts at a problem only a person can fix.
     const willRecur = error instanceof LlmBudgetError || error instanceof LlmOfflineError
     if (!willRecur) await releaseRun(team.teamId, today, jobType)
+    console.error(JSON.stringify({ event: 'job.finished', teamId: team.teamId, jobType, localDate: today, outcome: 'failed', willRecur }))
 
     return {
       teamId: team.teamId,
