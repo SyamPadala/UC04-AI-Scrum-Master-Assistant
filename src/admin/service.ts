@@ -13,6 +13,7 @@ import { chatState } from '../bot/reachability.js'
 import { trackerFor } from '../trackers/factory.js'
 import { assessReadiness, type ReadinessFacts, type ReadinessRow } from './readiness.js'
 import { addToTeamsTeam, installApp, reason, removeFromTeamsTeam, uninstallApp } from './provision.js'
+import { cannotRun } from './guards.js'
 import { assessOnboarding, type OnboardingFacts, type OnboardingStep, type Unknown } from './onboarding.js'
 import {
   allTeams, botTeams, clearChannelRef, configChangesFor, getChannelRef, getTeam, llmUsageForDates, recordConfigChange,
@@ -190,6 +191,11 @@ export async function teamView (team: TeamConfig, actor: Actor): Promise<unknown
 export async function updateSchedule (team: TeamConfig, raw: Record<string, unknown>, actor: Actor): Promise<string[]> {
   const checked = checkSchedule(raw, team.habitualWindowDays)
   if (!checked.ok) throw new AdminError(400, checked.problems.join(' '))
+  // SPEC-008 10o (M3): switching on needs a Scrum Master who can be messaged.
+  if (checked.value.active && !team.active) {
+    const problem = await cannotRun(team)
+    if (problem !== undefined) throw new AdminError(409, `Not switched to Running. ${problem}`)
+  }
   return await applyChange(team, checked.value, actor.name)
 }
 
@@ -357,7 +363,8 @@ export async function createTeam (actor: Actor, raw: Record<string, unknown>): P
     fields: [{ field: 'created', from: null, to: name }]
   })
   console.log(JSON.stringify({ event: 'admin.teamCreated', teamId: team.teamId, actor: actor.oid }))
-  return { teamId: team.teamId, message: `Created ${name}. It is Paused: add members and set the schedule, then switch it to Running.` }
+  const installed = await installForScrumMaster(user.id, team.scrumMasterName ?? 'the Scrum Master')
+  return { teamId: team.teamId, message: `Created ${name}. It is Paused: add members and set the schedule, then switch it to Running. ${installed}` }
 }
 
 /**
@@ -382,7 +389,25 @@ export async function setScrumMaster (team: TeamConfig, rawEmail: unknown, actor
     scrumMasterName: name,
     scrumMasterEmail: user.mail ?? user.userPrincipalName ?? email
   }, actor.name)
-  return `${name} is now the Scrum Master of ${team.name}. Blocker alerts and non-responder flags go to them from the next event; they need to send "help" to Scrum Assistant once if they never have.`
+  const installed = await installForScrumMaster(user.id, name)
+  return `${name} is now the Scrum Master of ${team.name}. Blocker alerts and non-responder flags go to them from the next event. ${installed}`
+}
+
+/**
+ * SPEC-008 10o (M2): the Scrum Master gets the app the moment they are set,
+ * as members do on Add (10n). The install event then stores their chat. A
+ * failure is reported, never fatal: the team was still created or changed.
+ */
+async function installForScrumMaster (userId: string, name: string): Promise<string> {
+  try {
+    const outcome = await installApp(userId)
+    return outcome === 'added'
+      ? `Scrum Assistant was installed for ${name}.`
+      : `${name} already has Scrum Assistant; if they have never opened it, they need to open it once in Teams.`
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'admin.scrumMasterInstallFailed', userId, error: String(error) }))
+    return `Scrum Assistant could not be installed for ${name} (${reason(error)}). They need to open it in Teams before the team can run.`
+  }
 }
 
 export interface ChannelOption { teamName: string, channelId: string, channelName: string }

@@ -1,4 +1,5 @@
 import { CardFactory, MessageFactory, type TurnContext } from '@microsoft/agents-hosting'
+import { cannotRun } from '../admin/guards.js'
 import type { TeamConfig } from '../types.js'
 import { adminStatusCard } from '../cards/adminCards.js'
 import { runsForDate, teamForMember, teamsRunBy } from '../store/firestore.js'
@@ -162,6 +163,14 @@ export async function handleAdminCommand (command: AdminCommand, context: TurnCo
     return
   }
 
+  // SPEC-008 10o (M3): the same rule as the admin page.
+  if (active) {
+    const problem = await cannotRun(team)
+    if (problem !== undefined) {
+      await context.sendActivity(MessageFactory.text(`Not resumed. ${problem}`))
+      return
+    }
+  }
   await applyConfig(team, { active }, context)
   await context.sendActivity(MessageFactory.text(
     active

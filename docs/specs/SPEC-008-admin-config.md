@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026; amendment of 30 Sep 2026 (10l) approved 30 Sep 2026; 10m, 10n approved 5 Oct 2026 |
+| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026; amendment of 30 Sep 2026 (10l) approved 30 Sep 2026; 10m, 10n approved 5 Oct 2026; 10o approved 8 Oct 2026 |
 | **Delivers** | NFR Configuration; supports FR-08 (stakeholder list), FR-10 (per-team settings) |
 | **Assumptions** | A9 (configuration via a web admin panel, amended 24 Sep 2026) |
 | **Depends on** | SPEC-001 |
@@ -246,6 +246,18 @@ Dev team tab. Not an FR of its own: it serves FR-10 and the Configuration NFR.*
 
     *Note:* Jira Free allows 10 users; 8 are used (5 Oct). An invite past the
     limit fails and the checklist says *"Jira has no free seat"*.
+
+10o. *Added 8 Oct 2026 (approved by the user, maturity plan M2 + M3).*
+    **The Scrum Master can always be reached.**
+    - When a team is created or its Scrum Master is changed, the assistant
+      installs Scrum Assistant for the Scrum Master (as for members, 10n).
+      The install event stores their chat. A failed install is reported in
+      the result message; the create or change still succeeds.
+    - A team cannot be switched to **Running** — on the page or with the
+      chat `resume` command — until its Scrum Master can be messaged. Refused
+      with: *"Not switched to Running. <name> (Scrum Master) can't be messaged
+      yet. They need to open Scrum Assistant in Teams once."* Applies to
+      whoever is Scrum Master, an admin included.
 
 **Migration.** Scrum Team Alpha has its Scrum Master (Syam) on the roster. On
 deploy his stored chat is copied to `scrumMasters/`, and he is removed from
