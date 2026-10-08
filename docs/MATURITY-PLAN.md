@@ -29,6 +29,22 @@ spec line approved before code (process rules).
 | M17 | **Database adapter layer + one sign-in helper.** Code calls Firestore directly; no contract. Microsoft sign-in code is written four times. | A database **contract** (interface) with adapters chosen by a setting (`DB_PROVIDER`): **Firestore now**; DynamoDB (AWS) and Cosmos DB / MongoDB (Azure, any cloud) written only when needed; an in-memory adapter for tests. Every adapter must support "create only if it doesn't exist" (idempotent claims). Same pattern as the LLM adapter. ORMs considered: none covers Firestore; a MongoDB-style DB + Prisma noted as a production option. Plus: one shared Microsoft sign-in (token) helper. ~1–2 days. | Coding rules 8–9 |
 | M18 | **Small fixes.** | (a) Admin page shows a friendly message instead of raw technical errors. (b) `/tick` secret checked with a constant-time comparison. (c) ~~Read only today's rows~~ — **not needed** (8 Oct): the list holds one row per member per story, updated in place, so it grows only with new stories; each message reads it once. | Clean-up |
 
+## Status — 8 Oct 2026 (night)
+
+| Item | State |
+|---|---|
+| M1 alert claim · M2 SM auto-install · M3 Running guard · M4 answer first · M7 linked Teams teams only · M9 send retry · M10 Jira project per team · M11 tracker list per team · M12 context match for story-less members · M13 Jira access restored · M16 correlation id · M17 database contract + token helper · M18 small fixes | **Built, tested, deployed** |
+| Design review: retired card flows removed; admin service, page, intake and handler split; job registry; one Jira factory | **Built, tested, deployed** |
+| Design review: composition root (stop reading the global settings in 20 files) | **Partly** — Jira, store and tokens now come from factories; settings are still read directly. Full DI touches every module for no user-visible change; deferred |
+| M5 Secret Manager | **Prepared** (`scripts/secrets.mjs`, deploy support). Needs the user to grant the deploy account *Secret Manager Admin* |
+| M14 alerts | **Prepared** (`scripts/alerts.mjs`, `job.finished` event). Needs *Monitoring Editor* on the deploy account |
+| M6 SharePoint Sites.Selected | **Needs a decision** — with it, every new team's SharePoint site must be granted to the app by hand before its tracker list can be chosen |
+| M8 separate Jira account | **User step** — create the account, then swap JIRA_EMAIL / JIRA_API_TOKEN |
+| M15 Gemini paid tier | **User check** |
+| Data | Alpha set to Jira project SCRUM; Beta's tracker (was Alpha's list) cleared |
+
+**Not yet tried live in Teams:** M4 ("Got it, working on it…" replaced by the result), M12 (story-less member's work matched by context), item 40 card, M13 restore.
+
 ## Facts confirmed in the discussion
 
 - A team always has a Scrum Master: on create it defaults to the admin; it can be changed, never removed.
