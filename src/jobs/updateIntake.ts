@@ -53,18 +53,7 @@ export interface ChoiceItem {
 /** At most this many stories on one choice card (item 38). */
 export const MAX_CHOICES = 5
 
-/**
- * An item whose words fit more than one story (SPEC-004 item 24). Kept for
- * cards already sent before item 38; new messages get a ChoiceItem.
- */
-export interface AmbiguousItem {
-  words: string
-  status: RowStatus
-  options: Array<{ key: string, title: string, owner: string | null }>
-}
-
-/** An item on someone else's story (item 14a). Kept for cards already sent before item 38. */
-
+/** A story item to record on Submit (items 14a, 38): the hand-over to `recordForeignItem`. */
 export interface PendingItem {
   key: string
   title: string | null

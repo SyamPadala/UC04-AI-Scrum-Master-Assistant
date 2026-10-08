@@ -12,8 +12,8 @@ const { candidateStories, restrictToKnownKeys } = await import('../dist/agents/u
 const { parseExtraction } = await import('../dist/agents/schema.js')
 const { updateProcessorUser } = await import('../dist/agents/prompts/updateProcessor.js')
 const { processUpdate, verifyItems } = await import('../dist/jobs/updateIntake.js')
-const { parseStoryPick, parseForeignItemPayload, isForeignItemPress, recordForeignItem } = await import('../dist/jobs/foreignItem.js')
-const { storyPickerCard, STORY_PICK_ACTION } = await import('../dist/cards/storyPicker.js')
+const { isForeignItemPress, recordForeignItem } = await import('../dist/jobs/foreignItem.js')
+const STORY_PICK_ACTION = 'scrumAssistant.storyPick'
 const { intakeReply } = await import('../dist/bot/replies.js')
 const { MockTracker } = await import('../dist/trackers/mock.js')
 
@@ -143,62 +143,7 @@ const AMBIGUOUS = { words: 'finished the integration work', status: 'Completed',
   { key: 'SCRUM-26', title: 'Implement Synchronous Data Flow', owner: 'Sailaja' }
 ] }
 
-test('item 24: the picker has one button per story plus "None of these"', () => {
-  const card = storyPickerCard(AMBIGUOUS, 'team-1', '2026-09-29', 'm1')
-  assert.deepEqual(card.actions.map((a) => a.title), ['SCRUM-27', 'SCRUM-26', 'None of these'])
-  assert.equal(card.actions[0].data.action, STORY_PICK_ACTION)
-  assert.match(JSON.stringify(card.body), /Will be recorded as: Completed/, 'item 29a: the status is shown before anything is written')
-})
-
-async function pick (data) {
-  const file = path.join(tmpdir(), `uc04-pick-${Date.now()}-${Math.random()}.json`)
-  const tracker = new MockTracker(file)
-  try {
-    const payload = parseStoryPick(data)
-    const reply = await recordForeignItem(TEAM, 'm1', 'Santhosh', payload, '2026-09-29', {
-      pm: { lookupStory: async (key) => SPRINT.find((s) => s.key === key) }, tracker, summaryHasRun: async () => false
-    })
-    return { reply, stored: await tracker.readToday('team-1', '2026-09-29') }
-  } finally { await rm(file, { force: true }) }
-}
-const card = storyPickerCard(AMBIGUOUS, 'team-1', '2026-09-29', 'm1')
-
-test('item 24: picking their own story records it plainly', async () => {
-  const { reply, stored } = await pick(card.actions[0].data)
-  assert.equal(stored[0].rows[0].win, 'SCRUM-27')
-  assert.equal(stored[0].rows[0].comment, 'finished the integration work')
-  assert.equal(reply, 'Recorded SCRUM-27 in the tracker.')
-})
-
-test("item 24: picking someone else's story is the confirmation — recorded with its owner", async () => {
-  const { reply, stored } = await pick(card.actions[1].data)
-  assert.equal(stored[0].rows[0].assignedTo, 'Sailaja')
-  assert.equal(stored[0].rows[0].comment, 'finished the integration work')
-  assert.match(reply, /under Sailaja, as updated by you/)
-})
-
-test('item 24: "None of these" and an unassigned story record nothing', async () => {
-  const none = await pick(card.actions[2].data)
-  assert.equal(none.reply, 'Not recorded.')
-  assert.deepEqual(none.stored, [])
-  const unassigned = await pick({ ...card.actions[0].data, pick: 'SCRUM-28' })
-  assert.match(unassigned.reply, /not assigned to anyone/)
-  assert.deepEqual(unassigned.stored, [])
-})
-
 // ── item 26 ──────────────────────────────────────────────────────────────
-test('item 26: card data with empty fields left out is still read', () => {
-  const noNulls = { action: 'scrumAssistant.foreignItem', choice: 'submit', teamId: 't', localDate: '2026-09-29', memberId: 'm1',
-    item: { key: 'SCRUM-25', owner: 'P', status: 'Completed', comment: 'done' } }
-  const parsed = parseForeignItemPayload(noNulls)
-  assert.equal(parsed.item.blocker, null)
-  assert.equal(parsed.item.title, null)
-  assert.ok(parseForeignItemPayload(JSON.stringify(noNulls)), 'a JSON string is read too')
-  const pickNone = { ...card.actions[2].data }
-  delete pickNone.pick
-  assert.equal(parseStoryPick(pickNone).choice, 'cancel', 'a missing pick is "None of these"')
-})
-
 test('item 26: a press on our card that cannot be read is recognised, so it can be answered', () => {
   assert.equal(isForeignItemPress({ action: 'scrumAssistant.foreignItem', garbage: true }), true)
   assert.equal(isForeignItemPress({ action: STORY_PICK_ACTION }), true)

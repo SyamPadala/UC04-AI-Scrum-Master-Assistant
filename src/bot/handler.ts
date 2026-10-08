@@ -15,9 +15,7 @@ import { trackerFor } from '../trackers/factory.js'
 import { processUpdate, StandupClosedError } from '../jobs/updateIntake.js'
 import { handleAdminCommand, parseAdminCommand } from './admin.js'
 import { intakeReply } from './replies.js'
-import { foreignItemCard, type ForeignItemPayload } from '../cards/foreignItem.js'
-import { confirmPick, isForeignItemPress, parseForeignItemPayload, parseStoryChoice, parseStoryPickPayload, recordChoice, recordForeignItem } from '../jobs/foreignItem.js'
-import type { StoryPickPayload } from '../cards/storyPicker.js'
+import { isForeignItemPress, parseStoryChoice, recordChoice } from '../jobs/foreignItem.js'
 import { storyChoiceCard } from '../cards/storyChoice.js'
 import { GraphUnavailableError, withGraphRetryNotice } from '../graph/client.js'
 import { handOff, type HandedOffUpdate } from './handoff.js'
@@ -166,19 +164,6 @@ export class ScrumAssistant extends ActivityHandler {
         await next()
         return
       }
-      const confirmation = parseForeignItemPayload(context.activity.value)
-      if (confirmation !== undefined) {
-        await this.confirmForeignItem(context, memberId, memberName, confirmation)
-        await next()
-        return
-      }
-      // Item 34c: a pick on "Which story is this?" is confirmed before anything is written.
-      const pick = parseStoryPickPayload(context.activity.value)
-      if (pick !== undefined) {
-        await this.confirmStoryPick(context, memberId, memberName, pick)
-        await next()
-        return
-      }
       if (isForeignItemPress(context.activity.value)) {
         await context.sendActivity(MessageFactory.text(
           "Sorry, I couldn't read that button press, so nothing was recorded. Please send the update again."
@@ -322,61 +307,6 @@ export class ScrumAssistant extends ActivityHandler {
       }
       await this.reportFailure(context, memberId, error, say)
     }
-  }
-
-  /** SPEC-004 item 34c: the member picked a story; show the confirmation in place of the picker. */
-  private async confirmStoryPick (
-    context: TurnContext, memberId: string, memberName: string, pick: StoryPickPayload
-  ): Promise<void> {
-    let team: TeamConfig | undefined
-    try {
-      team = await teamForMember(memberId)
-    } catch {
-      team = undefined
-    }
-    if (team === undefined) {
-      await context.sendActivity(MessageFactory.text('You are not on a team roster I know about, so nothing was recorded.'))
-      return
-    }
-    const today = localDate(new Date(), team.timezone)
-    let outcome: Awaited<ReturnType<typeof confirmPick>>
-    try {
-      outcome = await confirmPick(team, memberId, memberName, pick, today, { pm: this.pmOf(team) })
-    } catch (error) {
-      if (error instanceof StandupClosedError) {
-        await context.sendActivity(MessageFactory.text(CLOSED_NOTICE))
-        return
-      }
-      await this.reportFailure(context, memberId, error)
-      return
-    }
-    const cardId = context.activity.replyToId
-    const replacement = 'reply' in outcome
-      ? Activity.fromObject({ type: 'message', id: cardId, text: outcome.reply })
-      : Activity.fromObject({
-        type: 'message',
-        id: cardId,
-        attachments: [CardFactory.adaptiveCard(foreignItemCard(outcome.confirm, team.teamId, today, memberId, outcome.mine))]
-      })
-    let replaced = false
-    if (cardId !== undefined && cardId !== '') {
-      replaced = await context.updateActivity(replacement).then(() => true, () => false)
-    }
-    if (replaced) return
-    if ('reply' in outcome) {
-      await context.sendActivity(MessageFactory.text(outcome.reply))
-    } else {
-      await context.sendActivity(MessageFactory.attachment(CardFactory.adaptiveCard(
-        foreignItemCard(outcome.confirm, team.teamId, today, memberId, outcome.mine))))
-    }
-  }
-
-  /** SPEC-004 14a: the member pressed Submit or Cancel on the confirmation card. */
-  private async confirmForeignItem (
-    context: TurnContext, memberId: string, memberName: string, payload: ForeignItemPayload
-  ): Promise<void> {
-    await this.answerPress(context, memberId, (team, today) =>
-      recordForeignItem(team, memberId, memberName, payload, today, { pm: this.pmOf(team), tracker: trackerFor(team) }))
   }
 
   /**

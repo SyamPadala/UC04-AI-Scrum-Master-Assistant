@@ -3,8 +3,8 @@ import assert from 'node:assert/strict'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { rm } from 'node:fs/promises'
-import { parseForeignItemPayload, recordForeignItem } from '../dist/jobs/foreignItem.js'
-import { foreignItemCard, FOREIGN_ITEM_ACTION } from '../dist/cards/foreignItem.js'
+import { recordForeignItem } from '../dist/jobs/foreignItem.js'
+import { FOREIGN_ITEM_ACTION } from '../dist/cards/foreignItem.js'
 import { blockerAlertCard } from '../dist/cards/blockerAlert.js'
 import { StandupClosedError } from '../dist/jobs/updateIntake.js'
 import { MockTracker } from '../dist/trackers/mock.js'
@@ -36,14 +36,6 @@ async function submit (p, options = {}) {
     await rm(file, { force: true })
   }
 }
-
-test('the card carries the item in its buttons and round-trips through validation', () => {
-  const card = foreignItemCard(ITEM, 'team-1', '2026-09-29', 'm1')
-  assert.deepEqual(card.actions.map((a) => a.title), ['Submit', 'Cancel'])
-  assert.deepEqual(parseForeignItemPayload(card.actions[0].data), payload())
-  assert.equal(parseForeignItemPayload({ action: 'something else' }), undefined)
-  assert.equal(parseForeignItemPayload(undefined), undefined)
-})
 
 test('Submit records under the Jira owner, says who sent it, and keeps the row the sender\'s (SPEC-002 2f)', async () => {
   const { reply, stored } = await submit(payload())
@@ -115,10 +107,3 @@ test('item 14b: Submit on a blocked item alerts the Scrum Master with the story;
   assert.equal(plain.length, 0, 'no blocker, no alert')
 })
 
-test('the card shows the text once when the comment and the blocker are the same', () => {
-  const same = { ...ITEM, status: 'Blocked', comment: 'waiting for the LB config', blocker: 'waiting for the LB config' }
-  const texts = foreignItemCard(same, 'team-1', '2026-09-29', 'm1').body.map((b) => b.text)
-  assert.ok(texts.includes('Your update: Blocked: waiting for the LB config'))
-  const different = { ...same, comment: 'set up the pool' }
-  assert.ok(foreignItemCard(different, 'team-1', '2026-09-29', 'm1').body.some((b) => b.text === 'Your update: set up the pool · Blocked: waiting for the LB config'))
-})

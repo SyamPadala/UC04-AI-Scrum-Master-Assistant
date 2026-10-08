@@ -4,9 +4,6 @@ import assert from 'node:assert/strict'
 /** 30 Sep night round: SPEC-004 items 32–34 and SPEC-002 item 5a. */
 
 const { storyAbout, adfText, MAX_ABOUT_CHARS } = await import('../dist/pm/about.js')
-const { confirmPick, parseStoryPickPayload } = await import('../dist/jobs/foreignItem.js')
-const { foreignItemCard } = await import('../dist/cards/foreignItem.js')
-const { storyPickerCard } = await import('../dist/cards/storyPicker.js')
 const { StandupClosedError } = await import('../dist/jobs/updateIntake.js')
 const { parseExtraction } = await import('../dist/agents/schema.js')
 const graph = await import('../dist/graph/client.js')
@@ -51,41 +48,6 @@ const deps = (closed = false) => ({ pm: { lookupStory: async (key) => STORIES[ke
 const pick = (key, over = {}) => ({
   action: 'scrumAssistant.storyPick', pick: key, teamId: 'team-1', localDate: '2026-09-30', memberId: 'm1',
   item: { words: 'spent some time on the resilience part', status: 'In Progress' }, ...over
-})
-
-test("item 34c: picking someone else's story asks to confirm on the 14a card; nothing is written", async () => {
-  const outcome = await confirmPick(TEAM, 'm1', 'sailaja', pick('SCRUM-31'), '2026-09-30', deps())
-  assert.equal(outcome.mine, false)
-  assert.deepEqual(outcome.confirm, {
-    key: 'SCRUM-31', title: 'Ingress Gateway', owner: 'Vardhan', status: 'In Progress', comment: 'spent some time on the resilience part', blocker: null
-  })
-  const card = foreignItemCard(outcome.confirm, 'team-1', '2026-09-30', 'm1', outcome.mine)
-  assert.equal(card.body[0].text, 'SCRUM-31 is assigned to Vardhan, not you')
-  assert.deepEqual(card.actions.map((a) => a.title), ['Submit', 'Cancel'])
-})
-
-test('item 34c: picking her own story also asks to confirm', async () => {
-  const outcome = await confirmPick(TEAM, 'm1', 'sailaja', pick('SCRUM-34'), '2026-09-30', deps())
-  assert.equal(outcome.mine, true)
-  const card = foreignItemCard(outcome.confirm, 'team-1', '2026-09-30', 'm1', true)
-  assert.equal(card.body[0].text, 'Record your update against SCRUM-34 (yours)?')
-  assert.ok(card.body.some((b) => b.text === 'Will be recorded as: In Progress'))
-})
-
-test('item 34c: None, an unassigned story, a stale or foreign card, or a closed stand-up record nothing', async () => {
-  assert.deepEqual(await confirmPick(TEAM, 'm1', 'sailaja', pick(null), '2026-09-30', deps()), { reply: 'Not recorded.' })
-  assert.match((await confirmPick(TEAM, 'm1', 'sailaja', pick('SCRUM-35'), '2026-09-30', deps())).reply, /not assigned to anyone/)
-  assert.match((await confirmPick(TEAM, 'm1', 'sailaja', pick('SCRUM-31'), '2026-10-01', deps())).reply, /expired/)
-  assert.match((await confirmPick(TEAM, 'm2', 'x', pick('SCRUM-31'), '2026-09-30', deps())).reply, /someone else/)
-  await assert.rejects(confirmPick(TEAM, 'm1', 'sailaja', pick('SCRUM-31'), '2026-09-30', deps(true)), StandupClosedError)
-})
-
-test('item 34c: a press on the picker round-trips; "None of these" arrives without a pick', () => {
-  const card = storyPickerCard({ words: 'w', status: 'In Progress', options: [{ key: 'SCRUM-31', title: 'T', owner: 'Vardhan' }] }, 'team-1', '2026-09-30', 'm1')
-  assert.equal(parseStoryPickPayload(card.actions[0].data).pick, 'SCRUM-31')
-  const none = { ...card.actions[1].data }
-  delete none.pick // Teams drops null fields
-  assert.equal(parseStoryPickPayload(none).pick, null)
 })
 
 // ── SPEC-002 item 5a: tracker resilience ─────────────────────────────────
