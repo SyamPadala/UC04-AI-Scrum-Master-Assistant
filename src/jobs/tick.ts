@@ -1,6 +1,6 @@
 import type { JobType, RunOutcome, TeamConfig } from '../types.js'
 import { newCorrelationId, withCorrelation } from '../util/correlation.js'
-import { activeTeams, claimRun, completeRun, logManualRun, releaseRun } from '../store/firestore.js'
+import { activeTeams, claimRun, completeRun, logManualRun, releaseRun } from '../store/index.js'
 import { isDue, isWorkingDay } from './schedule.js'
 import { localDate } from '../config/time.js'
 import { sendFollowUps, sendReminders } from './reminder.js'

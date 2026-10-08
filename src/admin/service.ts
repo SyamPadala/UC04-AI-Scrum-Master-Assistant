@@ -18,7 +18,7 @@ import { assessOnboarding, type OnboardingFacts, type OnboardingStep, type Unkno
 import {
   allTeams, botTeams, clearChannelRef, configChangesFor, getChannelRef, getTeam, llmUsageForDates, recordConfigChange,
   reopenStandup as markReopened, runsForDate, saveChannelRef, saveScrumMasterRef, saveTeam, scrumMasterOf, standupState, summaryHasRun, teamForMember
-} from '../store/firestore.js'
+} from '../store/index.js'
 import { checkSchedule, isValidTimezone, mayAdminister, mayManage, normaliseEmail, overlapProblem } from './validate.js'
 
 /**

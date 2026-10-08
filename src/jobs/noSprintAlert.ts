@@ -1,6 +1,6 @@
 import type { TeamConfig } from '../types.js'
 import { isConversationGone, sendProactive } from '../bot/adapter.js'
-import { claimDailyNotice, forgetScrumMasterChat, releaseDailyNotice, scrumMasterOf } from '../store/firestore.js'
+import { claimDailyNotice, forgetScrumMasterChat, releaseDailyNotice, scrumMasterOf } from '../store/index.js'
 import { config } from '../config/env.js'
 
 /**

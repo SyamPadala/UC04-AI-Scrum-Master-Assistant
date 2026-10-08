@@ -3,21 +3,28 @@ import { config } from '../config/env.js'
 import type {
   BotTeam, ConfigChange, JobType, NonResponderFlag, ParticipationRecord, RunLog, RunOutcome, ScrumMaster, TeamConfig
 } from '../types.js'
+import type { ClaimOutcome, Store } from './types.js'
 
 /**
  * Firestore holds configuration, conversation references and run metadata only.
  * Update content lives in the team's tracker — never here. This is the Privacy
  * NFR and a violation is a build error, not a preference.
  */
-const db = new Firestore({
-  projectId: config.gcp.projectId,
-  databaseId: config.gcp.firestoreDatabase,
-  ...(config.gcp.credentialsPath === '' ? {} : { keyFilename: config.gcp.credentialsPath })
-})
+let client: Firestore | undefined
+
+/** Connected on first use, so a run on another adapter never opens Firestore (M17). */
+function db (): Firestore {
+  client ??= new Firestore({
+    projectId: config.gcp.projectId,
+    databaseId: config.gcp.firestoreDatabase,
+    ...(config.gcp.credentialsPath === '' ? {} : { keyFilename: config.gcp.credentialsPath })
+  })
+  return client
+}
 
 export async function firestoreReachable (): Promise<boolean> {
   try {
-    await db.collection('teams').limit(1).get()
+    await db().collection('teams').limit(1).get()
     return true
   } catch {
     return false
@@ -25,7 +32,7 @@ export async function firestoreReachable (): Promise<boolean> {
 }
 
 export async function activeTeams (): Promise<TeamConfig[]> {
-  const snapshot = await db.collection('teams').where('active', '==', true).get()
+  const snapshot = await db().collection('teams').where('active', '==', true).get()
   return snapshot.docs.map((doc) => doc.data() as TeamConfig)
 }
 
@@ -37,7 +44,7 @@ export async function activeTeams (): Promise<TeamConfig[]> {
  * as such rather than guessed at.
  */
 export async function teamForMember (memberId: string): Promise<TeamConfig | undefined> {
-  const snapshot = await db.collection('teams').get()
+  const snapshot = await db().collection('teams').get()
   const matches = snapshot.docs
     .map((doc) => doc.data() as TeamConfig)
     .filter((team) => team.members.some((m) => m.memberId === memberId))
@@ -57,27 +64,27 @@ export async function teamForMember (memberId: string): Promise<TeamConfig | und
  * some other channel cannot make it that team's summary destination.
  */
 export async function teamForChannel (channelId: string): Promise<TeamConfig | undefined> {
-  const snapshot = await db.collection('teams').get()
+  const snapshot = await db().collection('teams').get()
   return snapshot.docs
     .map((doc) => doc.data() as TeamConfig)
     .find((team) => (team.stakeholders.channelId ?? '') === channelId)
 }
 
 export async function getTeam (teamId: string): Promise<TeamConfig | undefined> {
-  const doc = await db.collection('teams').doc(teamId).get()
+  const doc = await db().collection('teams').doc(teamId).get()
   return doc.exists ? (doc.data() as TeamConfig) : undefined
 }
 
 export async function saveTeam (team: TeamConfig): Promise<void> {
-  await db.collection('teams').doc(team.teamId).set(team)
+  await db().collection('teams').doc(team.teamId).set(team)
 }
 
 /** Stores the reference that lets the app message this person directly. */
 export async function saveConversationRef (
   teamId: string, memberId: string, displayName: string | undefined, reference: string
 ): Promise<void> {
-  const ref = db.collection('teams').doc(teamId)
-  await db.runTransaction(async (tx) => {
+  const ref = db().collection('teams').doc(teamId)
+  await db().runTransaction(async (tx) => {
     const doc = await tx.get(ref)
     if (!doc.exists) return
     const team = doc.data() as TeamConfig
@@ -103,7 +110,7 @@ export async function saveConversationRef (
  */
 export async function scrumMasterOf (team: TeamConfig): Promise<ScrumMaster | undefined> {
   if ((team.scrumMasterId ?? '') === '') return undefined
-  const doc = await db.collection('scrumMasters').doc(team.scrumMasterId).get()
+  const doc = await db().collection('scrumMasters').doc(team.scrumMasterId).get()
   const stored = doc.exists ? doc.data() as Partial<ScrumMaster> : undefined
   const legacy = team.members.find((m) => m.memberId === team.scrumMasterId)
   const reference = (stored?.conversationRef ?? '') !== '' ? stored?.conversationRef : legacy?.conversationRef
@@ -119,7 +126,7 @@ export async function scrumMasterOf (team: TeamConfig): Promise<ScrumMaster | un
 
 /** Stores a Scrum Master's chat, for every team they run (10g). No update content. */
 export async function saveScrumMasterRef (memberId: string, displayName: string | undefined, reference: string): Promise<void> {
-  await db.collection('scrumMasters').doc(memberId).set({
+  await db().collection('scrumMasters').doc(memberId).set({
     memberId,
     ...(displayName === undefined || displayName === '' ? {} : { displayName }),
     conversationRef: reference,
@@ -129,14 +136,14 @@ export async function saveScrumMasterRef (memberId: string, displayName: string 
 
 /** Forgets a Scrum Master's chat after Teams says it is gone (10e), wherever it was kept. */
 export async function forgetScrumMasterChat (team: TeamConfig): Promise<void> {
-  await db.collection('scrumMasters').doc(team.scrumMasterId).set({ conversationRef: '' }, { merge: true })
+  await db().collection('scrumMasters').doc(team.scrumMasterId).set({ conversationRef: '' }, { merge: true })
   await clearConversationRef(team.teamId, team.scrumMasterId)
 }
 
 /** Every team this person is Scrum Master of (10g). */
 export async function teamsRunBy (memberId: string): Promise<TeamConfig[]> {
   if (memberId === '') return []
-  const snapshot = await db.collection('teams').where('scrumMasterId', '==', memberId).get()
+  const snapshot = await db().collection('teams').where('scrumMasterId', '==', memberId).get()
   return snapshot.docs.map((doc) => doc.data() as TeamConfig)
 }
 
@@ -148,8 +155,8 @@ export async function teamsRunBy (memberId: string): Promise<TeamConfig[]> {
  * installed, and their next message to the assistant stores a fresh one.
  */
 export async function clearConversationRef (teamId: string, memberId: string): Promise<void> {
-  const ref = db.collection('teams').doc(teamId)
-  await db.runTransaction(async (tx) => {
+  const ref = db().collection('teams').doc(teamId)
+  await db().runTransaction(async (tx) => {
     const doc = await tx.get(ref)
     if (!doc.exists) return
     const team = doc.data() as TeamConfig
@@ -172,9 +179,9 @@ function runId (teamId: string, localDate: string, jobType: JobType): string {
  * overlapping ticks both decide the job had not run.
  */
 export async function claimRun (teamId: string, localDate: string, jobType: JobType): Promise<boolean> {
-  const ref = db.collection('runs').doc(runId(teamId, localDate, jobType))
+  const ref = db().collection('runs').doc(runId(teamId, localDate, jobType))
   try {
-    await db.runTransaction(async (tx) => {
+    await db().runTransaction(async (tx) => {
       const doc = await tx.get(ref)
       if (doc.exists) throw new Error('already-claimed')
       tx.create(ref, {
@@ -203,9 +210,9 @@ export async function completeRun (
     durationMs: Date.now() - startedAt.getTime(),
     ...(detail === undefined ? {} : { detail })
   }
-  await db.collection('runLogs').add(entry)
+  await db().collection('runLogs').add(entry)
 
-  const claim = db.collection('runs').doc(runId(teamId, localDate, jobType))
+  const claim = db().collection('runs').doc(runId(teamId, localDate, jobType))
   const doc = await claim.get()
   if (doc.exists) await claim.update({ outcome })
 }
@@ -227,7 +234,7 @@ export async function logManualRun (
     trigger: 'manual',
     ...(detail === undefined ? {} : { detail })
   }
-  await db.collection('runLogs').add(entry)
+  await db().collection('runLogs').add(entry)
 }
 
 /**
@@ -237,11 +244,11 @@ export async function logManualRun (
  * would be marked as done and never sent.
  */
 export async function releaseRun (teamId: string, localDate: string, jobType: JobType): Promise<void> {
-  await db.collection('runs').doc(runId(teamId, localDate, jobType)).delete()
+  await db().collection('runs').doc(runId(teamId, localDate, jobType)).delete()
 }
 
 export async function saveParticipation (record: ParticipationRecord): Promise<void> {
-  await db.collection('participation')
+  await db().collection('participation')
     .doc(`${record.teamId}_${record.localDate}`)
     .set(record)
 }
@@ -264,8 +271,8 @@ export async function recentParticipation (
     }).format(day))
   }
 
-  const refs = dates.map((date) => db.collection('participation').doc(`${teamId}_${date}`))
-  const docs = await db.getAll(...refs)
+  const refs = dates.map((date) => db().collection('participation').doc(`${teamId}_${date}`))
+  const docs = await db().getAll(...refs)
   return docs.filter((doc) => doc.exists).map((doc) => doc.data() as ParticipationRecord)
 }
 
@@ -278,12 +285,12 @@ function flagId (teamId: string, memberId: string, missedDates: string[]): strin
 export async function alreadyFlagged (
   teamId: string, memberId: string, missedDates: string[]
 ): Promise<boolean> {
-  const doc = await db.collection('flags').doc(flagId(teamId, memberId, missedDates)).get()
+  const doc = await db().collection('flags').doc(flagId(teamId, memberId, missedDates)).get()
   return doc.exists
 }
 
 export async function saveFlag (flag: NonResponderFlag): Promise<void> {
-  await db.collection('flags')
+  await db().collection('flags')
     .doc(flagId(flag.teamId, flag.memberId, flag.missedDates))
     .set(flag)
 }
@@ -308,7 +315,7 @@ export async function summaryHasRun (teamId: string, localDate: string): Promise
 export async function standupState (teamId: string, localDate: string): Promise<{
   closed: boolean, closedAt: Date | null, reopenedAt: Date | null, reopenedBy: string | null
 }> {
-  const doc = await db.collection('runs').doc(runId(teamId, localDate, 'summary')).get()
+  const doc = await db().collection('runs').doc(runId(teamId, localDate, 'summary')).get()
   if (!doc.exists) return { closed: false, closedAt: null, reopenedAt: null, reopenedBy: null }
   const data = doc.data() as { startedAt?: { toDate: () => Date }, reopenedAt?: { toDate: () => Date }, reopenedBy?: string }
   const reopenedAt = data.reopenedAt?.toDate() ?? null
@@ -317,7 +324,7 @@ export async function standupState (teamId: string, localDate: string): Promise<
 
 /** SPEC-008 10l. False when there was nothing to reopen. */
 export async function reopenStandup (teamId: string, localDate: string, by: string): Promise<boolean> {
-  const ref = db.collection('runs').doc(runId(teamId, localDate, 'summary'))
+  const ref = db().collection('runs').doc(runId(teamId, localDate, 'summary'))
   if (!(await ref.get()).exists) return false
   await ref.set({ reopenedAt: new Date(), reopenedBy: by }, { merge: true })
   return true
@@ -328,13 +335,13 @@ export async function runsForDate (
   teamId: string, localDate: string
 ): Promise<Array<{ jobType: string, outcome: string, detail?: string }>> {
   const jobTypes: JobType[] = ['reminder', 'followup', 'summary', 'participation']
-  const refs = jobTypes.map((jobType) => db.collection('runs').doc(runId(teamId, localDate, jobType)))
-  const docs = await db.getAll(...refs)
+  const refs = jobTypes.map((jobType) => db().collection('runs').doc(runId(teamId, localDate, jobType)))
+  const docs = await db().getAll(...refs)
   const claimed = docs.filter((doc) => doc.exists).map((doc) => doc.data() as { jobType: JobType })
 
   const results: Array<{ jobType: string, outcome: string, detail?: string }> = []
   for (const claim of claimed) {
-    const logs = await db.collection('runLogs')
+    const logs = await db().collection('runLogs')
       .where('teamId', '==', teamId)
       .where('localDate', '==', localDate)
       .where('jobType', '==', claim.jobType)
@@ -353,11 +360,11 @@ export async function runsForDate (
 }
 
 export async function recordConfigChange (change: ConfigChange): Promise<void> {
-  await db.collection('configChanges').add(change)
+  await db().collection('configChanges').add(change)
 }
 
 export async function allTeams (): Promise<TeamConfig[]> {
-  const snapshot = await db.collection('teams').get()
+  const snapshot = await db().collection('teams').get()
   return snapshot.docs.map((doc) => doc.data() as TeamConfig)
 }
 
@@ -368,7 +375,7 @@ export async function allTeams (): Promise<TeamConfig[]> {
  * a composite index, and the history of one team is small.
  */
 export async function configChangesFor (teamId: string, limit = 25): Promise<ConfigChange[]> {
-  const snapshot = await db.collection('configChanges').where('teamId', '==', teamId).get()
+  const snapshot = await db().collection('configChanges').where('teamId', '==', teamId).get()
   return snapshot.docs
     .map((doc) => {
       // Firestore hands dates back as Timestamps, not Date objects.
@@ -390,9 +397,9 @@ export async function configChangesFor (teamId: string, limit = 25): Promise<Con
  * applies to this document like any other.
  */
 export async function reserveLlmCall (localDate: string, maxPerDay: number): Promise<boolean> {
-  const ref = db.collection('llmUsage').doc(localDate)
+  const ref = db().collection('llmUsage').doc(localDate)
   try {
-    return await db.runTransaction(async (tx) => {
+    return await db().runTransaction(async (tx) => {
       const doc = await tx.get(ref)
       const calls = doc.exists ? Number((doc.data() as { calls?: number }).calls ?? 0) : 0
       if (calls >= maxPerDay) return false
@@ -411,9 +418,9 @@ export async function recordLlmUsage (
   localDate: string, label: string,
   usage: { inputTokens: number, outputTokens: number }
 ): Promise<void> {
-  const ref = db.collection('llmUsage').doc(localDate)
+  const ref = db().collection('llmUsage').doc(localDate)
   try {
-    await db.runTransaction(async (tx) => {
+    await db().runTransaction(async (tx) => {
       const doc = await tx.get(ref)
       const data = (doc.exists ? doc.data() : {}) as Record<string, number | string | undefined>
       const previousIn = Number(data.inputTokens ?? 0)
@@ -439,7 +446,7 @@ export async function llmUsageForDates (dates: string[]): Promise<Array<{
   localDate: string, calls: number, inputTokens: number, outputTokens: number, byLabel: Record<string, number>
 }>> {
   if (dates.length === 0) return []
-  const docs = await db.getAll(...dates.map((date) => db.collection('llmUsage').doc(date)))
+  const docs = await db().getAll(...dates.map((date) => db().collection('llmUsage').doc(date)))
   return docs.map((doc, index) => {
     const data = (doc.exists ? doc.data() : {}) as Record<string, number | string | undefined>
     const byLabel: Record<string, number> = {}
@@ -460,7 +467,7 @@ export async function llmUsageForDates (dates: string[]): Promise<Array<{
 export async function llmUsageFor (localDate: string): Promise<{
   calls: number, inputTokens: number, outputTokens: number
 }> {
-  const doc = await db.collection('llmUsage').doc(localDate).get()
+  const doc = await db().collection('llmUsage').doc(localDate).get()
   const data = (doc.exists ? doc.data() : {}) as Record<string, number | undefined>
   return {
     calls: Number(data.calls ?? 0),
@@ -480,18 +487,16 @@ export async function llmUsageFor (localDate: string): Promise<{
  * failure is 'error', and the caller sends anyway: a rare duplicate alert is
  * better than a blocker nobody hears about.
  */
-export type ClaimOutcome = 'claimed' | 'already' | 'error'
-
 export async function claimBlockerAlert (
   teamId: string, memberId: string, localDate: string, blockerHash: string
 ): Promise<ClaimOutcome> {
-  return await claimOnce(db.collection('blockerAlerts').doc(`${teamId}_${memberId}_${localDate}_${blockerHash}`),
+  return await claimOnce(db().collection('blockerAlerts').doc(`${teamId}_${memberId}_${localDate}_${blockerHash}`),
     { teamId, memberId, localDate, blockerHash, alertedAt: new Date() })
 }
 
 /** SPEC-005 item 2b: the alert was not sent, so the next mention tries again. */
 export async function releaseBlockerAlert (teamId: string, memberId: string, localDate: string, blockerHash: string): Promise<void> {
-  await db.collection('blockerAlerts').doc(`${teamId}_${memberId}_${localDate}_${blockerHash}`).delete()
+  await db().collection('blockerAlerts').doc(`${teamId}_${memberId}_${localDate}_${blockerHash}`).delete()
 }
 
 /** Creates the document only if it does not exist yet; says which happened. */
@@ -512,12 +517,12 @@ async function claimOnce (ref: FirebaseFirestore.DocumentReference, data: Record
  * item 12). Idempotent on teamId + date + kind: 'claimed' only for the first caller.
  */
 export async function claimDailyNotice (teamId: string, localDate: string, kind: string): Promise<ClaimOutcome> {
-  return await claimOnce(db.collection('notices').doc(`${teamId}_${localDate}_${kind}`), { teamId, localDate, kind, sentAt: new Date() })
+  return await claimOnce(db().collection('notices').doc(`${teamId}_${localDate}_${kind}`), { teamId, localDate, kind, sentAt: new Date() })
 }
 
 /** The notice was not sent; a later update may try again (M1). */
 export async function releaseDailyNotice (teamId: string, localDate: string, kind: string): Promise<void> {
-  await db.collection('notices').doc(`${teamId}_${localDate}_${kind}`).delete()
+  await db().collection('notices').doc(`${teamId}_${localDate}_${kind}`).delete()
 }
 
 /**
@@ -530,12 +535,12 @@ export async function releaseDailyNotice (teamId: string, localDate: string, kin
  * reference is the only route a scheduled job has.
  */
 export async function saveChannelRef (teamId: string, reference: string): Promise<void> {
-  await db.collection('teams').doc(teamId).set({ channelRef: reference }, { merge: true })
+  await db().collection('teams').doc(teamId).set({ channelRef: reference }, { merge: true })
 }
 
 /** Disconnects the stakeholder channel; the summary then goes by email only. */
 export async function clearChannelRef (teamId: string): Promise<void> {
-  await db.collection('teams').doc(teamId).set({ channelRef: '' }, { merge: true })
+  await db().collection('teams').doc(teamId).set({ channelRef: '' }, { merge: true })
 }
 
 /**
@@ -543,11 +548,11 @@ export async function clearChannelRef (teamId: string): Promise<void> {
  * its channels can be offered on the admin page. Holds no message content.
  */
 export async function saveBotTeam (team: BotTeam): Promise<void> {
-  await db.collection('botTeams').doc(encodeURIComponent(team.teamThreadId)).set(team)
+  await db().collection('botTeams').doc(encodeURIComponent(team.teamThreadId)).set(team)
 }
 
 export async function botTeams (): Promise<BotTeam[]> {
-  const snapshot = await db.collection('botTeams').get()
+  const snapshot = await db().collection('botTeams').get()
   return snapshot.docs.map((doc) => {
     const data = doc.data() as Omit<BotTeam, 'seenAt'> & { seenAt: { toDate: () => Date } }
     return { ...data, seenAt: data.seenAt.toDate() }
@@ -555,7 +560,51 @@ export async function botTeams (): Promise<BotTeam[]> {
 }
 
 export async function getChannelRef (teamId: string): Promise<string | undefined> {
-  const doc = await db.collection('teams').doc(teamId).get()
+  const doc = await db().collection('teams').doc(teamId).get()
   const value = (doc.data() as { channelRef?: string } | undefined)?.channelRef
   return value === undefined || value === '' ? undefined : value
+}
+
+/** The Firestore adapter of the database contract (M17). */
+export const firestoreStore: Store = {
+  reachable: firestoreReachable,
+  activeTeams,
+  teamForMember,
+  teamForChannel,
+  getTeam,
+  saveTeam,
+  saveConversationRef,
+  scrumMasterOf,
+  saveScrumMasterRef,
+  forgetScrumMasterChat,
+  teamsRunBy,
+  clearConversationRef,
+  claimRun,
+  completeRun,
+  logManualRun,
+  releaseRun,
+  saveParticipation,
+  recentParticipation,
+  alreadyFlagged,
+  saveFlag,
+  summaryHasRun,
+  standupState,
+  reopenStandup,
+  runsForDate,
+  recordConfigChange,
+  allTeams,
+  configChangesFor,
+  reserveLlmCall,
+  recordLlmUsage,
+  llmUsageForDates,
+  llmUsageFor,
+  claimBlockerAlert,
+  releaseBlockerAlert,
+  claimDailyNotice,
+  releaseDailyNotice,
+  saveChannelRef,
+  clearChannelRef,
+  saveBotTeam,
+  botTeams,
+  getChannelRef
 }

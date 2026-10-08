@@ -3,7 +3,7 @@ import type { TeamConfig } from '../types.js'
 import type { Story } from '../pm/types.js'
 import { blockerAlertCard, type BlockerLine, type OpenItemLine } from '../cards/blockerAlert.js'
 import { isConversationGone, sendProactiveCard } from '../bot/adapter.js'
-import { claimBlockerAlert, forgetScrumMasterChat, releaseBlockerAlert, scrumMasterOf } from '../store/firestore.js'
+import { claimBlockerAlert, forgetScrumMasterChat, releaseBlockerAlert, scrumMasterOf } from '../store/index.js'
 import { config } from '../config/env.js'
 
 /**

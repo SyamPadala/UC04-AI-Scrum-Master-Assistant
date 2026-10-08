@@ -1,7 +1,7 @@
 import type { TeamConfig } from '../types.js'
 import type { Tracker } from '../trackers/types.js'
 import { isConversationGone, sendProactive } from '../bot/adapter.js'
-import { clearConversationRef } from '../store/firestore.js'
+import { clearConversationRef } from '../store/index.js'
 
 export interface JobResult {
   sent: number

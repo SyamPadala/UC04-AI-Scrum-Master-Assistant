@@ -7,7 +7,7 @@ import { extractUpdate } from '../agents/updateProcessor.js'
 import { collapseRows } from '../trackers/rows.js'
 import { sendBlockerAlert } from './blockerAlert.js'
 import { alertNoSprint } from './noSprintAlert.js'
-import { summaryHasRun } from '../store/firestore.js'
+import { summaryHasRun } from '../store/index.js'
 import { config } from '../config/env.js'
 
 /**

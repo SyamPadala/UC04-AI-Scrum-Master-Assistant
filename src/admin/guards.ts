@@ -1,6 +1,6 @@
 import type { TeamConfig } from '../types.js'
 import { chatState } from '../bot/reachability.js'
-import { scrumMasterOf } from '../store/firestore.js'
+import { scrumMasterOf } from '../store/index.js'
 
 /**
  * SPEC-008 10o (M3): a team runs only when its Scrum Master can be messaged.

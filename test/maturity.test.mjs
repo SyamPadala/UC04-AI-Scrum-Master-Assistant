@@ -110,3 +110,38 @@ test('M11: an unset tracker refuses to write instead of using another list', asy
   await assert.rejects(tracker.write({ teamId: 't', memberId: 'm', memberName: 'M', localDate: '2026-10-08', rows: [], rawText: '', capturedAt: new Date() }), TrackerNotSetError)
   assert.deepEqual(await tracker.readToday('t', '2026-10-08'), [])
 })
+
+// ── M17: the database contract, tested on the in-memory adapter ─────────
+const { memoryStore } = await import('../dist/store/memory.js')
+const { useStore, claimRun, claimBlockerAlert } = await import('../dist/store/index.js')
+const { sendBlockerAlert } = await import('../dist/jobs/blockerAlert.js')
+const { cannotRun } = await import('../dist/admin/guards.js')
+
+const memTeam = (over = {}) => ({
+  teamId: 'mt', name: 'Mem team', active: false, timezone: 'Asia/Kolkata', standupTime: '09:30', gracePeriodMinutes: 120,
+  summaryTime: '18:00', members: [], scrumMasterId: 'sm1', scrumMasterName: 'Sam', habitualThreshold: 2, habitualWindowDays: 5,
+  tracker: { kind: 'mock', path: 'x' }, stakeholders: { emails: [] }, ...over
+})
+
+test('M17: claims are create-only on every adapter', async () => {
+  useStore(memoryStore())
+  assert.equal(await claimRun('t', '2026-10-08', 'reminder'), true)
+  assert.equal(await claimRun('t', '2026-10-08', 'reminder'), false)
+  assert.equal(await claimBlockerAlert('t', 'm', '2026-10-08', 'h'), 'claimed')
+  assert.equal(await claimBlockerAlert('t', 'm', '2026-10-08', 'h'), 'already')
+})
+
+test('M1 end to end: an alert that could not be sent is tried again next time, never "already alerted"', async () => {
+  useStore(memoryStore())
+  const blocker = [{ description: 'TLS certificate missing', storyRef: null }]
+  const first = await sendBlockerAlert(memTeam(), 'm1', 'Madhavi', '2026-10-08', blocker, new Map(), new Date())
+  assert.equal(first.code, 'appNotInstalled', 'the Scrum Master has no chat yet')
+  const second = await sendBlockerAlert(memTeam(), 'm1', 'Madhavi', '2026-10-08', blocker, new Map(), new Date())
+  assert.equal(second.code, 'appNotInstalled', 'the claim was released, so it is tried again')
+})
+
+test('M3 + M11: a team cannot run without its own tracker or a reachable Scrum Master', async () => {
+  useStore(memoryStore())
+  assert.match(await cannotRun(memTeam({ tracker: { kind: 'unset' } })), /tracker list first/)
+  assert.match(await cannotRun(memTeam()), /Sam \(Scrum Master\) can't be messaged yet/)
+})

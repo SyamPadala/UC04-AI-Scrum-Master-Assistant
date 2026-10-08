@@ -2,7 +2,7 @@ import { CardFactory, MessageFactory, type TurnContext } from '@microsoft/agents
 import { cannotRun } from '../admin/guards.js'
 import type { TeamConfig } from '../types.js'
 import { adminStatusCard } from '../cards/adminCards.js'
-import { runsForDate, teamForMember, teamsRunBy } from '../store/firestore.js'
+import { runsForDate, teamForMember, teamsRunBy } from '../store/index.js'
 import { applyChange } from '../admin/service.js'
 import { localDate } from '../config/time.js'
 import { config } from '../config/env.js'

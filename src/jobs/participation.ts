@@ -4,7 +4,7 @@ import type {
 import type { Tracker } from '../trackers/types.js'
 import {
   alreadyFlagged, recentParticipation, saveFlag, saveParticipation, scrumMasterOf
-} from '../store/firestore.js'
+} from '../store/index.js'
 import { sendProactive } from '../bot/adapter.js'
 
 /**

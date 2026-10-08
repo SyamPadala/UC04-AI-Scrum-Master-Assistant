@@ -59,6 +59,11 @@ export const config = {
     clientSecret: required('GRAPH_CLIENT_SECRET')
   },
 
+  /** M17: which database adapter runs: 'firestore' (default) or 'memory'. */
+  db: {
+    provider: optional('DB_PROVIDER', 'firestore') as 'firestore' | 'memory'
+  },
+
   gcp: {
     projectId: required('GCP_PROJECT_ID'),
     firestoreDatabase: optional('FIRESTORE_DATABASE', '(default)'),

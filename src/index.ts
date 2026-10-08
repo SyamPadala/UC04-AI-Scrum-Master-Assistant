@@ -3,7 +3,7 @@ import express from 'express'
 import { createAgentRequestHandler } from '@microsoft/agents-hosting-express'
 import { config } from './config/env.js'
 import { agent, authConfig } from './bot/adapter.js'
-import { firestoreReachable } from './store/firestore.js'
+import { storeReachable } from './store/index.js'
 import { runTick } from './jobs/tick.js'
 import { adminRouter } from './admin/routes.js'
 import { handoffRouter } from './bot/handoffRoute.js'
@@ -66,7 +66,7 @@ app.get('/health', (_request, response) => {
   void (async () => {
     response.json({
       status: 'ok',
-      firestore: await firestoreReachable() ? 'ok' : 'unreachable',
+      firestore: await storeReachable() ? 'ok' : 'unreachable',
       version: '0.3.0'
     })
   })()

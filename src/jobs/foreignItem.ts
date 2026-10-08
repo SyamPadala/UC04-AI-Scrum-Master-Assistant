@@ -8,7 +8,7 @@ import { FOREIGN_ITEM_ACTION, type ForeignItemPayload } from '../cards/foreignIt
 const STORY_PICK_ACTION = 'scrumAssistant.storyPick'
 import { STORY_CHOICE_ACTION, type StoryChoicePayload } from '../cards/storyChoice.js'
 import { generalRow, mergeRows, StandupClosedError } from './updateIntake.js'
-import { summaryHasRun } from '../store/firestore.js'
+import { summaryHasRun } from '../store/index.js'
 import { scrumMasterKnows, sendBlockerAlert } from './blockerAlert.js'
 
 /**

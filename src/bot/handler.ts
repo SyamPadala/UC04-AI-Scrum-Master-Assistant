@@ -9,7 +9,7 @@ import { LlmBudgetError, LlmOfflineError } from '../llm/types.js'
 import { localDate } from '../config/time.js'
 import {
   saveBotTeam, saveChannelRef, saveConversationRef, saveScrumMasterRef, teamForChannel, teamForMember, teamsRunBy
-} from '../store/firestore.js'
+} from '../store/index.js'
 import { channelReference, teamOfActivity } from './channels.js'
 import { trackerFor } from '../trackers/factory.js'
 import { processUpdate, StandupClosedError } from '../jobs/updateIntake.js'

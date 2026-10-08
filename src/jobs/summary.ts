@@ -8,7 +8,7 @@ import type { SummaryOutput } from '../agents/schema.js'
 import { sendProactive, sendProactiveCard } from '../bot/adapter.js'
 import { summaryCard, summaryEmailHtml, summaryPlainText, summaryTitle } from '../cards/summary.js'
 import { sendMail } from '../graph/mail.js'
-import { getChannelRef, scrumMasterOf } from '../store/firestore.js'
+import { getChannelRef, scrumMasterOf } from '../store/index.js'
 import { config } from '../config/env.js'
 
 /**
