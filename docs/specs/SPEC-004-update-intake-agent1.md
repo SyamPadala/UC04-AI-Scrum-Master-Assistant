@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026; item 39 approved 4 Oct 2026; item 40 approved 5 Oct 2026; item 41 approved 8 Oct 2026 |
+| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026; item 39 approved 4 Oct 2026; item 40 approved 5 Oct 2026; item 41, 42 approved 8 Oct 2026 |
 | **Delivers** | FR-02, FR-03, NFR Latency |
 | **Assumptions** | A8 (story resolution), A11 (messages combined per member per day) |
 | **Depends on** | SPEC-001, SPEC-002 |
@@ -435,6 +435,17 @@ keep item 19 — issue #5.)*
     possible, the update is processed in the turn as before. If processing
     fails, the line is replaced with the usual failure reply. The member's
     words travel only inside the service and are never stored.
+
+42. *Added 8 Oct 2026 (approved by the user, maturity plan M12).* **No story
+    of their own, or not linked to Jira → context match, then general.** When
+    the sprint has stories but the member owns none of them (or is not linked
+    to Jira), Agent 1 is offered every sprint story and finds the one each
+    piece of work belongs to **by context** (title and About text, item 31).
+    A fit → the item 38 card (Submit records it under its owner, "updated by"
+    the member). Work that fits no story, and blockers on no story, go into
+    the member's **General** row (item 39 rules: every part kept, blockers
+    alerted at once). Replaces item 20's refusal and item 39's "no card".
+    No sprint, or nothing open in it → item 39 as before.
 
 ## Interface
 

@@ -82,12 +82,15 @@ async function run (output, { memberId = 'm1', sprint = true } = {}) {
 
 const update = (parts) => ({ completed: [], inProgress: [], blockers: [], confidence: 'high', kind: 'update', ...parts })
 
-test('item 20: a member with no Jira link is refused before the model is called', async () => {
-  const { result, stored, calls, reply } = await run(update({ inProgress: [{ storyRef: 'SCRUM-27', comment: 'on it' }] }), { memberId: 'm2' })
-  assert.equal(result.outcome, 'notLinked')
-  assert.equal(calls.llm, 0, 'no model call is spent')
-  assert.deepEqual(stored, [])
-  assert.match(reply, /isn't linked to Jira/)
+test('item 42 (M12): a member with no Jira link is not refused — their work is matched by context and confirmed on a card', async () => {
+  const { result, stored, calls, reply } = await run(update({ inProgress: [{ storyRef: 'SCRUM-27', comment: 'on it', reason: 'transport security work' }] }), { memberId: 'm2' })
+  assert.equal(calls.llm, 1)
+  assert.match(calls.prompts[0], /has no open story of their own/)
+  assert.match(calls.prompts[0], /SCRUM-27/, 'every sprint story is offered')
+  assert.deepEqual(stored, [], 'nothing written until they confirm')
+  assert.equal(result.choices.length, 1)
+  assert.deepEqual(result.choices[0].options.map((o) => o.key), ['SCRUM-27'])
+  assert.match(reply, /Please choose below/)
 })
 
 test('item 39: no active sprint → one General row, responded, and the Scrum Master is alerted', async () => {
@@ -100,18 +103,20 @@ test('item 39: no active sprint → one General row, responded, and the Scrum Ma
   assert.equal(reply, 'Saved as a general update: "set up my laptop and the VPN"')
 })
 
-test('item 39: no open story of their own → General, no card, even when the words name a teammate\'s story', async () => {
+test('item 42 (M12): no story of their own → a teammate story that fits gets a card; what fits nothing is the General row', async () => {
   const { result, stored, calls, reply } = await run(update({
-    completed: [{ storyRef: 'SCRUM-25', comment: 'KT session on the architecture done' }],
+    completed: [{ storyRef: 'SCRUM-25', comment: 'KT session on the architecture done', reason: 'core architecture work' }],
     inProgress: [{ storyRef: null, comment: 'waiting on Azure DevOps access' }]
   }), { memberId: 'm3' })
   assert.equal(result.outcome, 'general')
-  assert.deepEqual(result.choices, [], 'no card')
+  assert.equal(result.choices.length, 1, 'card for the teammate story')
+  assert.deepEqual(result.choices[0].options.map((o) => o.key), ['SCRUM-25'])
   assert.equal(stored[0].rows.length, 1)
   assert.equal(stored[0].rows[0].win, null)
-  assert.equal(stored[0].rows[0].comment, 'KT session on the architecture done; waiting on Azure DevOps access')
+  assert.equal(stored[0].rows[0].comment, 'waiting on Azure DevOps access')
   assert.equal(calls.noSprintAlerts, 0, 'a sprint is running')
-  assert.match(reply, /^Saved as a general update/)
+  assert.match(reply, /^Saved as a general update: "waiting on Azure DevOps access"/)
+  assert.match(reply, /Please choose below/)
 })
 
 test('item 39: a blocker in a general update is in the row and goes to the alert at once', async () => {

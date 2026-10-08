@@ -156,8 +156,14 @@ export interface Agent1Result {
   openItems: Story[]
   /** Every story offered to the model, so code can read titles and owners afterwards. */
   candidates: Story[]
-  /** SPEC-004 item 39: the member had no open story of their own (or there is no sprint). */
+  /** SPEC-004 item 39: no sprint (or nothing open in it): every part is general work. */
   general: boolean
+  /**
+   * SPEC-004 item 42 (M12): the member has no open story of their own, or is
+   * not linked to Jira, but the sprint has stories. Work is matched by context
+   * to anyone's story and confirmed on a card; what fits nothing is general.
+   */
+  noOwnStory: boolean
   durationMs: number
   /** Round-trips the model needed; 0 when a recorded response was replayed. */
   roundTrips: number
@@ -183,9 +189,12 @@ export async function extractUpdate (
   // than the lines this produces.
   const sprintStories = candidateStories(await pm.getSprintOpenItems(), input.jiraAccountId, text, [...typed])
   const openItems = sprintStories.filter((s) => input.jiraAccountId !== '' && s.assigneeAccountId === input.jiraAccountId)
-  // SPEC-004 item 39: no sprint, or no open story of their own → a general
-  // update. The model is offered no stories, so it cannot match one.
-  const general = openItems.length === 0
+  // SPEC-004 item 39: no sprint, or nothing open in it → a general update;
+  // the model is offered no stories, so it cannot match one. Item 42 (M12): no
+  // story of their own but a sprint with stories → offered every story, so work
+  // is matched by context and confirmed on a card.
+  const general = sprintStories.length === 0
+  const noOwnStory = !general && openItems.length === 0
   const candidates = general ? [] : sprintStories
 
   const request = {
@@ -201,7 +210,7 @@ export async function extractUpdate (
         about: story.about ?? null
       })),
       input.activeBlockers ?? [],
-      general
+      general ? 'general' : noOwnStory ? 'noOwnStory' : 'own'
     ),
     tools: storyTools,
     maxToolIterations: options.maxToolIterations,
@@ -230,6 +239,7 @@ export async function extractUpdate (
         openItems,
         candidates,
         general,
+        noOwnStory,
         durationMs: Date.now() - startedAt,
         roundTrips: response.fromCache ? 0 : response.roundTrips,
         truncated,

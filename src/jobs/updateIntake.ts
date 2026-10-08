@@ -441,12 +441,10 @@ export async function processUpdate (
     ...extra
   })
 
-  // Item 20: without a Jira link, ownership cannot be checked, so nothing can
-  // be recorded. Checked before the model is called — no call is spent.
-  if (jiraAccountId === '') {
-    console.log(JSON.stringify({ event: 'update.notLinked', teamId: team.teamId, memberId }))
-    return base('notLinked')
-  }
+  // Item 20 replaced by item 42 (M12, 8 Oct 2026): a member not linked to Jira
+  // owns no story, so their work is matched by context and confirmed on a card,
+  // and what fits nothing goes into their General row.
+  if (jiraAccountId === '') console.log(JSON.stringify({ event: 'update.notLinked', teamId: team.teamId, memberId }))
 
   const sprint = await deps.pm.getActiveSprint()
 
@@ -532,6 +530,22 @@ export async function processUpdate (
     // Items 11, 13, 14, 18: only verified items are written; the rest go back
     // to the member with their reason in the same reply.
     const incoming = toTrackerRows(verified.kept, memberName, stories)
+    // Item 42 (M12): with no story of their own, work that fits no story and
+    // blockers on no story are not refused — they are the member's General row.
+    let general: TrackerRow | undefined
+    if (extraction.noOwnStory) {
+      const leftover = verified.refused.flatMap((r) => r.reason === 'noWorkItem' ? [r.words] : [])
+      if (leftover.length + verified.unlinkedBlockers.length > 0) {
+        general = generalRow({
+          completed: [],
+          inProgress: leftover.map((comment) => ({ storyRef: null, comment, reason: null, alternatives: [] })),
+          blockers: verified.unlinkedBlockers.map((description) => ({ description, storyRef: null, reason: null, alternatives: [] }))
+        }, memberName)
+        incoming.push(general)
+        verified.refused = verified.refused.filter((r) => r.reason !== 'noWorkItem')
+        verified.unlinkedBlockers = []
+      }
+    }
     const existing = today.find((update) => update.memberName === memberName)?.rows ?? []
     const rows = mergeRows(existing, incoming)
 
@@ -542,11 +556,12 @@ export async function processUpdate (
       await deps.tracker.write(update)
     }
 
-    const recorded: RecordedItem[] = collapseRows(incoming).map((row) => ({
+    const recorded: RecordedItem[] = collapseRows(incoming.filter((row) => row !== general)).map((row) => ({
       win: row.win as string, title: row.description, status: row.status, blocker: row.anyBlocker, said: row.comment
     }))
-    result = base(incoming.length > 0 ? 'recorded' : 'nothingRecorded', extraction.durationMs, {
+    result = base(general !== undefined ? 'general' : incoming.length > 0 ? 'recorded' : 'nothingRecorded', extraction.durationMs, {
       ...common,
+      ...(general === undefined ? {} : { general: { said: general.comment, blocker: general.anyBlocker } }),
       recorded,
       refused: verified.refused,
       choices: verified.choices,

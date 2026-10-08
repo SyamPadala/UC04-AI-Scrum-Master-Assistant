@@ -89,7 +89,7 @@ export function updateProcessorUser (
   text: string,
   stories: Array<{ key: string, title: string, status: string, owner?: string | null, mine?: boolean, about?: string | null }>,
   activeBlockers: Array<{ workItem: string | null, description: string, since: string }> = [],
-  general = false
+  mode: 'own' | 'general' | 'noOwnStory' = 'own'
 ): string {
   const ownerOf = (story: { owner?: string | null, mine?: boolean }): string =>
     story.mine !== false ? 'assigned to you' : story.owner == null ? 'unassigned' : `assigned to ${story.owner}`
@@ -105,12 +105,18 @@ export function updateProcessorUser (
     ? '(none)'
     : activeBlockers.map((b) => `${b.workItem ?? 'no work item'} — ${b.description} (last reported ${b.since})`).join('\n')
 
-  // SPEC-004 item 39: no open story of their own, so nothing is matched and
-  // every part is general work — said here, in the user turn, so the system
+  // SPEC-004 item 39: no sprint, so nothing is matched and every part is general work — said here, in the user turn, so the system
   // prompt (and every recorded sprint answer) stays as it is.
-  const work = general
+  const work = mode === 'general'
     ? `${memberName} has no open story of their own in the current sprint, so everything they report is general work (for example knowledge transfer, onboarding, access requests, environment setup, training, meetings). List every part of the message as an entry with storyRef null, reason null and empty alternatives. The rule about leaving out meetings, reviews and training does not apply to this person. Blockers are still blockers.`
-    : `Open stories in the current sprint (${memberName}'s own say "assigned to you"):
+    : mode === 'noOwnStory'
+      // SPEC-004 item 42 (M12): no story of their own, so every piece of work is
+      // matched by what it is about to whichever story it belongs to.
+      ? `${memberName} has no open story of their own in the current sprint. For each piece of work, find the story below that the work belongs to by what it is about (its title and About text), exactly as for anyone else, and give it as storyRef with a reason and any alternatives. Work that belongs to none of these stories (for example knowledge transfer, onboarding, access requests, environment setup, training, meetings) is general work: list it with storyRef null, reason null and empty alternatives. The rule about leaving out meetings, reviews and training does not apply to this person. Blockers are still blockers.
+
+Open stories in the current sprint (none is ${memberName}'s own):
+${items}`
+      : `Open stories in the current sprint (${memberName}'s own say "assigned to you"):
 ${items}`
 
   return `${work}

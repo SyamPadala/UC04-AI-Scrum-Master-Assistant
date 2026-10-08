@@ -35,8 +35,11 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
         ? `⚠ Blocker: "${blocker}". Your Scrum Master has been told.`
         : `⚠ Blocker: "${blocker}". It is in the tracker, but I couldn't reach your Scrum Master about it.`)
     }
-    if (result.truncated) lines.push('Your message was long, so only the first part was read.')
-    return lines.join('\n\n')
+    // Item 42: with no story of their own, cards for work that fits a story follow.
+    if (result.choices.length === 0 && result.refused.length === 0) {
+      if (result.truncated) lines.push('Your message was long, so only the first part was read.')
+      return lines.join('\n\n')
+    }
   } else if (result.recorded.length > 0) {
     lines.push(`Recorded your update, ${memberName}:`)
     for (const item of result.recorded) {
