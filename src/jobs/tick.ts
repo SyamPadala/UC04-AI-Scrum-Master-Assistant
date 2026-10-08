@@ -1,4 +1,5 @@
 import type { JobType, RunOutcome, TeamConfig } from '../types.js'
+import { newCorrelationId, withCorrelation } from '../util/correlation.js'
 import { activeTeams, claimRun, completeRun, logManualRun, releaseRun } from '../store/firestore.js'
 import { isDue, isWorkingDay } from './schedule.js'
 import { localDate } from '../config/time.js'
@@ -62,7 +63,8 @@ export async function runTick (
     for (const jobType of JOBS) {
       if (!isDue(team, jobType, now)) continue
       if (!await claimRun(team.teamId, today, jobType)) continue
-      entries.push(await runClaimedJob(team, jobType, today, llm, pm))
+      // M16: one correlation id per job run.
+      entries.push(await withCorrelation(newCorrelationId(`job-${jobType}`), async () => await runClaimedJob(team, jobType, today, llm, pm)))
     }
   }
 

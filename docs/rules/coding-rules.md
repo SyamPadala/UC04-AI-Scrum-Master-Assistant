@@ -66,7 +66,9 @@ Binding on all code in this repo. Deviations need a note in the spec saying why.
 ## Errors and logging
 
 25. Structured JSON logs with `teamId`, `jobType`, `correlationId`. One log
-    line per meaningful event, not per statement.
+    line per meaningful event, not per statement. The correlation id is added
+    automatically to every JSON line written inside a message, admin request
+    or job run (`util/correlation.ts`, M16, 8 Oct 2026).
 26. Errors thrown internally are typed and carry context. Catch at the job
     boundary, log, record in `RunLog`, continue.
 27. Time every agent call and every tracker write. The Latency NFR is measured

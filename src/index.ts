@@ -6,6 +6,9 @@ import { agent, authConfig } from './bot/adapter.js'
 import { firestoreReachable } from './store/firestore.js'
 import { runTick } from './jobs/tick.js'
 import { adminRouter } from './admin/routes.js'
+import { installLogCorrelation, newCorrelationId, withCorrelation } from './util/correlation.js'
+
+installLogCorrelation()
 
 const app = express()
 app.use(express.json())
@@ -19,7 +22,9 @@ app.use(express.json())
  * adapter by hand skips that, and every reply then fails with a 401 while
  * proactive messages — which carry their own credentials — keep working.
  */
-app.post('/api/messages', createAgentRequestHandler(agent, authConfig) as never)
+// M16: each incoming activity gets its own correlation id for its log lines.
+app.post('/api/messages', (_request, _response, next) => { withCorrelation(newCorrelationId('msg'), next) },
+  createAgentRequestHandler(agent, authConfig) as never)
 
 /**
  * Cloud Scheduler heartbeat.
@@ -51,7 +56,7 @@ function sameSecret (given: string, expected: string): boolean {
 }
 
 /** The Scrum Master's admin page and its API (SPEC-008). */
-app.use('/admin', adminRouter())
+app.use('/admin', (_request, _response, next) => { withCorrelation(newCorrelationId('admin'), next) }, adminRouter())
 
 app.get('/health', (_request, response) => {
   void (async () => {

@@ -65,3 +65,15 @@ test('M7: a Teams team not linked to a scrum team is refused', () => {
   assert.doesNotThrow(() => assertLinkedTeamsTeam('g-alpha', ['g-alpha', 'g-beta']))
   assert.throws(() => assertLinkedTeamsTeam('g-company-wide', ['g-alpha']), /not linked to any scrum team/)
 })
+
+// ── M16: one correlation id on every JSON log line of a message or job ──
+const { withCorrelation, tagLine } = await import('../dist/util/correlation.js')
+test('M16: JSON log lines inside a run carry its id; other text and lines outside are unchanged', async () => {
+  const inside = await withCorrelation('msg-1234', async () => {
+    await new Promise((resolve) => setTimeout(resolve, 1)) // survives an await
+    return tagLine(JSON.stringify({ event: 'update.processed' }))
+  })
+  assert.deepEqual(JSON.parse(inside), { correlationId: 'msg-1234', event: 'update.processed' })
+  assert.equal(tagLine('{"event":"x"}'), '{"event":"x"}', 'outside a run: unchanged')
+  assert.equal(withCorrelation('m', () => tagLine('plain text')), 'plain text')
+})
