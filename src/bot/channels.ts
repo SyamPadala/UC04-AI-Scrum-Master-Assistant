@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { serviceToken } from '../auth/tokens.js'
 import type { ConversationReference } from '@microsoft/agents-activity'
 import { config } from '../config/env.js'
 import { httpErrorFrom, withRetry } from '../util/retry.js'
@@ -52,28 +53,7 @@ export function parseChannelList (body: unknown): TeamChannel[] {
   }))
 }
 
-interface TokenCache { token: string, expiresAt: number }
-let cache: TokenCache | undefined
-
-async function botToken (): Promise<string> {
-  if (cache !== undefined && Date.now() < cache.expiresAt) return cache.token
-  const response = await fetch(`https://login.microsoftonline.com/${config.m365.tenantId}/oauth2/v2.0/token`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: config.bot.appId,
-      client_secret: config.bot.appPassword,
-      scope: 'https://api.botframework.com/.default',
-      grant_type: 'client_credentials'
-    })
-  })
-  const body = await response.json() as { access_token?: string, expires_in?: number, error_description?: string }
-  if (response.ok !== true || body.access_token === undefined) {
-    throw new Error(`Bot token request failed: ${response.status} ${body.error_description ?? 'no detail'}`)
-  }
-  cache = { token: body.access_token, expiresAt: Date.now() + ((body.expires_in ?? 3600) - 60) * 1000 }
-  return cache.token
-}
+const botToken = async (): Promise<string> => await serviceToken('botConnector')
 
 /** Every channel in a Teams team the app is installed in. Fails if it has been removed. */
 export async function listTeamChannels (team: BotTeam): Promise<TeamChannel[]> {

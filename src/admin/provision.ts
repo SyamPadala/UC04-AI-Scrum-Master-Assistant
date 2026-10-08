@@ -1,5 +1,6 @@
 import { config } from '../config/env.js'
 import { graphRequest } from '../graph/client.js'
+import { serviceToken } from '../auth/tokens.js'
 
 /**
  * The tenant changes behind automatic onboarding (SPEC-008 10n): Teams team
@@ -50,24 +51,11 @@ export async function removeFromTeamsTeam (groupId: string, userId: string): Pro
 
 // ── app install, with the bot's own registration ──────────────────────────
 
-let botToken: { token: string, expiresAt: number } | undefined
-
 async function botGraph<T> (method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown): Promise<T> {
-  if (botToken === undefined || Date.now() >= botToken.expiresAt) {
-    const response = await fetch(`https://login.microsoftonline.com/${config.m365.tenantId}/oauth2/v2.0/token`, {
-      method: 'POST',
-      body: new URLSearchParams({
-        client_id: config.bot.appId, client_secret: config.bot.appPassword,
-        scope: 'https://graph.microsoft.com/.default', grant_type: 'client_credentials'
-      })
-    })
-    const data = await response.json() as { access_token?: string, expires_in?: number, error_description?: string }
-    if (data.access_token === undefined) throw new Error(`Bot app token failed: ${data.error_description ?? response.status}`)
-    botToken = { token: data.access_token, expiresAt: Date.now() + ((data.expires_in ?? 3600) - 60) * 1000 }
-  }
+  const token = await serviceToken('botGraph')
   const response = await fetch(`https://graph.microsoft.com/v1.0${path}`, {
     method,
-    headers: { authorization: `Bearer ${botToken.token}`, 'content-type': 'application/json' },
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(15_000)
   })

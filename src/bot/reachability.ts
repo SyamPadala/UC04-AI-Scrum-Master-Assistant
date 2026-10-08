@@ -1,5 +1,6 @@
 import type { ConversationReference } from '@microsoft/agents-activity'
 import { config } from '../config/env.js'
+import { serviceToken } from '../auth/tokens.js'
 
 /**
  * Whether a stored chat still exists in Teams, asked without sending anything
@@ -7,24 +8,7 @@ import { config } from '../config/env.js'
  * connection — the same credentials every send uses, so no new permission.
  */
 
-let cached: { token: string, expiresAt: number } | undefined
-
-async function botToken (): Promise<string> {
-  if (cached !== undefined && cached.expiresAt > Date.now() + 60_000) return cached.token
-  const body = new URLSearchParams({
-    grant_type: 'client_credentials',
-    client_id: config.bot.appId,
-    client_secret: config.bot.appPassword,
-    scope: 'https://api.botframework.com/.default'
-  })
-  const response = await fetch(`https://login.microsoftonline.com/${config.m365.tenantId}/oauth2/v2.0/token`, { method: 'POST', body })
-  const data = await response.json() as { access_token?: string, expires_in?: number, error_description?: string }
-  if (!response.ok || data.access_token === undefined) {
-    throw new Error(`bot token request failed: ${data.error_description ?? response.status}`)
-  }
-  cached = { token: data.access_token, expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000 }
-  return cached.token
-}
+const botToken = async (): Promise<string> => await serviceToken('botConnector')
 
 export type ChatState = 'ok' | 'none' | 'gone'
 
