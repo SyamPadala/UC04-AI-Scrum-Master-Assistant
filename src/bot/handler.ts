@@ -18,6 +18,10 @@ import { confirmPick, isForeignItemPress, parseForeignItemPayload, parseStoryCho
 import type { StoryPickPayload } from '../cards/storyPicker.js'
 import { storyChoiceCard } from '../cards/storyChoice.js'
 import { GraphUnavailableError, withGraphRetryNotice } from '../graph/client.js'
+import { handOff, type HandedOffUpdate } from './handoff.js'
+
+/** SPEC-004 item 41 (M4): the instant answer, replaced by the result. */
+const WORKING_NOTICE = 'Got it, working on it…'
 
 /** SPEC-002 item 5a: said once when a tracker call is being retried. */
 const SLOW_TRACKER_NOTICE = "The tracker is responding slowly, retrying… your update isn't lost yet."
@@ -195,7 +199,7 @@ export class ScrumAssistant extends ActivityHandler {
         return
       }
 
-      await this.recordUpdate(context, memberId, memberName, text)
+      await this.acceptUpdate(context, memberId, memberName, text)
       await next()
     })
 
@@ -223,9 +227,39 @@ export class ScrumAssistant extends ActivityHandler {
     })
   }
 
+  /**
+   * SPEC-004 item 41 (M4): answer at once, then hand the work over. If the
+   * hand-over is not possible, the update is processed here as before, and the
+   * result still replaces the "working on it" line.
+   */
+  private async acceptUpdate (context: TurnContext, memberId: string, memberName: string, text: string): Promise<void> {
+    const ack = await context.sendActivity(MessageFactory.text(WORKING_NOTICE))
+    const ackId = ack?.id
+    if (ackId !== undefined && ackId !== '' &&
+      await handOff({ reference: context.activity.getConversationReference(), ackId, memberId, memberName, text })) return
+    await this.recordUpdate(context, memberId, memberName, text, ackId)
+  }
+
+  /** The handed-over update, now in a context of its own (M4). */
+  async processHandedOff (context: TurnContext, update: HandedOffUpdate): Promise<void> {
+    await this.recordUpdate(context, update.memberId, update.memberName, update.text, update.ackId)
+  }
+
   private async recordUpdate (
-    context: TurnContext, memberId: string, memberName: string, text: string
+    context: TurnContext, memberId: string, memberName: string, text: string, ackId?: string
   ): Promise<void> {
+    // M4: the first reply replaces "Got it, working on it…", so the member ends
+    // with one message; anything after it (cards, notices) follows below.
+    let pending = ackId
+    const say = async (reply: string): Promise<void> => {
+      const id = pending
+      pending = undefined
+      if (id !== undefined && id !== '') {
+        const replaced = await context.updateActivity(Activity.fromObject({ type: 'message', id, text: reply })).then(() => true, () => false)
+        if (replaced) return
+      }
+      await context.sendActivity(MessageFactory.text(reply))
+    }
     let team: TeamConfig | undefined
     try {
       team = await teamForMember(memberId)
@@ -233,9 +267,7 @@ export class ScrumAssistant extends ActivityHandler {
       // Overlapping rosters are a configuration error, and guessing which team
       // the person meant would file their update in the wrong tracker.
       console.error(JSON.stringify({ event: 'team.resolveFailed', memberId, error: String(error) }))
-      await context.sendActivity(MessageFactory.text(
-        'I could not work out which team you are on. Ask your Scrum Master to check the roster.'
-      ))
+      await say('I could not work out which team you are on. Ask your Scrum Master to check the roster.')
       return
     }
 
@@ -243,17 +275,17 @@ export class ScrumAssistant extends ActivityHandler {
       // SPEC-008 10k: a Scrum Master runs the stand-up; they don't report in it.
       const run = await teamsRunBy(memberId).catch(() => [])
       if (run.length > 0) {
-        await context.sendActivity(MessageFactory.text(
+        await say(
           `You're the Scrum Master of ${run.map((t) => t.name).join(', ')}. Scrum Masters don't send stand-up updates, so I haven't recorded that. ` +
           'Type **help** to see what you can do here.'
-        ))
+        )
         return
       }
       console.log(JSON.stringify({ event: 'update.notOnRoster', memberId }))
-      await context.sendActivity(MessageFactory.text(
+      await say(
         'You are not on a team roster I know about, so I have not recorded that. ' +
         'Ask your Scrum Master to add you.'
-      ))
+      )
       return
     }
 
@@ -268,7 +300,7 @@ export class ScrumAssistant extends ActivityHandler {
 
       // SPEC-004 items 12–20: one reply saying what was written, item by item,
       // and why anything else was not.
-      await context.sendActivity(MessageFactory.text(intakeReply(result, memberName)))
+      await say(intakeReply(result, memberName))
       // Item 38: one card per item that is not clearly her own story.
       for (const item of result.choices) {
         const card = MessageFactory.attachment(CardFactory.adaptiveCard(storyChoiceCard(item, team.teamId, today, memberId)))
@@ -282,10 +314,10 @@ export class ScrumAssistant extends ActivityHandler {
         console.log(JSON.stringify({
           event: 'update.standupClosed', teamId: team.teamId, memberId, localDate: today
         }))
-        await context.sendActivity(MessageFactory.text(CLOSED_NOTICE))
+        await say(CLOSED_NOTICE)
         return
       }
-      await this.reportFailure(context, memberId, error)
+      await this.reportFailure(context, memberId, error, say)
     }
   }
 
@@ -392,32 +424,35 @@ export class ScrumAssistant extends ActivityHandler {
    * and the member is asked to resend (SPEC-004 item 9). Writing a guess here
    * would put unverified content in the tracker and make the failure invisible.
    */
-  private async reportFailure (context: TurnContext, memberId: string, error: unknown): Promise<void> {
+  private async reportFailure (
+    context: TurnContext, memberId: string, error: unknown,
+    say: (reply: string) => Promise<void> = async (reply) => { await context.sendActivity(MessageFactory.text(reply)) }
+  ): Promise<void> {
     const detail = error instanceof Error ? error.message : String(error)
     console.error(JSON.stringify({ event: 'update.failed', memberId, error: detail }))
 
     if (error instanceof LlmOfflineError) {
-      await context.sendActivity(MessageFactory.text(
+      await say(
         'I cannot read updates at the moment — the assistant is running with its ' +
         'language model switched off. Your Scrum Master has been notified in the logs.'
-      ))
+      )
       return
     }
     if (error instanceof GraphUnavailableError) {
-      await context.sendActivity(MessageFactory.text(
+      await say(
         "I couldn't reach the tracker, so your update wasn't recorded. Please send it again in a few minutes."
-      ))
+      )
       return
     }
     if (error instanceof LlmBudgetError) {
-      await context.sendActivity(MessageFactory.text(
+      await say(
         'I have reached my daily limit for reading updates, so I have not recorded that. ' +
         'Please tell your Scrum Master.'
-      ))
+      )
       return
     }
-    await context.sendActivity(MessageFactory.text(
+    await say(
       'I could not process that update, so nothing was recorded. Please send it again in a moment.'
-    ))
+    )
   }
 }

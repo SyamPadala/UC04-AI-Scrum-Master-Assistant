@@ -6,6 +6,7 @@ import { agent, authConfig } from './bot/adapter.js'
 import { firestoreReachable } from './store/firestore.js'
 import { runTick } from './jobs/tick.js'
 import { adminRouter } from './admin/routes.js'
+import { handoffRouter } from './bot/handoffRoute.js'
 import { installLogCorrelation, newCorrelationId, withCorrelation } from './util/correlation.js'
 
 installLogCorrelation()
@@ -54,6 +55,9 @@ function sameSecret (given: string, expected: string): boolean {
   const b = Buffer.from(expected)
   return a.length === b.length && timingSafeEqual(a, b)
 }
+
+/** SPEC-004 item 41 (M4): updates handed over by a Teams turn, processed in a request of their own. */
+app.use(handoffRouter())
 
 /** The Scrum Master's admin page and its API (SPEC-008). */
 app.use('/admin', (_request, _response, next) => { withCorrelation(newCorrelationId('admin'), next) }, adminRouter())

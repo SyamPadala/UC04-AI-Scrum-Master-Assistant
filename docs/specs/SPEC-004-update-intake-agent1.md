@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026; item 39 approved 4 Oct 2026; item 40 approved 5 Oct 2026 |
+| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026; item 39 approved 4 Oct 2026; item 40 approved 5 Oct 2026; item 41 approved 8 Oct 2026 |
 | **Delivers** | FR-02, FR-03, NFR Latency |
 | **Assumptions** | A8 (story resolution), A11 (messages combined per member per day) |
 | **Depends on** | SPEC-001, SPEC-002 |
@@ -422,6 +422,19 @@ keep item 19 — issue #5.)*
       alerted at once); a blocker that fits a story → items 34a/38.
     - *Replaces item 19 and item 38's "a blocker that fits no story at all is
       alerted at once" for members with an open story.*
+
+### Amendment 8 Oct 2026 — answer first (approved by the user, maturity plan M4)
+
+41. **The member gets an answer at once.** Teams expects the HTTP answer in
+    about 15 s; reading an update takes 20–25 s, and a late answer can make
+    Teams deliver the message twice. So the assistant replies immediately
+    *"Got it, working on it…"*, hands the update to itself as a new request
+    (kept open until done — Cloud Run gives CPU only to open requests), and
+    **replaces that same message** with the result. The member ends with one
+    message; story cards follow below it as before. If the hand-over is not
+    possible, the update is processed in the turn as before. If processing
+    fails, the line is replaced with the usual failure reply. The member's
+    words travel only inside the service and are never stored.
 
 ## Interface
 
