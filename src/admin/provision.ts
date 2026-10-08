@@ -22,6 +22,15 @@ async function membershipId (groupId: string, userId: string): Promise<string | 
   return found.value.find((m) => m.userId === userId)?.id ?? found.value[0]?.id
 }
 
+/**
+ * M7: TeamMember.ReadWrite.All covers every Teams team in the tenant, and
+ * Microsoft offers no narrower version. So the code holds the line: it changes
+ * membership only in a Teams team that is linked to a scrum team.
+ */
+export function assertLinkedTeamsTeam (groupId: string, linkedGroupIds: string[]): void {
+  if (!linkedGroupIds.includes(groupId)) throw new Error(`refused: Teams team ${groupId} is not linked to any scrum team`)
+}
+
 export async function addToTeamsTeam (groupId: string, userId: string): Promise<Outcome> {
   if (await membershipId(groupId, userId) !== undefined) return 'already'
   await graphRequest('POST', `/teams/${encodeURIComponent(groupId)}/members`, {

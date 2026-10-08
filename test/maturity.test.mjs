@@ -58,3 +58,10 @@ test('M9: no answer at all (timeout, dropped connection) counts as temporary', (
   assert.equal(retryableSend(Object.assign(new Error('x'), { name: 'TimeoutError' })), true)
   assert.equal(retryableSend(new Error('something else')), false)
 })
+
+// ── M7: membership changes only in a linked Teams team ──────────────────
+const { assertLinkedTeamsTeam } = await import('../dist/admin/provision.js')
+test('M7: a Teams team not linked to a scrum team is refused', () => {
+  assert.doesNotThrow(() => assertLinkedTeamsTeam('g-alpha', ['g-alpha', 'g-beta']))
+  assert.throws(() => assertLinkedTeamsTeam('g-company-wide', ['g-alpha']), /not linked to any scrum team/)
+})

@@ -12,7 +12,7 @@ import { channelReference, listTeamChannels } from '../bot/channels.js'
 import { chatState } from '../bot/reachability.js'
 import { trackerFor } from '../trackers/factory.js'
 import { assessReadiness, type ReadinessFacts, type ReadinessRow } from './readiness.js'
-import { addToTeamsTeam, installApp, reason, removeFromTeamsTeam, uninstallApp } from './provision.js'
+import { addToTeamsTeam, assertLinkedTeamsTeam, installApp, reason, removeFromTeamsTeam, uninstallApp } from './provision.js'
 import { cannotRun } from './guards.js'
 import { assessOnboarding, type OnboardingFacts, type OnboardingStep, type Unknown } from './onboarding.js'
 import {
@@ -814,6 +814,7 @@ export async function provisionMember (teamId: string, memberId: string, actor: 
     problems.push(`Teams team: ${teamsTeam.error}`)
   } else {
     try {
+      assertLinkedTeamsTeam(teamsTeam.id, (await allTeams()).map(resolvedGroupId))
       if (await addToTeamsTeam(teamsTeam.id, memberId) === 'added') done.push(`added to ${teamsTeam.name}`)
     } catch (error) {
       problems.push(`Teams team: ${reason(error)}`)
@@ -889,6 +890,7 @@ async function offboard (team: TeamConfig, member: Member): Promise<Leaver['item
       : `Could not check (${(teamsTeam as Unknown).error}). Remove them from the team's Teams team by hand.` })
   } else {
     try {
+      assertLinkedTeamsTeam(group.id, (await allTeams()).map(resolvedGroupId))
       const outcome = await removeFromTeamsTeam(group.id, member.memberId)
       teamsRemoved = true
       items.push({ label: 'Teams team', state: 'auto', detail: outcome === 'removed' ? `Removed from ${group.name}` : `Was not in ${group.name}` })
