@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto'
 import express from 'express'
 import { createAgentRequestHandler } from '@microsoft/agents-hosting-express'
 import { config } from './config/env.js'
@@ -28,7 +29,7 @@ app.post('/api/messages', createAgentRequestHandler(agent, authConfig) as never)
  */
 app.post('/tick', (request, response) => {
   void (async () => {
-    if (request.get('x-tick-secret') !== config.tick.sharedSecret) {
+    if (!sameSecret(request.get('x-tick-secret') ?? '', config.tick.sharedSecret)) {
       response.status(401).json({ error: 'bad or missing x-tick-secret' })
       return
     }
@@ -41,6 +42,13 @@ app.post('/tick', (request, response) => {
     }
   })()
 })
+
+/** M18b: compared in constant time, so the response time says nothing about the secret. */
+function sameSecret (given: string, expected: string): boolean {
+  const a = Buffer.from(given)
+  const b = Buffer.from(expected)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
 
 /** The Scrum Master's admin page and its API (SPEC-008). */
 app.use('/admin', adminRouter())

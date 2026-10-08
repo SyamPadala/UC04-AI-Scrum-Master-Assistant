@@ -51,8 +51,10 @@ function handle (work: (request: Request, response: Response, actor: Actor) => P
           response.status(error.status).json({ error: error.message })
           return
         }
-        console.error(JSON.stringify({ event: 'admin.error', path: request.path, error: String(error) }))
-        response.status(500).json({ error: error instanceof Error ? error.message : 'Something went wrong.' })
+        // M18a: the details go to the log, not the browser; the reference ties the two.
+        const ref = randomBytes(4).toString('hex')
+        console.error(JSON.stringify({ event: 'admin.error', ref, path: request.path, error: String(error) }))
+        response.status(500).json({ error: `Something went wrong and nothing was changed. Reference ${ref} — it has been logged.` })
       })
   }
 }
