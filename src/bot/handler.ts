@@ -7,10 +7,7 @@ import { pmFor } from '../pm/factory.js'
 import { TrackerNotSetError } from '../trackers/unset.js'
 import { LlmBudgetError, LlmOfflineError } from '../llm/types.js'
 import { localDate } from '../config/time.js'
-import {
-  saveBotTeam, saveChannelRef, saveConversationRef, saveScrumMasterRef, teamForChannel, teamForMember, teamsRunBy
-} from '../store/index.js'
-import { channelReference, teamOfActivity } from './channels.js'
+import { teamForMember, teamsRunBy } from '../store/index.js'
 import { trackerFor } from '../trackers/factory.js'
 import { processUpdate, StandupClosedError } from '../jobs/updateIntake.js'
 import { handleAdminCommand, parseAdminCommand } from './admin.js'
@@ -19,15 +16,17 @@ import { isForeignItemPress, parseStoryChoice, recordChoice } from '../jobs/fore
 import { storyChoiceCard } from '../cards/storyChoice.js'
 import { GraphUnavailableError, withGraphRetryNotice } from '../graph/client.js'
 import { handOff, type HandedOffUpdate } from './handoff.js'
+import { rememberChannel, rememberSender } from './remember.js'
 
 /** SPEC-004 item 41 (M4): the instant answer, replaced by the result. */
-const WORKING_NOTICE = 'Got it, working on it…'
+
+export const WORKING_NOTICE = 'Got it, working on it…'
 
 /** SPEC-002 item 5a: said once when a tracker call is being retried. */
-const SLOW_TRACKER_NOTICE = "The tracker is responding slowly, retrying… your update isn't lost yet."
+export const SLOW_TRACKER_NOTICE = "The tracker is responding slowly, retrying… your update isn't lost yet."
 
 /** Runs work for one member's message, telling them once if the tracker has to be retried. */
-async function telling<T> (context: TurnContext, work: () => Promise<T>): Promise<T> {
+export async function telling<T> (context: TurnContext, work: () => Promise<T>): Promise<T> {
   return await withGraphRetryNotice(async () => { await context.sendActivity(MessageFactory.text(SLOW_TRACKER_NOTICE)) }, work)
 }
 
@@ -38,88 +37,9 @@ async function telling<T> (context: TurnContext, work: () => Promise<T>): Promis
  * rather than a refusal. Kept here as one string: the wording is the Scrum
  * Master's to change, and there is only one place to change it.
  */
-const CLOSED_NOTICE =
+export const CLOSED_NOTICE =
   "Today's stand-up is closed — the daily summary has already gone out, so I have not recorded that. " +
   'Please speak to your Scrum Master about anything you still need to report.'
-
-/**
- * Stores what the app needs to message this person later.
- *
- * The reference is captured on every activity, not only on install: a member
- * who was added to the team before the app existed still becomes reachable the
- * first time they say anything.
- */
-async function rememberSender (context: TurnContext): Promise<void> {
-  const from = context.activity.from
-  if (from?.id === undefined) return
-  const memberId = from.aadObjectId ?? from.id
-  const reference = context.activity.getConversationReference()
-
-  // A Scrum Master is not on any roster (SPEC-008 10f). Their chat is kept once
-  // per person, so alerts from every team they run can reach them (10g).
-  try {
-    if ((await teamsRunBy(memberId)).length > 0) {
-      await saveScrumMasterRef(memberId, from.name, JSON.stringify(reference))
-    }
-  } catch (error) {
-    console.error(JSON.stringify({ event: 'scrumMaster.saveRefFailed', memberId, error: String(error) }))
-  }
-
-  // Stored against the sender's own team (FR-10). Someone on no roster is not
-  // added to one: joining a team is the Scrum Master's decision, not a side
-  // effect of installing the app. Overlapping rosters are reported by
-  // recordUpdate, so they are only logged here.
-  let team: TeamConfig | undefined
-  try {
-    team = await teamForMember(memberId)
-  } catch (error) {
-    console.error(JSON.stringify({ event: 'team.resolveFailed', memberId, error: String(error) }))
-    return
-  }
-  if (team === undefined) {
-    console.log(JSON.stringify({ event: 'sender.notOnRoster', memberId }))
-    return
-  }
-
-  await saveConversationRef(team.teamId, memberId, from.name, JSON.stringify(reference))
-}
-
-/**
- * Captures the channel this activity came from, if it came from one.
- *
- * The end-of-day summary is posted by the bot itself, which needs a stored
- * channel reference — Graph cannot do it, because ChannelMessage.Send works
- * only with a signed-in user behind it. Without this the summary has nowhere
- * to go but email.
- */
-async function rememberChannel (context: TurnContext): Promise<void> {
-  const conversation = context.activity.conversation
-  if (conversation?.conversationType !== 'channel') return
-
-  // Any activity in a Teams team — the install itself included — makes that
-  // team's channels choosable on the admin page (SPEC-008 behaviour 6).
-  const teamsTeam = teamOfActivity(context.activity.channelData)
-  if (teamsTeam !== undefined) {
-    await saveBotTeam({
-      teamThreadId: teamsTeam.id,
-      name: teamsTeam.name ?? 'Unnamed team',
-      reference: JSON.stringify(context.activity.getConversationReference()),
-      seenAt: new Date()
-    })
-    console.log(JSON.stringify({ event: 'channel.teamSeen', teamThreadId: teamsTeam.id }))
-  }
-
-  // A reply in a thread carries ';messageid=...' after the channel id.
-  const channelId = conversation.id.split(';')[0]
-  const team = await teamForChannel(channelId)
-  if (team === undefined) {
-    // Not any team's stakeholder channel. Storing it would redirect that
-    // team's summary into a channel its stakeholders may not be in.
-    console.log(JSON.stringify({ event: 'channel.notConfigured', channelId }))
-    return
-  }
-  await saveChannelRef(team.teamId, channelReference(context.activity.getConversationReference(), channelId))
-}
 
 /**
  * A member's message, understood and filed (SPEC-004, FR-02/03/04/06).

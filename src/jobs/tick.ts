@@ -105,13 +105,35 @@ async function runClaimedJob (
  * read. A manual participation count is reported but not saved, because the
  * saved record and the flags are what the scheduled count builds on.
  */
-async function executeJob (
-  team: TeamConfig, jobType: JobType, today: string,
-  llm: LlmClient, pm: PmClient, trigger: Trigger
-): Promise<{ outcome: RunOutcome, detail: string }> {
-  const persist = trigger === 'scheduled'
+interface JobContext { team: TeamConfig, today: string, llm: LlmClient, pm: PmClient, persist: boolean }
+type JobRunner = (ctx: JobContext) => Promise<{ outcome: RunOutcome, detail: string }>
 
-  if (jobType === 'participation') {
+/** A message job's outcome: some sent and some failed, or none reachable, is partial. */
+const messageOutcome = (result: { sent: number, failed: number, skipped: number, detail: string }): { outcome: RunOutcome, detail: string } => ({
+  outcome: result.failed > 0 ? 'partial' : result.sent === 0 && result.skipped > 0 ? 'partial' : 'success',
+  detail: result.detail
+})
+
+/**
+ * One runner per job type (design review, 8 Oct 2026: a new job is one entry
+ * here, not another branch in an if-chain).
+ */
+const JOBS_BY_TYPE: Record<JobType, JobRunner> = {
+  reminder: async ({ team }) => messageOutcome(await sendReminders(team)),
+  followup: async ({ team, today }) => messageOutcome(await sendFollowUps(team, trackerFor(team), today)),
+  summary: async ({ team, today, llm, pm }) => {
+    const result = await runSummary(team, today, { llm, pm, tracker: trackerFor(team) })
+    // Reaching one of the two stakeholder routes is a real outcome, not a
+    // failure — SPEC-006 item 8 keeps the half that worked.
+    const outcome: RunOutcome =
+      result.distribution.channel === 'sent' && result.distribution.email === 'sent'
+        ? 'success'
+        : result.distribution.channel === 'sent' || result.distribution.email === 'sent'
+          ? 'partial'
+          : 'failed'
+    return { outcome, detail: result.distribution.detail }
+  },
+  participation: async ({ team, today, persist }) => {
     const record = await recordParticipation(team, trackerFor(team), today, { persist })
     const flags = await flagHabitualNonResponders(team, today, { todayRecord: record, persist })
     const percent = Math.round(record.rate * 100)
@@ -123,28 +145,13 @@ async function executeJob (
         (flags.length > 0 ? `; ${flagWord} ${flags.map((f) => f.memberName).join(', ')}` : '')
     }
   }
+}
 
-  if (jobType === 'summary') {
-    const result = await runSummary(team, today, { llm, pm, tracker: trackerFor(team) })
-    // Reaching one of the two stakeholder routes is a real outcome, not a
-    // failure — SPEC-006 item 8 keeps the half that worked.
-    const outcome: RunOutcome =
-      result.distribution.channel === 'sent' && result.distribution.email === 'sent'
-        ? 'success'
-        : result.distribution.channel === 'sent' || result.distribution.email === 'sent'
-          ? 'partial'
-          : 'failed'
-    return { outcome, detail: result.distribution.detail }
-  }
-
-  const result = jobType === 'reminder'
-    ? await sendReminders(team)
-    : await sendFollowUps(team, trackerFor(team), today)
-
-  const outcome: RunOutcome = result.failed > 0 ? 'partial'
-    : result.sent === 0 && result.skipped > 0 ? 'partial'
-      : 'success'
-  return { outcome, detail: result.detail }
+async function executeJob (
+  team: TeamConfig, jobType: JobType, today: string,
+  llm: LlmClient, pm: PmClient, trigger: Trigger
+): Promise<{ outcome: RunOutcome, detail: string }> {
+  return await JOBS_BY_TYPE[jobType]({ team, today, llm, pm, persist: trigger === 'scheduled' })
 }
 
 /**
