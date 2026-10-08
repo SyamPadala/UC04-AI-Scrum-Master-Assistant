@@ -10,6 +10,8 @@ import { scrumMasterOf } from '../store/firestore.js'
  * an admin included. Returns the reason it can't run, or undefined when it can.
  */
 export async function cannotRun (team: TeamConfig): Promise<string | undefined> {
+  // SPEC-008 10q (M11): a team runs only with its own tracker list chosen.
+  if (team.tracker.kind === 'unset') return "Choose this team's tracker list first (Schedule tab, Tracker)."
   const scrumMaster = await scrumMasterOf(team)
   if (scrumMaster === undefined) return 'This team has no Scrum Master.'
   const notReachable = `${scrumMaster.displayName} (Scrum Master) can't be messaged yet. They need to open Scrum Assistant in Teams once.`

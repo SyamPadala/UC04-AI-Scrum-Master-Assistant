@@ -4,7 +4,7 @@ import type { BotTeam, JobType, Leaver, Member, TeamConfig } from '../types.js'
 import { config } from '../config/env.js'
 import { localDate } from '../config/time.js'
 import { graphRequest } from '../graph/client.js'
-import { JiraClient } from '../pm/jira.js'
+import { jiraSite, pmFor } from '../pm/factory.js'
 import type { Story } from '../pm/types.js'
 import { runJobNow } from '../jobs/tick.js'
 import { DEFAULT_WORKING_DAYS } from '../jobs/schedule.js'
@@ -39,17 +39,8 @@ export interface Actor { oid: string, name: string }
 
 export const JOB_TYPES: JobType[] = ['reminder', 'followup', 'summary', 'participation']
 
-function jira (): JiraClient | undefined {
-  if (config.jira.baseUrl === '' || config.jira.apiToken === '') return undefined
-  return new JiraClient({
-    baseUrl: config.jira.baseUrl,
-    email: config.jira.email,
-    apiToken: config.jira.apiToken,
-    projectKey: config.jira.projectKey,
-    storyPointsField: config.jira.storyPointsField,
-    boardId: config.jira.boardId
-  })
-}
+/** Site-wide Jira work (users, invites); each team's project comes from pmFor (M10). */
+const jira = jiraSite
 
 export async function teamsFor (actor: Actor): Promise<Array<{ teamId: string, name: string }>> {
   return (await allTeams())
@@ -174,10 +165,12 @@ export async function teamView (team: TeamConfig, actor: Actor): Promise<unknown
     leaving: team.leaving ?? [],
     teamsTeam: team.teamsGroupId === undefined ? null : { id: team.teamsGroupId, name: team.teamsGroupName ?? team.teamsGroupId },
     tracker: team.tracker.kind,
+    jira: team.jira ?? null,
+    trackerListId: team.tracker.kind === 'sharepoint' ? team.tracker.listId : null,
     trackerDetail: team.tracker.kind === 'jira' ? `${config.jira.baseUrl}/browse/${team.tracker.standupIssueKey}` : null,
     trackerOptions: [
-      { kind: 'sharepoint', label: 'SharePoint list — Daily Status Tracker', available: config.sharepoint.siteId !== '' },
-      { kind: 'jira', label: 'Jira — a comment on each work item', available: config.jira.standupIssueKey !== '' }
+      { kind: 'sharepoint', label: "SharePoint list on the team's own site", available: true },
+      { kind: 'jira', label: 'Jira — a comment on each work item', available: config.jira.standupIssueKey !== '' && team.jira !== undefined }
     ],
     runs,
     changes: changes.map((c) => ({
@@ -351,9 +344,8 @@ export async function createTeam (actor: Actor, raw: Record<string, unknown>): P
     scrumMasterEmail: user.mail ?? user.userPrincipalName ?? rawEmail,
     habitualThreshold: 2,
     habitualWindowDays: 5,
-    tracker: config.sharepoint.siteId !== ''
-      ? { kind: 'sharepoint', siteId: config.sharepoint.siteId, listId: config.sharepoint.listId }
-      : { kind: 'jira', projectKey: config.jira.projectKey, standupIssueKey: config.jira.standupIssueKey },
+    // M11: never another team's list — the admin picks this team's own.
+    tracker: { kind: 'unset' },
     stakeholders: { emails: [] },
     ...(group === undefined ? {} : { teamsGroupId: group.id, teamsGroupName: group.name })
   }
@@ -363,8 +355,17 @@ export async function createTeam (actor: Actor, raw: Record<string, unknown>): P
     fields: [{ field: 'created', from: null, to: name }]
   })
   console.log(JSON.stringify({ event: 'admin.teamCreated', teamId: team.teamId, actor: actor.oid }))
+  // M10: optional at creation, checked the same way as on the Dev team tab.
+  let jiraNote = ''
+  if (String(raw.jiraProjectKey ?? '').trim() !== '') {
+    try {
+      jiraNote = await setJiraProject(team, { projectKey: raw.jiraProjectKey, boardId: raw.jiraBoardId }, actor)
+    } catch (error) {
+      jiraNote = `Jira project not set: ${error instanceof Error ? error.message : String(error)}`
+    }
+  }
   const installed = await installForScrumMaster(user.id, team.scrumMasterName ?? 'the Scrum Master')
-  return { teamId: team.teamId, message: `Created ${name}. It is Paused: add members and set the schedule, then switch it to Running. ${installed}` }
+  return { teamId: team.teamId, message: `Created ${name}. It is Paused: add members, choose its tracker list and set the schedule, then switch it to Running. ${installed} ${jiraNote}`.trim() }
 }
 
 /**
@@ -473,19 +474,23 @@ async function findChannel (channelId: string): Promise<{ holder: BotTeam, chann
  * The destination is checked before it is saved, so a wrong setting shows up
  * here rather than as a failed update at stand-up time.
  */
-export async function setTracker (team: TeamConfig, rawKind: unknown, actor: Actor): Promise<string> {
+export async function setTracker (team: TeamConfig, raw: { kind?: unknown, listId?: unknown }, actor: Actor): Promise<string> {
   let tracker: TeamConfig['tracker']
-  if (rawKind === 'sharepoint') {
-    tracker = { kind: 'sharepoint', siteId: config.sharepoint.siteId, listId: config.sharepoint.listId }
-    try {
-      await graphRequest('GET', `/sites/${tracker.siteId}/lists/${tracker.listId}?$select=id`)
-    } catch (error) {
-      throw new AdminError(502, `The SharePoint list cannot be reached: ${error instanceof Error ? error.message.slice(0, 160) : String(error)}`)
-    }
-  } else if (rawKind === 'jira') {
+  if (raw.kind === 'sharepoint') {
+    // M11: only a list on this team's own SharePoint site, used by no other team.
+    const listId = String(raw.listId ?? (team.tracker.kind === 'sharepoint' ? team.tracker.listId : '')).trim()
+    if (listId === '') throw new AdminError(400, "Choose one of the lists on the team's own SharePoint site.")
+    const option = (await trackerLists(team)).lists.find((l) => l.listId === listId)
+    if (option === undefined) throw new AdminError(400, "That list is not on this team's own SharePoint site.")
+    if (option.missing.length > 0) throw new AdminError(400, `That list is missing columns: ${option.missing.join(', ')}.`)
+    const holder = (await allTeams()).find((t) => t.teamId !== team.teamId && t.tracker.kind === 'sharepoint' && t.tracker.listId === listId)
+    if (holder !== undefined) throw new AdminError(409, `That list is already used by ${holder.name}.`)
+    tracker = { kind: 'sharepoint', siteId: option.siteId, listId }
+  } else if (raw.kind === 'jira') {
     const key = config.jira.standupIssueKey
+    if (team.jira === undefined) throw new AdminError(400, 'Set a Jira project for this team first.')
     if (config.jira.baseUrl === '' || key === '') throw new AdminError(503, 'Jira comments are not configured on this server.')
-    tracker = { kind: 'jira', projectKey: config.jira.projectKey, standupIssueKey: key }
+    tracker = { kind: 'jira', projectKey: team.jira.projectKey, standupIssueKey: key }
     const client = jira()
     if (client === undefined || await client.lookupStory(key) === undefined) {
       throw new AdminError(502, `The Jira stand-up issue ${key} cannot be found.`)
@@ -501,6 +506,75 @@ export async function setTracker (team: TeamConfig, rawKind: unknown, actor: Act
   return tracker.kind === 'jira'
     ? `Updates will now be added as comments on the Jira work items; those naming no work item go to ${tracker.standupIssueKey}.`
     : 'Updates will now be written to the SharePoint list.'
+}
+
+/** The tracker's columns (SPEC-002); a list without them cannot hold the rows. */
+const TRACKER_COLUMNS = ['Date', 'WIN', 'Description', 'AssignedTo', 'Comment', 'Status', 'AnyBlocker', 'UpdatedBy']
+
+/**
+ * M11: the lists on this team's own SharePoint site — the site of its Teams
+ * team, which only its members can open — with any missing tracker columns.
+ */
+export async function trackerLists (team: TeamConfig): Promise<{ site: string | null, lists: Array<{ siteId: string, listId: string, name: string, missing: string[] }>, problem?: string }> {
+  const teamsTeam = await teamsTeamOf(team)
+  if (teamsTeam === undefined) return { site: null, lists: [], problem: 'Set the Teams team first: the tracker lives on its SharePoint site.' }
+  if ('error' in teamsTeam) return { site: null, lists: [], problem: teamsTeam.error }
+  try {
+    const site = await graphRequest<{ id: string, displayName?: string }>('GET', `/groups/${encodeURIComponent(teamsTeam.id)}/sites/root?$select=id,displayName`)
+    const found = await graphRequest<{ value: Array<{ id: string, displayName?: string, list?: { template?: string, hidden?: boolean } }> }>(
+      'GET', `/sites/${site.id}/lists?$select=id,displayName,list`
+    )
+    const lists = found.value.filter((l) => l.list?.template === 'genericList' && l.list?.hidden !== true)
+    const withColumns = await Promise.all(lists.map(async (l) => {
+      const columns = await graphRequest<{ value: Array<{ name: string }> }>('GET', `/sites/${site.id}/lists/${l.id}/columns?$select=name`)
+      const names = new Set(columns.value.map((c) => c.name))
+      return { siteId: site.id, listId: l.id, name: l.displayName ?? l.id, missing: TRACKER_COLUMNS.filter((c) => !names.has(c)) }
+    }))
+    return { site: site.displayName ?? teamsTeam.name, lists: withColumns }
+  } catch (error) {
+    return { site: null, lists: [], problem: `The team's SharePoint site could not be read: ${short(error)}` }
+  }
+}
+
+/** M10: every Jira project on the site with its Scrum boards, for the admin's dropdown. */
+export async function jiraProjects (actor: Actor): Promise<{ projects: Array<{ key: string, name: string, boards: Array<{ id: string, name: string }> }> }> {
+  if (!mayAdminister(actor.oid, config.admin.userIds)) throw new AdminError(403, 'Only an admin can choose Jira projects.')
+  const client = jira()
+  if (client === undefined) return { projects: [] }
+  try {
+    return { projects: await client.listProjects() }
+  } catch (error) {
+    throw new AdminError(502, `Jira projects could not be listed: ${short(error)}`)
+  }
+}
+
+/**
+ * M10 (SPEC-008 10p): admin only. One project per team; '' takes the team off
+ * Jira, after which every update is a general update.
+ */
+export async function setJiraProject (team: TeamConfig, raw: { projectKey?: unknown, boardId?: unknown }, actor: Actor): Promise<string> {
+  if (!mayAdminister(actor.oid, config.admin.userIds)) throw new AdminError(403, 'Only an admin can set the Jira project.')
+  const key = String(raw.projectKey ?? '').trim()
+  if (key === '') {
+    if (team.jira === undefined) return 'Nothing changed.'
+    const { jira: _previous, ...rest } = team
+    await saveTeam(rest)
+    await recordConfigChange({ teamId: team.teamId, changedBy: actor.name, changedAt: new Date(), fields: [{ field: 'jira', from: team.jira, to: null }] })
+    return `${team.name} no longer uses Jira. Updates will be saved as general updates.`
+  }
+  const project = (await jiraProjects(actor)).projects.find((p) => p.key === key)
+  if (project === undefined) throw new AdminError(400, `${key} is not a project on this Jira site.`)
+  const holder = (await allTeams()).find((t) => t.teamId !== team.teamId && t.jira?.projectKey === key)
+  if (holder !== undefined) throw new AdminError(409, `${key} is already used by ${holder.name}.`)
+  const boardId = String(raw.boardId ?? '').trim()
+  const board = boardId === '' ? (project.boards.length === 1 ? project.boards[0] : undefined) : project.boards.find((b) => b.id === boardId)
+  if (board === undefined) {
+    throw new AdminError(400, project.boards.length === 0
+      ? `${key} has no Scrum board. Create one in Jira first.`
+      : `${key} has several boards; choose one.`)
+  }
+  const changed = await applyChange(team, { jira: { projectKey: key, boardId: board.id, boardName: board.name } }, actor.name)
+  return changed.length === 0 ? 'Nothing changed.' : `${team.name} now uses Jira project ${key} (${board.name}).`
 }
 
 /**
@@ -561,10 +635,11 @@ export async function readiness (team: TeamConfig): Promise<{ checkedAt: string,
   const today = localDate(new Date(), team.timezone)
   const client = jira()
 
-  const sprintFacts = async (): Promise<Pick<ReadinessFacts, 'sprint' | 'jiraError'>> => {
+  const sprintFacts = async (): Promise<Pick<ReadinessFacts, 'sprint' | 'jiraError' | 'noJiraProject'>> => {
+    if (team.jira === undefined) return { sprint: undefined, noJiraProject: true }
     if (client === undefined) return { sprint: undefined, jiraError: 'Jira is not configured on this server.' }
     try {
-      const data = await client.getSprintData()
+      const data = await pmFor(team).getSprintData()
       return { sprint: data === undefined ? undefined : { name: data.sprintName, items: data.items } }
     } catch (error) {
       return { sprint: undefined, jiraError: error instanceof Error ? error.message.slice(0, 160) : String(error) }
@@ -739,9 +814,10 @@ export async function onboarding (team: TeamConfig): Promise<{
   }
 
   const sprintStories = async (): Promise<Story[] | 'noSprint' | Unknown> => {
+    if (team.jira === undefined) return 'noSprint'
     if (client === undefined) return { error: 'Jira is not configured on this server.' }
     try {
-      const data = await client.getSprintData()
+      const data = await pmFor(team).getSprintData()
       return data === undefined ? 'noSprint' : data.items
     } catch (error) {
       return { error: short(error) }
@@ -767,7 +843,8 @@ export async function onboarding (team: TeamConfig): Promise<{
       story: Array.isArray(stories)
         ? stories.some((s) => s.assigneeAccountId === m.jiraAccountId && s.statusCategory !== 'Done')
         : stories,
-      tracker: onSite ? { via: 'group' } : { via: 'hand', tick: m.onboarding?.trackerAccess ?? null }
+      tracker: onSite ? { via: 'group' } : { via: 'hand', tick: m.onboarding?.trackerAccess ?? null },
+      noJiraProject: team.jira === undefined
     }
     result[m.memberId] = assessOnboarding(facts)
   })
@@ -827,9 +904,9 @@ export async function provisionMember (teamId: string, memberId: string, actor: 
     problems.push(`App: ${reason(error)}`)
   }
 
-  // Only when the team uses Jira (10n); a member already linked is left alone.
+  // Only when the team uses Jira (10n, M10); a member already linked is left alone.
   let jiraAccountId = member.jiraAccountId
-  const client = jira()
+  const client = team.jira === undefined ? undefined : jira()
   if (client !== undefined && (jiraAccountId ?? '') === '') {
     const email = member.email ?? (await lookUpUser(memberId).catch(() => undefined))?.mail ?? undefined
     if (email === undefined) {

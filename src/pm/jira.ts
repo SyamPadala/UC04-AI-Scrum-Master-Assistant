@@ -79,6 +79,8 @@ export class JiraClient implements PmClient {
 
   constructor (private readonly options: JiraOptions) {}
 
+  get projectKey (): string { return this.options.projectKey }
+
   private get authHeader (): string {
     // Jira Cloud uses HTTP Basic with the API token as the password.
     const encoded = Buffer.from(`${this.options.email}:${this.options.apiToken}`).toString('base64')
@@ -315,6 +317,21 @@ export class JiraClient implements PmClient {
     const body = await response.json() as { accountId?: string }
     if (body.accountId === undefined) throw new Error('Jira invite: no account id in the answer')
     return body.accountId
+  }
+
+  /** M10: every project on the site with its sprint boards. */
+  async listProjects (): Promise<Array<{ key: string, name: string, boards: Array<{ id: string, name: string }> }>> {
+    const projects = await this.get('/rest/api/3/project/search?maxResults=100',
+      z.looseObject({ values: z.array(z.looseObject({ key: z.string(), name: z.string() })) }), 'projects')
+    // Team-managed projects have "simple" boards, which carry sprints too; a
+    // Kanban board has no sprints, so it is the one kind left out.
+    const boards = await this.get('/rest/agile/1.0/board?maxResults=100',
+      z.looseObject({ values: z.array(z.looseObject({ id: z.number(), name: z.string(), type: z.string().nullish(), location: z.looseObject({ projectKey: z.string().nullish() }).nullish() })) }), 'boards')
+    return projects.values.map((p) => ({
+      key: p.key,
+      name: p.name,
+      boards: boards.values.filter((b) => b.location?.projectKey === p.key && b.type !== 'kanban').map((b) => ({ id: String(b.id), name: b.name }))
+    }))
   }
 
   /** M13: true when the account can use Jira (holds a product role). */

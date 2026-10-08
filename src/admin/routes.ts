@@ -7,7 +7,7 @@ import { adminPage } from './page.js'
 import {
   AdminError, addMember, addStakeholder, channelOptions, createTeam, linkJira, removeMember, removeStakeholder, reopenStandup, runNow,
   llmUsage, onboarding, readiness, setChannel, setScrumMaster, setTeamsTeam, setTracker, teamFor, teamsFor, teamsTeamOptions, teamView,
-  tickTrackerAccess, updateSchedule, provisionMember, finishLeaver, type Actor
+  tickTrackerAccess, updateSchedule, provisionMember, finishLeaver, trackerLists, jiraProjects, setJiraProject, type Actor
 } from './service.js'
 
 /**
@@ -143,7 +143,16 @@ export function adminRouter (): express.Router {
   }))
 
   router.put('/api/teams/:teamId/tracker', handle(async (request, _response, actor) =>
-    ({ message: await setTracker(await teamFor(actor, request.params.teamId), (request.body as { kind?: unknown }).kind, actor) })))
+    ({ message: await setTracker(await teamFor(actor, request.params.teamId), (request.body ?? {}) as { kind?: unknown, listId?: unknown }, actor) })))
+
+  // M11: lists on the team's own SharePoint site. M10: Jira projects and the team's project.
+  router.get('/api/teams/:teamId/tracker-lists', handle(async (request, _response, actor) =>
+    await trackerLists(await teamFor(actor, request.params.teamId))))
+
+  router.get('/api/jira-projects', handle(async (_request, _response, actor) => await jiraProjects(actor)))
+
+  router.put('/api/teams/:teamId/jira', handle(async (request, _response, actor) =>
+    ({ message: await setJiraProject(await teamFor(actor, request.params.teamId), (request.body ?? {}) as { projectKey?: unknown, boardId?: unknown }, actor) })))
 
   router.post('/api/teams/:teamId/members', handle(async (request, _response, actor) =>
     ({ message: await addMember(await teamFor(actor, request.params.teamId), (request.body as { email?: unknown }).email, actor) })))

@@ -181,8 +181,10 @@ export async function extractUpdate (
 
   const truncated = input.text.length > options.maxInputChars
   // Item 21: "scrum 25" and "SCRUM-25" are the same key; code says so, not the model.
-  const text = normaliseKeysInText(truncated ? input.text.slice(0, options.maxInputChars) : input.text, config.jira.projectKey)
-  const typed = new Set(keysInText(text, config.jira.projectKey))
+  // M10: the team's own project; older fakes without one fall back to the setting.
+  const projectKey = pm.projectKey ?? config.jira.projectKey
+  const text = normaliseKeysInText(truncated ? input.text.slice(0, options.maxInputChars) : input.text, projectKey)
+  const typed = new Set(keysInText(text, projectKey))
 
   // Fetched once and passed to the model in the prompt. A tool round-trip for
   // the same facts would resend the whole conversation, which costs far more

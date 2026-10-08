@@ -8,7 +8,7 @@ import { flagHabitualNonResponders, recordParticipation } from './participation.
 import { trackerFor } from '../trackers/factory.js'
 import { runSummary } from './summary.js'
 import { createLlm } from '../llm/index.js'
-import { JiraClient } from '../pm/jira.js'
+import { pmFor } from '../pm/factory.js'
 import { config } from '../config/env.js'
 import { LlmBudgetError, LlmOfflineError, type LlmClient } from '../llm/types.js'
 import type { PmClient } from '../pm/types.js'
@@ -31,16 +31,6 @@ const JOBS: JobType[] = ['reminder', 'followup', 'summary', 'participation']
  * job-level failure never fails the request — Cloud Scheduler would otherwise
  * retry the whole tick and re-run work that already succeeded.
  */
-function jiraClient (): PmClient {
-  return new JiraClient({
-    baseUrl: config.jira.baseUrl,
-    email: config.jira.email,
-    apiToken: config.jira.apiToken,
-    projectKey: config.jira.projectKey,
-    storyPointsField: config.jira.storyPointsField,
-    boardId: config.jira.boardId
-  })
-}
 
 export async function runTick (
   now: Date = new Date(),
@@ -52,7 +42,6 @@ export async function runTick (
   // Built once per tick rather than per team: both are stateless, and the
   // summary job is the only caller that needs them.
   const llm = deps.llm ?? createLlm()
-  const pm = deps.pm ?? jiraClient()
 
   for (const team of teams) {
     const today = localDate(now, team.timezone)
@@ -64,7 +53,7 @@ export async function runTick (
       if (!isDue(team, jobType, now)) continue
       if (!await claimRun(team.teamId, today, jobType)) continue
       // M16: one correlation id per job run.
-      entries.push(await withCorrelation(newCorrelationId(`job-${jobType}`), async () => await runClaimedJob(team, jobType, today, llm, pm)))
+      entries.push(await withCorrelation(newCorrelationId(`job-${jobType}`), async () => await runClaimedJob(team, jobType, today, llm, deps.pm ?? pmFor(team))))
     }
   }
 
@@ -173,7 +162,7 @@ export async function runJobNow (
   const today = localDate(now, team.timezone)
   const startedAt = new Date()
   try {
-    const { outcome, detail } = await executeJob(team, jobType, today, createLlm(), jiraClient(), 'manual')
+    const { outcome, detail } = await executeJob(team, jobType, today, createLlm(), pmFor(team), 'manual')
     await logManualRun(team.teamId, today, jobType, outcome, startedAt, detail)
     return { teamId: team.teamId, jobType, outcome, detail }
   } catch (error) {

@@ -22,6 +22,8 @@ export interface OnboardingFacts {
   linked: boolean
   /** An open story in the active sprint carries their Jira account. */
   story: boolean | 'noSprint' | Unknown
+  /** M10: the team has no Jira project, so the Jira steps are not needed. */
+  noJiraProject?: boolean
   /**
    * 'group': the SharePoint tracker is on the Teams team's own site, so group
    * membership is access. Otherwise it is ticked by hand: who and when, or null.
@@ -82,12 +84,15 @@ export function assessOnboarding (facts: OnboardingFacts): { steps: OnboardingSt
   steps.push({
     key: 'jira',
     label: 'Jira account linked',
-    ...(facts.linked
+    ...(facts.noJiraProject === true
+      ? { state: 'done', detail: 'Not needed: this team has no Jira project' }
+      : facts.linked
       ? { state: 'done', detail: 'Linked' }
       : { state: 'todo', detail: 'Invite them to Jira, then link them here.' })
   })
 
   const story = (): { state: StepState, detail: string } => {
+    if (facts.noJiraProject === true) return { state: 'done', detail: 'Not needed: this team has no Jira project' }
     if (isUnknown(facts.story)) return unknown(facts.story)
     if (!facts.linked) return { state: 'todo', detail: 'Link their Jira account first.' }
     if (facts.story === 'noSprint') return { state: 'todo', detail: 'No active sprint in Jira. Until one starts, updates are saved as general updates.' }

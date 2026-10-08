@@ -3,6 +3,7 @@ import type { Tracker } from './types.js'
 import { SharePointTracker } from './sharepoint.js'
 import { MockTracker } from './mock.js'
 import { JiraCommentTracker } from './jira.js'
+import { UnsetTracker } from './unset.js'
 import { config } from '../config/env.js'
 
 /**
@@ -29,5 +30,7 @@ export function trackerFor (team: TeamConfig): Tracker {
         projectKey: team.tracker.projectKey,
         standupIssueKey: team.tracker.standupIssueKey
       })
+    case 'unset':
+      return new UnsetTracker()
   }
 }

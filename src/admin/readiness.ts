@@ -11,6 +11,8 @@ import type { ChatState } from '../bot/reachability.js'
 export interface ReadinessFacts {
   /** undefined when the Jira board has no active sprint. */
   sprint: { name: string, items: Story[] } | undefined
+  /** M10: the team has no Jira project; Jira checks are not needed. */
+  noJiraProject?: boolean
   /** Set when Jira could not be read at all; every Jira check then shows it. */
   jiraError?: string
   pointsFieldConfigured: boolean
@@ -32,7 +34,9 @@ export function assessReadiness (facts: ReadinessFacts): ReadinessRow[] {
   const sprint = facts.sprint
   const items = sprint?.items ?? []
 
-  if (facts.jiraError !== undefined) {
+  if (facts.noJiraProject === true) {
+    rows.push({ check: 'Jira project', ok: true, detail: 'Not used by this team: every update is saved as a general update.' })
+  } else if (facts.jiraError !== undefined) {
     rows.push({ check: 'Active sprint', ok: false, detail: `Jira could not be read: ${facts.jiraError}` })
   } else if (sprint === undefined) {
     rows.push({ check: 'Active sprint', ok: false, detail: 'No active sprint. Start the sprint in Jira; until then no update can be matched to a work item.' })
@@ -56,8 +60,8 @@ export function assessReadiness (facts: ReadinessFacts): ReadinessRow[] {
         : { check: 'Story points', ok: true, detail: 'Every story has points' })
   }
 
-  const unlinked = facts.members.filter((m) => !m.linked).map((m) => m.name)
-  rows.push(unlinked.length > 0
+  const unlinked = facts.noJiraProject === true ? [] : facts.members.filter((m) => !m.linked).map((m) => m.name)
+  if (facts.noJiraProject !== true) rows.push(unlinked.length > 0
     ? { check: 'Jira links', ok: false, detail: `Not linked: ${list(unlinked)}. Link them on the Dev team tab. Until then their updates are matched to stories for them to confirm, or saved as general updates.` }
     : { check: 'Jira links', ok: true, detail: 'Every member is linked' })
 

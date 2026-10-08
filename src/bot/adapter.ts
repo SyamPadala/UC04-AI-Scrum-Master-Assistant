@@ -6,7 +6,6 @@ import type { ConversationReference } from '@microsoft/agents-activity'
 import { config } from '../config/env.js'
 import { ScrumAssistant } from './handler.js'
 import { createLlm } from '../llm/index.js'
-import { JiraClient } from '../pm/jira.js'
 import { isConversationGone, withSendRetry } from './sendRetry.js'
 
 export { isConversationGone }
@@ -19,19 +18,9 @@ export const authConfig: AuthConfiguration = {
 }
 
 // Built here and handed to the handler rather than imported at the point of
-// use, so a test can substitute either one (coding rule 9). The tracker is not
-// among them: it comes from the team's own record, per team, at message time.
-export const agent = new ScrumAssistant(
-  createLlm(),
-  new JiraClient({
-    baseUrl: config.jira.baseUrl,
-    email: config.jira.email,
-    apiToken: config.jira.apiToken,
-    projectKey: config.jira.projectKey,
-    storyPointsField: config.jira.storyPointsField,
-    boardId: config.jira.boardId
-  })
-)
+// use, so a test can substitute it (coding rule 9). Jira and the tracker come
+// from the team's own record, per team, at message time (M10, M11).
+export const agent = new ScrumAssistant(createLlm())
 
 const { adapter, headerPropagation } = createCloudAdapter(agent, authConfig)
 export { adapter, headerPropagation }

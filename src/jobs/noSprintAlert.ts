@@ -12,6 +12,8 @@ import { config } from '../config/env.js'
  * member messages produces one alert, not one each.
  */
 export async function alertNoSprint (team: TeamConfig, localDate: string): Promise<{ sent: boolean, already?: boolean, reason?: string }> {
+  // M10: a team without a Jira project has no sprint by choice; nothing to report.
+  if (team.jira === undefined) return { sent: false, reason: 'the team has no Jira project' }
   const scrumMaster = await scrumMasterOf(team)
   if (scrumMaster === undefined) return { sent: false, reason: 'no Scrum Master is configured for this team' }
   if ((scrumMaster.conversationRef ?? '') === '') {
@@ -25,7 +27,7 @@ export async function alertNoSprint (team: TeamConfig, localDate: string): Promi
   }
 
   // SPEC-004 item 39(a): updates are still recorded, as general updates.
-  const text = `No active sprint in Jira project ${config.jira.projectKey}. ` +
+  const text = `No active sprint in Jira project ${team.jira?.projectKey ?? ''}. ` +
     'Stand-up updates are being saved as general updates. ' +
     'Start the sprint in Jira if one should be running.'
 

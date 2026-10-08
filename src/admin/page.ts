@@ -260,6 +260,7 @@ export function adminPage (userName: string): string {
     <div class="field"><label for="nt-name">Team name</label><input id="nt-name" name="name" required maxlength="60" placeholder="Scrum Team Beta"></div>
     <div class="field"><label for="nt-tz">Timezone</label><input id="nt-tz" name="timezone" value="Asia/Kolkata" required></div>
     <div class="field"><label for="nt-teams">Teams team</label><select id="nt-teams"><option value="">Not set</option></select><small>The team's own Teams team. Used for the onboarding checklist; can be set later.</small></div>
+    <div class="field"><label for="nt-jira">Jira project</label><select id="nt-jira"><option value="">None (general updates only)</option></select><small>One project per team. Can be set later.</small></div>
     <div class="field"><label for="nt-sm">Scrum Master email</label><input id="nt-sm" name="scrumMasterEmail" type="email" placeholder="Leave empty to be the Scrum Master yourself"><small>May already run other teams, but must not be on any team's roster.</small></div>
     <p class="error" id="nt-error" role="alert" hidden style="color:var(--bad);margin:0"></p>
     <div class="dialog-actions">
@@ -324,6 +325,12 @@ export function adminPage (userName: string): string {
           <div><h2>Teams team</h2><p>The team's own Teams team. Membership is checked for each member's onboarding.</p></div>
         </div>
         <div class="card-body" id="teams-team-row"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div><h2>Jira project</h2><p>Where this team's sprint and stories come from. Optional: without one, every update is saved as a general update.</p></div>
+        </div>
+        <div class="card-body" id="jira-project-row"></div>
       </div>
       <div class="card">
         <div class="card-head">
@@ -396,6 +403,7 @@ export function adminPage (userName: string): string {
         <div class="card-head"><div><h2>Tracker</h2><p>Where each member's extracted update is written. Checked before it is saved.</p></div></div>
         <div class="card-body">
           <div class="choices" id="tracker-options" role="radiogroup" aria-label="Tracker destination"></div>
+          <div id="tracker-list-row" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px"></div>
           <p class="muted" id="tracker-detail" style="margin:14px 0 0"></p>
         </div>
       </div>
@@ -894,6 +902,78 @@ export function adminPage (userName: string): string {
     jira: 'A comment on each work item; others on the stand-up issue'
   }
 
+  // SPEC-008 10q (M11): only lists on the team's own SharePoint site are offered.
+  function renderTrackerLists (open) {
+    const row = $('tracker-list-row')
+    row.replaceChildren()
+    if (view.tracker !== 'sharepoint' && !open) {
+      if (view.tracker === 'unset') row.append(el('span', "No tracker yet. Choose SharePoint and pick this team's own list.", 'muted'))
+      return
+    }
+    const select = document.createElement('select')
+    select.setAttribute('aria-label', 'Tracker list')
+    select.style.flex = '1'; select.style.minWidth = '0'
+    select.append(new Option("Loading lists on the team's site…", ''))
+    const save = el('button', 'Use this list', 'btn')
+    save.type = 'button'
+    save.disabled = true
+    save.addEventListener('click', () => {
+      if (!confirm('Write new stand-up updates to this list?\\n\\nUpdates already recorded today stay where they are.')) return
+      act(save, () => api('PUT', '/teams/' + teamId + '/tracker', { kind: 'sharepoint', listId: select.value })).catch(() => {})
+    })
+    row.append(select, save)
+    api('GET', '/teams/' + teamId + '/tracker-lists').then((r) => {
+      if (r.problem) { select.replaceChildren(new Option(r.problem, '')); return }
+      const options = r.lists.map((l) => {
+        const o = new Option(l.name + (l.missing.length ? ' — missing columns: ' + l.missing.join(', ') : ''), l.listId)
+        o.disabled = l.missing.length > 0
+        return o
+      })
+      select.replaceChildren(new Option(r.lists.length ? 'Choose a list on ' + r.site : 'No lists on ' + r.site + ' yet — create one with the tracker columns', ''), ...options)
+      select.value = view.trackerListId || ''
+      save.disabled = select.value === '' || select.value === view.trackerListId
+      select.addEventListener('change', () => { save.disabled = select.value === '' || select.value === view.trackerListId })
+    }).catch((e) => { select.replaceChildren(new Option(e.message, '')) })
+  }
+
+  // SPEC-008 10p (M10): admin picks the project; the Scrum Master sees it.
+  let jiraProjectList = null
+  async function jiraProjectsList () {
+    if (jiraProjectList === null) jiraProjectList = (await api('GET', '/jira-projects')).projects
+    return jiraProjectList
+  }
+  const projectValue = (p, b) => p.key + '|' + b.id
+  function renderJiraProject () {
+    const row = $('jira-project-row')
+    row.replaceChildren()
+    const current = view.jira
+    const label = current ? current.projectKey + (current.boardName ? ' — ' + current.boardName : '') : 'None: every update is saved as a general update'
+    if (!view.meIsAdmin) { row.append(current ? el('b', label) : el('span', label, 'muted')); return }
+    const line = el('div')
+    line.style.display = 'flex'; line.style.alignItems = 'center'; line.style.gap = '12px'; line.style.flexWrap = 'wrap'
+    const select = document.createElement('select')
+    select.setAttribute('aria-label', 'Jira project')
+    select.style.flex = '1'; select.style.minWidth = '0'
+    select.append(new Option(label, current ? current.projectKey + '|' + (current.boardId || '') : ''))
+    const save = el('button', 'Save', 'btn')
+    save.type = 'button'
+    save.addEventListener('click', () => {
+      const [projectKey, boardId] = select.value.split('|')
+      act(save, () => api('PUT', '/teams/' + teamId + '/jira', { projectKey: projectKey || '', boardId: boardId || '' })).catch(() => {})
+    })
+    line.append(select, save)
+    row.append(line)
+    jiraProjectsList().then((projects) => {
+      const options = [new Option('None (general updates only)', '')]
+      for (const p of projects) {
+        if (p.boards.length === 0) { const o = new Option(p.key + ' — ' + p.name + ' (no sprint board)', ''); o.disabled = true; options.push(o) }
+        for (const b of p.boards) options.push(new Option(p.key + ' — ' + p.name + (p.boards.length > 1 ? ' · ' + b.name : ''), projectValue(p, b)))
+      }
+      select.replaceChildren(...options)
+      select.value = current ? current.projectKey + '|' + (current.boardId || '') : ''
+    }).catch((e) => { select.replaceChildren(new Option(e.message, '')); save.disabled = true })
+  }
+
   function renderTracker () {
     const box = $('tracker-options')
     box.replaceChildren()
@@ -911,6 +991,8 @@ export function adminPage (userName: string): string {
       b.append(ic, text, el('span', null, 'dot'))
       b.addEventListener('click', () => {
         if (view.tracker === option.kind) return
+        // M11: a SharePoint list is picked from the team's own site, below.
+        if (option.kind === 'sharepoint') { renderTrackerLists(true); return }
         if (!confirm('Write new stand-up updates to: ' + option.label + '?\\n\\nUpdates already recorded today stay where they are.')) return
         act(b, () => api('PUT', '/teams/' + teamId + '/tracker', { kind: option.kind })).catch(() => {})
       })
@@ -1021,6 +1103,8 @@ export function adminPage (userName: string): string {
     view = await api('GET', '/teams/' + teamId)
     renderStats(); renderStandup(); renderScrumMaster(); renderMembers(); renderStakeholders(); renderSchedule(); renderActivity()
     renderTeamsTeam()
+    renderJiraProject()
+    renderTrackerLists(false)
     renderLeaving()
     loadOnboarding()
   }
@@ -1154,13 +1238,19 @@ export function adminPage (userName: string): string {
     teamsTeamList().then((teams) => {
       $('nt-teams').replaceChildren(new Option('Not set', ''), ...teams.map((t) => new Option(t.name, t.id)))
     }).catch((e) => { $('nt-teams').replaceChildren(new Option('Not set (' + e.message + ')', '')) })
+    jiraProjectsList().then((projects) => {
+      const options = [new Option('None (general updates only)', '')]
+      for (const p of projects) for (const b of p.boards) options.push(new Option(p.key + ' — ' + p.name + (p.boards.length > 1 ? ' · ' + b.name : ''), projectValue(p, b)))
+      $('nt-jira').replaceChildren(...options)
+    }).catch(() => {})
   })
   $('nt-cancel').addEventListener('click', () => dialog.close())
   $('new-team-form').addEventListener('submit', (event) => {
     event.preventDefault()
     // Read by id: on a form, f.name is the form's own name attribute, not the
     // "name" input, which sent every team without a name (found 28 Sep 2026).
-    const body = { name: $('nt-name').value, timezone: $('nt-tz').value, scrumMasterEmail: $('nt-sm').value, teamsGroupId: $('nt-teams').value }
+    const [jiraProjectKey, jiraBoardId] = $('nt-jira').value.split('|')
+    const body = { name: $('nt-name').value, timezone: $('nt-tz').value, scrumMasterEmail: $('nt-sm').value, teamsGroupId: $('nt-teams').value, jiraProjectKey: jiraProjectKey || '', jiraBoardId: jiraBoardId || '' }
     const button = $('nt-create')
     const error = $('nt-error')
     error.hidden = true

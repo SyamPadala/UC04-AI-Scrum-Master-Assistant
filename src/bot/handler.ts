@@ -3,6 +3,8 @@ import { Activity } from '@microsoft/agents-activity'
 import type { TeamConfig } from '../types.js'
 import type { LlmClient } from '../llm/types.js'
 import type { PmClient } from '../pm/types.js'
+import { pmFor } from '../pm/factory.js'
+import { TrackerNotSetError } from '../trackers/unset.js'
 import { LlmBudgetError, LlmOfflineError } from '../llm/types.js'
 import { localDate } from '../config/time.js'
 import {
@@ -131,7 +133,8 @@ async function rememberChannel (context: TurnContext): Promise<void> {
 export class ScrumAssistant extends ActivityHandler {
   constructor (
     private readonly llm: LlmClient,
-    private readonly pm: PmClient
+    /** Each team's own Jira project (M10); injected so tests can substitute it. */
+    private readonly pmOf: (team: TeamConfig) => PmClient = pmFor
   ) {
     super()
 
@@ -159,7 +162,7 @@ export class ScrumAssistant extends ActivityHandler {
       const choice = parseStoryChoice(context.activity.value)
       if (choice !== undefined) {
         await this.answerPress(context, memberId, (team, today) =>
-          recordChoice(team, memberId, memberName, choice, today, { pm: this.pm, tracker: trackerFor(team) }))
+          recordChoice(team, memberId, memberName, choice, today, { pm: this.pmOf(team), tracker: trackerFor(team) }))
         await next()
         return
       }
@@ -294,7 +297,7 @@ export class ScrumAssistant extends ActivityHandler {
     try {
       const result = await telling(context, async () => await processUpdate(team, memberId, memberName, text, today, {
         llm: this.llm,
-        pm: this.pm,
+        pm: this.pmOf(team),
         tracker: trackerFor(team)
       }))
 
@@ -338,7 +341,7 @@ export class ScrumAssistant extends ActivityHandler {
     const today = localDate(new Date(), team.timezone)
     let outcome: Awaited<ReturnType<typeof confirmPick>>
     try {
-      outcome = await confirmPick(team, memberId, memberName, pick, today, { pm: this.pm })
+      outcome = await confirmPick(team, memberId, memberName, pick, today, { pm: this.pmOf(team) })
     } catch (error) {
       if (error instanceof StandupClosedError) {
         await context.sendActivity(MessageFactory.text(CLOSED_NOTICE))
@@ -373,7 +376,7 @@ export class ScrumAssistant extends ActivityHandler {
     context: TurnContext, memberId: string, memberName: string, payload: ForeignItemPayload
   ): Promise<void> {
     await this.answerPress(context, memberId, (team, today) =>
-      recordForeignItem(team, memberId, memberName, payload, today, { pm: this.pm, tracker: trackerFor(team) }))
+      recordForeignItem(team, memberId, memberName, payload, today, { pm: this.pmOf(team), tracker: trackerFor(team) }))
   }
 
   /**
@@ -441,6 +444,12 @@ export class ScrumAssistant extends ActivityHandler {
     if (error instanceof GraphUnavailableError) {
       await say(
         "I couldn't reach the tracker, so your update wasn't recorded. Please send it again in a few minutes."
+      )
+      return
+    }
+    if (error instanceof TrackerNotSetError) {
+      await say(
+        "Your team's tracker hasn't been set up yet, so I couldn't record that. Please tell your Scrum Master."
       )
       return
     }

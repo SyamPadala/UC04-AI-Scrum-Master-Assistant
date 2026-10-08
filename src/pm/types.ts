@@ -33,6 +33,8 @@ export interface SprintData {
 
 /** Read-only view of Jira. Nothing here writes — the agents only ever read. */
 export interface PmClient {
+  /** The team's Jira project key, for reading "scrum 25" as SCRUM-25 (M10). Absent in older fakes. */
+  readonly projectKey?: string
   getActiveSprint: () => Promise<{ id: number, name: string, goal: string, startDate: Date | null, endDate: Date | null } | undefined>
   getSprintData: () => Promise<SprintData | undefined>
   lookupStory: (key: string) => Promise<Story | undefined>

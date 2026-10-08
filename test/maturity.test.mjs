@@ -77,3 +77,36 @@ test('M16: JSON log lines inside a run carry its id; other text and lines outsid
   assert.equal(tagLine('{"event":"x"}'), '{"event":"x"}', 'outside a run: unchanged')
   assert.equal(withCorrelation('m', () => tagLine('plain text')), 'plain text')
 })
+
+// ── M10: Jira project per team; a team without one works on general updates ──
+const { pmFor, NO_JIRA } = await import('../dist/pm/factory.js')
+const { assessReadiness } = await import('../dist/admin/readiness.js')
+const { assessOnboarding: onboard } = await import('../dist/admin/onboarding.js')
+
+test('M10: a team without a Jira project gets the no-Jira client: no sprint, no stories', async () => {
+  const pm = pmFor({})
+  assert.equal(pm, NO_JIRA)
+  assert.equal(await pm.getActiveSprint(), undefined)
+  assert.deepEqual(await pm.getSprintOpenItems(), [])
+})
+
+test('M10: readiness and onboarding treat "no Jira project" as a choice, not a fault', () => {
+  const rows = assessReadiness({
+    sprint: undefined, noJiraProject: true, pointsFieldConfigured: true,
+    members: [{ name: 'A', linked: false, chat: 'ok' }], tracker: { ok: true }, summaryRanToday: false,
+    standupTime: '09:30', summaryTime: '18:00'
+  })
+  assert.deepEqual(rows.find((r) => r.check === 'Jira project'), { check: 'Jira project', ok: true, detail: 'Not used by this team: every update is saved as a general update.' })
+  assert.equal(rows.some((r) => r.check === 'Jira links' || r.check === 'Active sprint'), false)
+  const steps = onboard({ teamsTeamName: 'T', licence: true, inTeamsTeam: true, chat: 'ok', linked: false, story: 'noSprint', tracker: { via: 'group' }, noJiraProject: true })
+  assert.equal(steps.done, 6, 'Jira link and story are not needed')
+})
+
+// ── M11: a new team never borrows another team's tracker ────────────────
+const { trackerFor } = await import('../dist/trackers/factory.js')
+const { TrackerNotSetError } = await import('../dist/trackers/unset.js')
+test('M11: an unset tracker refuses to write instead of using another list', async () => {
+  const tracker = trackerFor({ tracker: { kind: 'unset' }, members: [] })
+  await assert.rejects(tracker.write({ teamId: 't', memberId: 'm', memberName: 'M', localDate: '2026-10-08', rows: [], rawText: '', capturedAt: new Date() }), TrackerNotSetError)
+  assert.deepEqual(await tracker.readToday('t', '2026-10-08'), [])
+})

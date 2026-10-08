@@ -51,6 +51,8 @@ export type TrackerConfig =
   | { kind: 'mock', path: string }
   /** FR-04 destination 3: comments on the Jira work items (SPEC-002). */
   | { kind: 'jira', projectKey: string, standupIssueKey: string }
+  /** SPEC-008 10q (M11): a new team has no tracker until an admin picks its own list. */
+  | { kind: 'unset' }
 
 export interface TeamConfig {
   teamId: string
@@ -92,6 +94,12 @@ export interface TeamConfig {
   teamsGroupName?: string
   /** SPEC-008 10n: members removed whose offboarding is not yet marked finished. Metadata only. */
   leaving?: Leaver[]
+  /**
+   * SPEC-008 10p (M10): the team's own Jira project, chosen by an admin. Absent
+   * = the team works without Jira: every update is a general update. The Jira
+   * site and the assistant's login stay deployment settings.
+   */
+  jira?: { projectKey: string, boardId?: string, boardName?: string }
 }
 
 export type RunOutcome = 'success' | 'partial' | 'failed' | 'skipped'

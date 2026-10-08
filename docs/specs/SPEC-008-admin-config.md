@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026; amendment of 30 Sep 2026 (10l) approved 30 Sep 2026; 10m, 10n approved 5 Oct 2026; 10o approved 8 Oct 2026 |
+| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026; amendment of 30 Sep 2026 (10l) approved 30 Sep 2026; 10m, 10n approved 5 Oct 2026; 10o, 10p, 10q approved 8 Oct 2026 |
 | **Delivers** | NFR Configuration; supports FR-08 (stakeholder list), FR-10 (per-team settings) |
 | **Assumptions** | A9 (configuration via a web admin panel, amended 24 Sep 2026) |
 | **Depends on** | SPEC-001 |
@@ -267,6 +267,26 @@ Dev team tab. Not an FR of its own: it serves FR-10 and the Configuration NFR.*
       with: *"Not switched to Running. <name> (Scrum Master) can't be messaged
       yet. They need to open Scrum Assistant in Teams once."* Applies to
       whoever is Scrum Master, an admin included.
+
+10p. *Added 8 Oct 2026 (approved by the user, maturity plan M10; replaces L4).*
+    **Jira project per team.** The Jira site address and the assistant's
+    login stay deployment settings. Each team's **project** (and its sprint
+    board, picked when there are several; Kanban boards excluded) is chosen by
+    an **admin** on the Dev team tab or in the New team form; the Scrum Master
+    sees it read-only. One project per team — a project already used is
+    refused (*"SCRUM is already used by Scrum Team Alpha."*). **Optional:** a
+    team without a project works — every update is a general update, no
+    cards, no sprint figures, no no-sprint notice; readiness shows "Jira
+    project: not used" (not an error) and onboarding marks the Jira steps
+    "not needed". Scrum Team Alpha was set to SCRUM (SCRUM board) on 8 Oct.
+10q. *Added 8 Oct 2026 (approved by the user, maturity plan M11).*
+    **Tracker list per team, isolated.** A team's SharePoint tracker is a list
+    on **its own Teams team's SharePoint site**, so only its members can open
+    it. The admin page offers only those lists, shows any missing tracker
+    columns, and refuses a list another team uses. A new team starts with
+    **no tracker** (never another team's list): updates are refused with
+    *"Your team's tracker hasn't been set up yet…"* and the team cannot be
+    switched to Running until one is chosen. Alpha keeps its current list.
 
 **Migration.** Scrum Team Alpha has its Scrum Master (Syam) on the roster. On
 deploy his stored chat is copied to `scrumMasters/`, and he is removed from
