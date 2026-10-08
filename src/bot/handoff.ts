@@ -29,6 +29,10 @@ export const HANDOFF_HEADER = 'x-internal-secret'
 
 /** True when the update was accepted for processing; false means "do it here". */
 export async function handOff (update: HandedOffUpdate): Promise<boolean> {
+  // Off by default (8 Oct 2026): Cloud Run held back the 202 for ~7.6 s, the
+  // caller gave up at 5 s and processed the update itself too — two rows. Until
+  // the hand-over can tell "slow" from "refused", updates are processed in the turn.
+  if (process.env.HANDOFF_ENABLED !== 'true') return false
   if (config.admin.publicBaseUrl === '') return false
   // Only the wait for "accepted" is bounded. Once accepted, the connection is
   // left alone: aborting it would end the request that keeps the work running.
