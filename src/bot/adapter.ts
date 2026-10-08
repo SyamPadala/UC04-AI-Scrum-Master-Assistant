@@ -7,6 +7,9 @@ import { config } from '../config/env.js'
 import { ScrumAssistant } from './handler.js'
 import { createLlm } from '../llm/index.js'
 import { JiraClient } from '../pm/jira.js'
+import { isConversationGone, withSendRetry } from './sendRetry.js'
+
+export { isConversationGone }
 
 export const authConfig: AuthConfiguration = {
   tenantId: config.m365.tenantId,
@@ -34,19 +37,6 @@ const { adapter, headerPropagation } = createCloudAdapter(agent, authConfig)
 export { adapter, headerPropagation }
 
 /**
- * True when Teams says the stored chat no longer exists (SPEC-008 10e).
- *
- * Happens when the person removes or blocks the app: every later send to that
- * reference fails with 404 ConversationNotFound. The SDK's HttpError carries
- * the status, and the connector's error code in its message.
- */
-export function isConversationGone (error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  const status = (error as Error & { status?: unknown }).status
-  return /ConversationNotFound/i.test(error.message) || (status === 404 && /conversation/i.test(error.message))
-}
-
-/**
  * Sends a message to someone the app is not currently talking to.
  *
  * Only possible with a stored conversation reference, which exists only once
@@ -56,8 +46,10 @@ export function isConversationGone (error: unknown): boolean {
  */
 export async function sendProactive (reference: string, text: string): Promise<void> {
   const parsed = JSON.parse(reference) as ConversationReference
-  await adapter.continueConversation(config.bot.appId, parsed, async (context: TurnContext) => {
-    await context.sendActivity(text)
+  await withSendRetry('proactive', async () => {
+    await adapter.continueConversation(config.bot.appId, parsed, async (context: TurnContext) => {
+      await context.sendActivity(text)
+    })
   })
 }
 
@@ -72,9 +64,11 @@ export async function sendProactiveCard (
   reference: string, card: unknown, fallbackText: string
 ): Promise<void> {
   const parsed = JSON.parse(reference) as ConversationReference
-  await adapter.continueConversation(config.bot.appId, parsed, async (context: TurnContext) => {
-    const message = MessageFactory.attachment(CardFactory.adaptiveCard(card))
-    message.summary = fallbackText
-    await context.sendActivity(message)
+  await withSendRetry('proactiveCard', async () => {
+    await adapter.continueConversation(config.bot.appId, parsed, async (context: TurnContext) => {
+      const message = MessageFactory.attachment(CardFactory.adaptiveCard(card))
+      message.summary = fallbackText
+      await context.sendActivity(message)
+    })
   })
 }

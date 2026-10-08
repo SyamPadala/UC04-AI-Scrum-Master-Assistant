@@ -25,3 +25,36 @@ test('M1: a decision never depends on the wording of the reason', () => {
   assert.equal(scrumMasterKnows({ sent: false, code: 'appNotInstalled' }), false)
   assert.equal(scrumMasterKnows({ sent: true, code: 'sent' }), true)
 })
+
+// ── M9: Teams sends are retried on busy / temporary errors only ─────────
+const { withSendRetry, retryableSend, teamsRetry } = await import('../dist/bot/sendRetry.js')
+teamsRetry.delaysMs = [1, 1]
+const failing = (errors) => { let n = 0; return { calls: () => n, send: async () => { n++; const e = errors.shift(); if (e) throw e } } }
+const httpError = (status, message = 'x') => Object.assign(new Error(message), { status })
+
+test('M9: a 429 and a 503 are retried, then the send goes through', async () => {
+  const s = failing([httpError(429), httpError(503)])
+  await withSendRetry('t', s.send)
+  assert.equal(s.calls(), 3)
+})
+
+test('M9: three failures in a row give up with the error', async () => {
+  const s = failing([httpError(500), httpError(500), httpError(500)])
+  await assert.rejects(withSendRetry('t', s.send))
+  assert.equal(s.calls(), 3)
+})
+
+test('M9: a chat that is gone, or a refused request, is never retried', async () => {
+  const gone = failing([httpError(404, 'ConversationNotFound')])
+  await assert.rejects(withSendRetry('t', gone.send))
+  assert.equal(gone.calls(), 1)
+  const refused = failing([httpError(403, 'Forbidden')])
+  await assert.rejects(withSendRetry('t', refused.send))
+  assert.equal(refused.calls(), 1)
+})
+
+test('M9: no answer at all (timeout, dropped connection) counts as temporary', () => {
+  assert.equal(retryableSend(new Error('socket hang up')), true)
+  assert.equal(retryableSend(Object.assign(new Error('x'), { name: 'TimeoutError' })), true)
+  assert.equal(retryableSend(new Error('something else')), false)
+})

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — item 9 (working days) approved 29 Sep 2026 |
+| **Status** | Draft — item 9 (working days) approved 29 Sep 2026; item 10 (send retry) approved 8 Oct 2026 |
 | **Delivers** | FR-01, FR-05 |
 | **Assumptions** | A2 (cut-off = stand-up time + grace period, default 2 h) |
 | **Depends on** | SPEC-001 |
@@ -38,6 +38,15 @@ chased.
    `workingDays` (default Monday–Friday), set on the admin page's Schedule tab.
    On any other day, in the team's timezone, no scheduled job runs: no
    reminder, follow-up, summary or participation count. Run now still works.
+10. *Added 8 Oct 2026 (approved by the user, maturity plan M9; L13).*
+    **Proactive sends are retried.** Reminders, follow-ups, blocker alerts,
+    the no-sprint notice, the summary and non-responder flags: when Teams
+    answers 429 or 5xx, or does not answer, the send is tried again after 2 s
+    and 5 s (Teams' Retry-After honoured, at most 10 s). A chat that is gone
+    (404) or a refused request (400/401/403) is not retried. All attempts
+    failing is the same failure as before. Accepted: a 5xx after delivery can
+    send a message twice. Checking delivery first was rejected (needs
+    Chat.Read.All).
 
 ## Interface
 
