@@ -7,7 +7,7 @@ import { STORY_PICK_ACTION, type StoryPickPayload } from '../cards/storyPicker.j
 import { STORY_CHOICE_ACTION, type StoryChoicePayload } from '../cards/storyChoice.js'
 import { generalRow, mergeRows, StandupClosedError } from './updateIntake.js'
 import { summaryHasRun } from '../store/firestore.js'
-import { sendBlockerAlert } from './blockerAlert.js'
+import { scrumMasterKnows, sendBlockerAlert } from './blockerAlert.js'
 
 /**
  * Submit or Cancel on the "someone else's story" card (SPEC-004 item 14a).
@@ -151,7 +151,7 @@ export async function recordChoice (
       team, senderId, senderName, today, [{ description: blocker, storyRef: null }], new Map(), new Date(),
       openItems.map((item) => ({ key: item.key, title: item.title, url: item.url }))
     )
-    if (alert.sent || alert.reason === 'all blockers already alerted today') {
+    if (scrumMasterKnows(alert)) {
       return filed
         ? `Saved as a general update. ⚠ Blocker: "${blocker}". Your Scrum Master has been told.`
         : 'Not recorded in the tracker. Your Scrum Master has been told about the blocker.'

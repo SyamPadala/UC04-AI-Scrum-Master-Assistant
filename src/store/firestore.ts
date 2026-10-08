@@ -474,36 +474,50 @@ export async function llmUsageFor (localDate: string): Promise<{
  *
  * The key is a hash of the normalised blocker text, never the text itself:
  * a blocker description is update content and must not be stored outside the
- * tracker (Privacy NFR). Returns true when this is the first time today.
+ * tracker (Privacy NFR).
+ *
+ * SPEC-005 item 2b (M1): 'already' only when the claim really exists. Any other
+ * failure is 'error', and the caller sends anyway: a rare duplicate alert is
+ * better than a blocker nobody hears about.
  */
+export type ClaimOutcome = 'claimed' | 'already' | 'error'
+
 export async function claimBlockerAlert (
   teamId: string, memberId: string, localDate: string, blockerHash: string
-): Promise<boolean> {
-  const ref = db.collection('blockerAlerts').doc(`${teamId}_${memberId}_${localDate}_${blockerHash}`)
+): Promise<ClaimOutcome> {
+  return await claimOnce(db.collection('blockerAlerts').doc(`${teamId}_${memberId}_${localDate}_${blockerHash}`),
+    { teamId, memberId, localDate, blockerHash, alertedAt: new Date() })
+}
+
+/** SPEC-005 item 2b: the alert was not sent, so the next mention tries again. */
+export async function releaseBlockerAlert (teamId: string, memberId: string, localDate: string, blockerHash: string): Promise<void> {
+  await db.collection('blockerAlerts').doc(`${teamId}_${memberId}_${localDate}_${blockerHash}`).delete()
+}
+
+/** Creates the document only if it does not exist yet; says which happened. */
+async function claimOnce (ref: FirebaseFirestore.DocumentReference, data: Record<string, unknown>): Promise<ClaimOutcome> {
   try {
-    await db.runTransaction(async (tx) => {
-      const doc = await tx.get(ref)
-      if (doc.exists) throw new Error('already-alerted')
-      tx.create(ref, { teamId, memberId, localDate, blockerHash, alertedAt: new Date() })
-    })
-    return true
-  } catch {
-    return false
+    await ref.create(data)
+    return 'claimed'
+  } catch (error) {
+    // Firestore answers ALREADY_EXISTS (gRPC code 6) when the claim is there.
+    if ((error as { code?: unknown }).code === 6) return 'already'
+    console.error(JSON.stringify({ event: 'store.claimFailed', collection: ref.parent.id, error: String(error) }))
+    return 'error'
   }
 }
 
 /**
  * Claims a once-a-day notice for a team, such as "no active sprint" (SPEC-004
- * item 12). Idempotent on teamId + date + kind: true only for the first caller.
+ * item 12). Idempotent on teamId + date + kind: 'claimed' only for the first caller.
  */
-export async function claimDailyNotice (teamId: string, localDate: string, kind: string): Promise<boolean> {
-  const ref = db.collection('notices').doc(`${teamId}_${localDate}_${kind}`)
-  try {
-    await ref.create({ teamId, localDate, kind, sentAt: new Date() })
-    return true
-  } catch {
-    return false
-  }
+export async function claimDailyNotice (teamId: string, localDate: string, kind: string): Promise<ClaimOutcome> {
+  return await claimOnce(db.collection('notices').doc(`${teamId}_${localDate}_${kind}`), { teamId, localDate, kind, sentAt: new Date() })
+}
+
+/** The notice was not sent; a later update may try again (M1). */
+export async function releaseDailyNotice (teamId: string, localDate: string, kind: string): Promise<void> {
+  await db.collection('notices').doc(`${teamId}_${localDate}_${kind}`).delete()
 }
 
 /**

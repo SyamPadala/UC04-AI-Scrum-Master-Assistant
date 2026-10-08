@@ -30,7 +30,7 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
     lines.push(said === null ? 'Saved as a general update.' : `Saved as a general update: "${said}"`)
     const blocker = result.general?.blocker ?? null
     if (blocker !== null) {
-      const alerted = result.alertSent || result.alertReason === 'all blockers already alerted today'
+      const alerted = result.alertSent || result.alertCode === 'alreadyAlerted'
       lines.push(alerted
         ? `⚠ Blocker: "${blocker}". Your Scrum Master has been told.`
         : `⚠ Blocker: "${blocker}". It is in the tracker, but I couldn't reach your Scrum Master about it.`)
@@ -74,7 +74,7 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
   }
 
   // A blocker already alerted earlier today is one the Scrum Master has heard.
-  const alerted = result.alertSent || result.alertReason === 'all blockers already alerted today'
+  const alerted = result.alertSent || result.alertCode === 'alreadyAlerted'
   for (const blocker of result.unlinkedBlockers) {
     lines.push(alerted
       ? `⚠ Your Scrum Master has been told about: "${blocker}". It isn't linked to a work item, so it hasn't gone into the tracker.`

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — amendment of 29 Sep 2026 (item 2a) approved 29 Sep 2026 |
+| **Status** | Draft — amendment of 29 Sep 2026 (item 2a) approved 29 Sep 2026; item 2b approved 8 Oct 2026 |
 | **Delivers** | FR-06 |
 | **Assumptions** | A1 (alert sent as part of update processing, target < 30 s), A8 (story resolution) |
 | **Depends on** | SPEC-004 |
@@ -27,6 +27,15 @@ affects. They don't have to wait for the end-of-day summary to find out.
    Build Core Architecture…"* — by name, never a pronoun. This is information, not attribution: no item is marked
    Blocked and nothing is written to the tracker (SPEC-004 item 19). With no
    open items, the line says so.
+2b. *Added 8 Oct 2026 (approved by the user, maturity plan M1).* **An alert
+   that was not sent is never counted as sent.** The "already alerted today"
+   mark is released whenever the send does not happen (no Scrum Master, app
+   not installed, Teams error), so the next mention of the blocker tries again.
+   A database error while taking the mark sends the alert anyway (a rare
+   duplicate is better than a missed blocker). The member is told "Your Scrum
+   Master has been told" only when the alert went out, now or earlier today.
+   Callers decide on a result code, never on the wording of a message. The
+   once-a-day no-sprint notice follows the same rule.
 3. Several blockers from one member arrive as one alert listing all of them, not
    as several messages.
 4. The alert is sent as part of update processing, so it lands within the same

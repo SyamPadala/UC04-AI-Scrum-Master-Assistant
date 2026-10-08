@@ -107,6 +107,8 @@ export interface IntakeResult {
   blockers: number
   alertSent: boolean
   alertReason?: string
+  /** The alert's result code (design review: decide on codes, not sentences). */
+  alertCode?: import('./blockerAlert.js').AlertCode
   extractionMs: number
   totalMs: number
   truncated: boolean
@@ -410,7 +412,7 @@ export async function processUpdate (
     /** Injected in tests; the store is the real source. */
     summaryHasRun?: (teamId: string, localDate: string) => Promise<boolean>
     /** Injected in tests; the real one messages the Scrum Master (item 12). */
-    alertNoSprint?: (team: TeamConfig, localDate: string) => Promise<{ sent: boolean, reason?: string }>
+    alertNoSprint?: (team: TeamConfig, localDate: string) => Promise<{ sent: boolean, already?: boolean, reason?: string }>
   }
 ): Promise<IntakeResult> {
   const receivedAt = new Date()
@@ -507,7 +509,7 @@ export async function processUpdate (
       noSprintAlertSent = false
       try {
         const alert = await (deps.alertNoSprint ?? alertNoSprint)(team, localDate)
-        noSprintAlertSent = alert.sent || alert.reason === 'already alerted today'
+        noSprintAlertSent = alert.sent || alert.already === true
         if (!alert.sent) console.log(JSON.stringify({ event: 'noSprintAlert.notSent', teamId: team.teamId, reason: alert.reason }))
       } catch (error) {
         console.error(JSON.stringify({ event: 'noSprintAlert.failed', teamId: team.teamId, error: String(error) }))
@@ -566,6 +568,7 @@ export async function processUpdate (
       extraction.openItems.map((item) => ({ key: item.key, title: item.title, url: item.url }))
     )
     result.alertSent = alert.sent
+    result.alertCode = alert.code
     if (alert.reason !== undefined) result.alertReason = alert.reason
   } catch (error) {
     result.alertReason = error instanceof Error ? error.message : String(error)

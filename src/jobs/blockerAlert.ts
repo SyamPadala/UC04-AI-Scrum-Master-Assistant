@@ -3,7 +3,7 @@ import type { TeamConfig } from '../types.js'
 import type { Story } from '../pm/types.js'
 import { blockerAlertCard, type BlockerLine, type OpenItemLine } from '../cards/blockerAlert.js'
 import { isConversationGone, sendProactiveCard } from '../bot/adapter.js'
-import { claimBlockerAlert, forgetScrumMasterChat, scrumMasterOf } from '../store/firestore.js'
+import { claimBlockerAlert, forgetScrumMasterChat, releaseBlockerAlert, scrumMasterOf } from '../store/firestore.js'
 import { config } from '../config/env.js'
 
 /**
@@ -17,11 +17,24 @@ import { config } from '../config/env.js'
  * (A1), comfortably inside the PRD's five-minute metric.
  */
 
+/**
+ * Why an alert was or was not sent, as a fixed code (design review, 8 Oct
+ * 2026): callers decide on the code, never on the wording of `reason`, which
+ * is for logs and people only.
+ */
+export type AlertCode = 'sent' | 'noBlockers' | 'alreadyAlerted' | 'noScrumMaster' | 'appNotInstalled'
+
 export interface BlockerAlertResult {
   sent: boolean
+  code: AlertCode
   suppressed: number
   reason?: string
   latencyMs?: number
+}
+
+/** True when the Scrum Master has heard about these blockers, now or earlier today. */
+export function scrumMasterKnows (result: Pick<BlockerAlertResult, 'sent' | 'code'>): boolean {
+  return result.sent || result.code === 'alreadyAlerted'
 }
 
 /**
@@ -47,32 +60,45 @@ export async function sendBlockerAlert (
   /** The member's open sprint items, listed when a blocker names none (SPEC-005 2a). */
   openItems: OpenItemLine[] = []
 ): Promise<BlockerAlertResult> {
-  if (blockers.length === 0) return { sent: false, suppressed: 0, reason: 'no blockers' }
+  if (blockers.length === 0) return { sent: false, code: 'noBlockers', suppressed: 0, reason: 'no blockers' }
 
   // The same blocker restated in a second message today is not news. A new day
   // is: the Scrum Master needs to know it is still live (SPEC-005 edge cases).
   const fresh: Array<{ description: string, storyRef: string | null }> = []
+  const claimed: string[] = []
   let suppressed = 0
   for (const blocker of blockers) {
-    const first = config.blocker.dedupe
-      ? await claimBlockerAlert(team.teamId, memberId, localDate, blockerHash(blocker.description))
-      : true
-    if (first) fresh.push(blocker)
-    else suppressed++
+    const hash = blockerHash(blocker.description)
+    const outcome = config.blocker.dedupe ? await claimBlockerAlert(team.teamId, memberId, localDate, hash) : 'error'
+    if (outcome === 'already') {
+      suppressed++
+      continue
+    }
+    // SPEC-005 2b: a store error is not "already alerted" — send anyway.
+    fresh.push(blocker)
+    if (outcome === 'claimed') claimed.push(hash)
   }
   if (fresh.length === 0) {
-    return { sent: false, suppressed, reason: 'all blockers already alerted today' }
+    return { sent: false, code: 'alreadyAlerted', suppressed, reason: 'all blockers already alerted today' }
+  }
+
+  // SPEC-005 2b (M1): whatever stops the send, the claims taken above are
+  // released, so the next mention of the blocker tries again.
+  const notSent = async (code: AlertCode, reason: string): Promise<BlockerAlertResult> => {
+    await Promise.all(claimed.map(async (hash) => await releaseBlockerAlert(team.teamId, memberId, localDate, hash)))
+      .catch((error: unknown) => console.error(JSON.stringify({ event: 'blockerAlert.releaseFailed', teamId: team.teamId, memberId, error: String(error) })))
+    return { sent: false, code, suppressed, reason }
   }
 
   // A role, not a roster entry (SPEC-008 10f): read from where their chat is kept.
   const scrumMaster = await scrumMasterOf(team)
   if (scrumMaster === undefined) {
-    return { sent: false, suppressed, reason: 'no Scrum Master is configured for this team' }
+    return await notSent('noScrumMaster', 'no Scrum Master is configured for this team')
   }
   if ((scrumMaster.conversationRef ?? '') === '') {
     // Surfaced rather than swallowed: this is a setup gap, and a silent one is
     // discovered on demo day.
-    return { sent: false, suppressed, reason: `the app is not installed for ${scrumMaster.displayName}` }
+    return await notSent('appNotInstalled', `the app is not installed for ${scrumMaster.displayName}`)
   }
 
   const lines: BlockerLine[] = fresh.map((blocker) => {
@@ -91,7 +117,7 @@ export async function sendBlockerAlert (
     console.log(JSON.stringify({
       event: 'blockerAlert.dryRun', teamId: team.teamId, memberId, count: fresh.length
     }))
-    return { sent: true, suppressed, latencyMs: Date.now() - detectedAt.getTime() }
+    return { sent: true, code: 'sent', suppressed, latencyMs: Date.now() - detectedAt.getTime() }
   }
 
   try {
@@ -99,9 +125,12 @@ export async function sendBlockerAlert (
   } catch (error) {
     // SPEC-008 10e: the Scrum Master's chat is gone. Forget it so the page
     // shows it, and say so rather than reporting a generic failure.
-    if (!isConversationGone(error)) throw error
+    if (!isConversationGone(error)) {
+      await notSent('appNotInstalled', 'send failed')
+      throw error
+    }
     await forgetScrumMasterChat(team).catch(() => {})
-    return { sent: false, suppressed, reason: `the app is not installed for ${scrumMaster.displayName}` }
+    return await notSent('appNotInstalled', `the app is not installed for ${scrumMaster.displayName}`)
   }
 
   const latencyMs = Date.now() - detectedAt.getTime()
@@ -115,5 +144,5 @@ export async function sendBlockerAlert (
     suppressed,
     latencyMs
   }))
-  return { sent: true, suppressed, latencyMs }
+  return { sent: true, code: 'sent', suppressed, latencyMs }
 }

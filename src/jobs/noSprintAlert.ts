@@ -1,6 +1,6 @@
 import type { TeamConfig } from '../types.js'
 import { isConversationGone, sendProactive } from '../bot/adapter.js'
-import { claimDailyNotice, forgetScrumMasterChat, scrumMasterOf } from '../store/firestore.js'
+import { claimDailyNotice, forgetScrumMasterChat, releaseDailyNotice, scrumMasterOf } from '../store/firestore.js'
 import { config } from '../config/env.js'
 
 /**
@@ -11,14 +11,17 @@ import { config } from '../config/env.js'
  * Sent by code, like every other message; claimed before sending so a burst of
  * member messages produces one alert, not one each.
  */
-export async function alertNoSprint (team: TeamConfig, localDate: string): Promise<{ sent: boolean, reason?: string }> {
+export async function alertNoSprint (team: TeamConfig, localDate: string): Promise<{ sent: boolean, already?: boolean, reason?: string }> {
   const scrumMaster = await scrumMasterOf(team)
   if (scrumMaster === undefined) return { sent: false, reason: 'no Scrum Master is configured for this team' }
   if ((scrumMaster.conversationRef ?? '') === '') {
     return { sent: false, reason: `the app is not installed for ${scrumMaster.displayName}` }
   }
-  if (!await claimDailyNotice(team.teamId, localDate, 'noSprint')) {
-    return { sent: false, reason: 'already alerted today' }
+  const claim = await claimDailyNotice(team.teamId, localDate, 'noSprint')
+  if (claim === 'already') return { sent: false, already: true, reason: 'already alerted today' }
+  // M1: a notice that did not go out is released, so a later update tries again.
+  const release = async (): Promise<void> => {
+    if (claim === 'claimed') await releaseDailyNotice(team.teamId, localDate, 'noSprint').catch(() => {})
   }
 
   // SPEC-004 item 39(a): updates are still recorded, as general updates.
@@ -33,6 +36,7 @@ export async function alertNoSprint (team: TeamConfig, localDate: string): Promi
   try {
     await sendProactive(scrumMaster.conversationRef as string, text)
   } catch (error) {
+    await release()
     if (!isConversationGone(error)) throw error
     await forgetScrumMasterChat(team).catch(() => {})
     return { sent: false, reason: `the app is not installed for ${scrumMaster.displayName}` }
