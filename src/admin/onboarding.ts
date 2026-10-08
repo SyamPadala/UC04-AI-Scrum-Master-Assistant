@@ -93,7 +93,7 @@ export function assessOnboarding (facts: OnboardingFacts): { steps: OnboardingSt
     if (facts.story === 'noSprint') return { state: 'todo', detail: 'No active sprint in Jira. Until one starts, updates are saved as general updates.' }
     return facts.story
       ? { state: 'done', detail: 'Has an open story in the sprint' }
-      : { state: 'todo', detail: 'Assign them a story in Jira. Until then updates are saved as general updates.' }
+      : { state: 'todo', detail: 'Assign them a story in Jira. Until then their updates are matched to stories for them to confirm, or saved as general updates.' }
   }
   steps.push({ key: 'story', label: 'Story assigned in the sprint', ...story() })
 

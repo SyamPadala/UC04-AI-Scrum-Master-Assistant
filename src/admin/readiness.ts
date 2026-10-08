@@ -58,7 +58,7 @@ export function assessReadiness (facts: ReadinessFacts): ReadinessRow[] {
 
   const unlinked = facts.members.filter((m) => !m.linked).map((m) => m.name)
   rows.push(unlinked.length > 0
-    ? { check: 'Jira links', ok: false, detail: `Not linked: ${list(unlinked)}. Link them on the Dev team tab; their updates are refused until then.` }
+    ? { check: 'Jira links', ok: false, detail: `Not linked: ${list(unlinked)}. Link them on the Dev team tab. Until then their updates are matched to stories for them to confirm, or saved as general updates.` }
     : { check: 'Jira links', ok: true, detail: 'Every member is linked' })
 
   const noChat = facts.members.filter((m) => m.chat === 'none').map((m) => m.name)

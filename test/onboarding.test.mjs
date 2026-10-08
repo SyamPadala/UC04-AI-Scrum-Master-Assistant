@@ -59,7 +59,7 @@ test('10m: tracker elsewhere is ticked by hand, and shows who ticked it', () => 
 })
 
 test('10m: no story, or no sprint, points to general updates', () => {
-  assert.match(step(assessOnboarding({ ...READY, story: false }), 'story').detail, /Assign them a story in Jira\. Until then updates are saved as general updates\./)
+  assert.match(step(assessOnboarding({ ...READY, story: false }), 'story').detail, /Assign them a story in Jira\. Until then their updates are matched to stories for them to confirm, or saved as general updates\./)
   assert.match(step(assessOnboarding({ ...READY, story: 'noSprint' }), 'story').detail, /^No active sprint/)
 })
 
