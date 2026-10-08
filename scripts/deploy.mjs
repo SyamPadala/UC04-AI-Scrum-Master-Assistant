@@ -8,13 +8,16 @@
  * account needs Cloud Build Editor, Storage Object Admin, Artifact Registry
  * Reader + Writer, Cloud Run Admin and Service Account User.
  *
- * Environment variables already set on the Cloud Run service are preserved;
- * this never reads or writes secrets.
+ * Runtime settings come from .env. Secrets (passwords, keys, tokens) are sent
+ * as plain settings until M5 is switched on: with CLOUD_RUN_SECRETS=
+ * secret-manager in .env they are instead references to Secret Manager
+ * (created by scripts/secrets.mjs), so their values never leave Google's vault.
  */
 import fs from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { GoogleAuth } from 'google-auth-library'
+import { SECRET_KEYS, secretId } from './secrets.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
 const env = Object.fromEntries(
@@ -125,12 +128,17 @@ const RUNTIME_OVERRIDES = {
 const missingKeys = RUNTIME_KEYS.filter((k) => (env[k] ?? '') === '')
 if (missingKeys.length > 0) throw new Error(`not set in .env: ${missingKeys.join(', ')}`)
 
+// M5: with Secret Manager on, a secret is a reference, never its value.
+const useSecretManager = env.CLOUD_RUN_SECRETS === 'secret-manager'
+const setting = (name) => useSecretManager && SECRET_KEYS.includes(name)
+  ? { name, valueSource: { secretKeyRef: { secret: secretId(name), version: 'latest' } } }
+  : { name, value: env[name] }
 const runtimeEnv = [
-  ...RUNTIME_KEYS.map((name) => ({ name, value: env[name] })),
-  ...OPTIONAL_KEYS.filter((name) => (env[name] ?? '') !== '').map((name) => ({ name, value: env[name] })),
+  ...RUNTIME_KEYS.map(setting),
+  ...OPTIONAL_KEYS.filter((name) => (env[name] ?? '') !== '').map(setting),
   ...Object.entries(RUNTIME_OVERRIDES).map(([name, value]) => ({ name, value }))
 ]
-console.log(`runtime settings: ${runtimeEnv.length} (LLM_LIVE=${RUNTIME_OVERRIDES.LLM_LIVE})`)
+console.log(`runtime settings: ${runtimeEnv.length} (LLM_LIVE=${RUNTIME_OVERRIDES.LLM_LIVE}; secrets ${useSecretManager ? 'from Secret Manager' : 'as plain settings'})`)
 
 const base = `https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/services/${SERVICE}`
 const release = await fetch(base, {
