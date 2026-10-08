@@ -317,6 +317,51 @@ export class JiraClient implements PmClient {
     return body.accountId
   }
 
+  /** M13: true when the account can use Jira (holds a product role). */
+  async hasJiraAccess (accountId: string): Promise<boolean> {
+    // A person removed from the site is still found by search, but Jira
+    // answers 404 for the user itself (seen 8 Oct 2026, Sai Krishna).
+    const user = await this.get(
+      `/rest/api/3/user?accountId=${encodeURIComponent(accountId)}&expand=applicationRoles`,
+      z.looseObject({ applicationRoles: z.looseObject({ size: z.number().nullish(), items: z.array(z.unknown()).nullish() }).nullish() }),
+      'user access'
+    ).catch((error: unknown) => {
+      if (error instanceof HttpError && error.status === 404) return { applicationRoles: null }
+      throw error
+    })
+    return (user.applicationRoles?.items?.length ?? user.applicationRoles?.size ?? 0) > 0
+  }
+
+  /**
+   * M13: gives a removed person Jira back by adding them to Jira Software's
+   * default group — the group the site itself grants access through. Uses a
+   * seat; refused with "no free seat" when there is none.
+   */
+  async restoreJiraAccess (accountId: string, email: string): Promise<void> {
+    // Inviting the address again puts an existing Atlassian account back on the site.
+    try {
+      await this.inviteUser(email)
+      if (await this.hasJiraAccess(accountId)) return
+    } catch (error) {
+      if (error instanceof HttpError && error.status !== 400 && error.status !== 409) throw error
+    }
+    const roles = await this.get('/rest/api/3/applicationrole', z.array(z.looseObject({
+      key: z.string(),
+      remainingSeats: z.number().nullish(),
+      defaultGroupsDetails: z.array(z.looseObject({ groupId: z.string().nullish(), name: z.string().nullish() })).nullish()
+    })), 'application roles')
+    const software = roles.find((role) => role.key === 'jira-software') ?? roles[0]
+    const group = software?.defaultGroupsDetails?.[0]
+    if (software === undefined || group?.groupId == null) throw new Error('Jira has no default group to grant access through')
+    if (software.remainingSeats === 0) throw new Error('Jira user limit reached: no free seat')
+    const response = await fetch(`${this.options.baseUrl}/rest/api/3/group/user?groupId=${encodeURIComponent(group.groupId)}`, {
+      method: 'POST',
+      headers: { authorization: this.authHeader, accept: 'application/json', 'content-type': 'application/json' },
+      body: JSON.stringify({ accountId })
+    })
+    if (!response.ok) throw await httpErrorFrom(response)
+  }
+
   /** SPEC-008 10n: removes the person from this Jira site. Their Atlassian account itself stays. */
   async removeUser (accountId: string): Promise<void> {
     const response = await fetch(`${this.options.baseUrl}/rest/api/3/user?accountId=${encodeURIComponent(accountId)}`, {

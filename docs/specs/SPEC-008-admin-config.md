@@ -244,6 +244,11 @@ Dev team tab. Not an FR of its own: it serves FR-10 and the Configuration NFR.*
     - Every add and undo is logged and in the change log.
     - Admins and the team's Scrum Master (Roles table).
 
+    - *Added 8 Oct 2026 (M13):* on Add, a Jira account found by email that
+      has **no Jira access** (removed earlier) gets access back — invited
+      again, or added to Jira Software's default group — then linked. Uses
+      a seat. Reported as "Jira access restored".
+
     *Note:* Jira Free allows 10 users; 8 are used (5 Oct). An invite past the
     limit fails and the checklist says *"Jira has no free seat"*.
 

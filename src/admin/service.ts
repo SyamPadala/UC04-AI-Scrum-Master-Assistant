@@ -839,6 +839,10 @@ export async function provisionMember (teamId: string, memberId: string, actor: 
         if (accountId === undefined) {
           accountId = await client.inviteUser(email)
           done.push('invited to Jira')
+        } else if (!await client.hasJiraAccess(accountId)) {
+          // M13: someone removed earlier keeps their account but not Jira itself.
+          await client.restoreJiraAccess(accountId, email)
+          done.push('Jira access restored')
         }
         const holder = team.members.find((m) => m.jiraAccountId === accountId && m.memberId !== memberId)
         if (holder !== undefined) {
