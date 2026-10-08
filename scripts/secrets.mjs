@@ -43,7 +43,9 @@ if ((process.argv[1] ?? '').endsWith('secrets.mjs')) {
     }
   }
   const sm = 'https://secretmanager.googleapis.com/v1'
+  // Switching the API on needs Service Usage; when that is unavailable, the API may already be on.
   await call('POST', `https://serviceusage.googleapis.com/v1/projects/${PROJECT}/services/secretmanager.googleapis.com:enable`)
+    .catch((error) => console.log(`(could not switch the Secret Manager API on from here: ${error.message.slice(0, 80)}…)`))
   const service = await call('GET', `https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/services/${SERVICE}`)
   const runtime = service.template.serviceAccount
 

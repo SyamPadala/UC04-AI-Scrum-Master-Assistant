@@ -36,8 +36,8 @@ spec line approved before code (process rules).
 | M1 alert claim · M2 SM auto-install · M3 Running guard · M4 answer first · M7 linked Teams teams only · M9 send retry · M10 Jira project per team · M11 tracker list per team · M12 context match for story-less members · M13 Jira access restored · M16 correlation id · M17 database contract + token helper · M18 small fixes | **Built, tested, deployed** |
 | Design review: retired card flows removed; admin service, page, intake and handler split; job registry; one Jira factory | **Built, tested, deployed** |
 | Design review: composition root (stop reading the global settings in 20 files) | **Partly** — Jira, store and tokens now come from factories; settings are still read directly. Full DI touches every module for no user-visible change; deferred |
-| M5 Secret Manager | **Prepared** (`scripts/secrets.mjs`, deploy support). Needs the user to grant the deploy account *Secret Manager Admin* |
-| M14 alerts | **Prepared** (`scripts/alerts.mjs`, `job.finished` event). Needs *Monitoring Editor* on the deploy account |
+| M5 Secret Manager | **Done 8 Oct** — six secrets in Secret Manager, readable only by the service's runtime account; deploy sends references (`CLOUD_RUN_SECRETS=secret-manager`); verified none left as plain settings |
+| M14 alerts | **Partly done 8 Oct** — e-mail channel (admin mailbox), health check and "service not answering" alert live. The three log-based alerts (job failed, update not processed, > 30 s) need *Logs Configuration Writer* on the deploy account, then rerun `scripts/alerts.mjs` |
 | M6 SharePoint Sites.Selected | **Needs a decision** — with it, every new team's SharePoint site must be granted to the app by hand before its tracker list can be chosen |
 | M8 separate Jira account | **User step** — create the account, then swap JIRA_EMAIL / JIRA_API_TOKEN |
 | M15 Gemini paid tier | **User check** |

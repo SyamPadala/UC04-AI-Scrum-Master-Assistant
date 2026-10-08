@@ -1,7 +1,8 @@
 /**
  * Maturity plan M14: e-mail alerts to the admin when something fails. Run by
- * hand, once, after the deploy account has been given the role
- * "Monitoring Editor" (roles/monitoring.editor) on the project.
+ * hand, once, after the deploy account has been given the roles
+ * "Monitoring Editor" (roles/monitoring.editor) and "Logs Configuration
+ * Writer" (roles/logging.configWriter) on the project. Safe to run again.
  *
  *   node scripts/alerts.mjs
  *
@@ -104,7 +105,13 @@ const policies = [
 const existing = (await call('GET', `${mon}/alertPolicies`)).alertPolicies ?? []
 for (const policy of policies) {
   const found = existing.find((p) => p.displayName === policy.displayName)
-  if (found) console.log(`exists   ${policy.displayName}`)
-  else { await call('POST', `${mon}/alertPolicies`, policy); console.log(`created  ${policy.displayName}`) }
+  if (found) { console.log(`exists   ${policy.displayName}`); continue }
+  try {
+    await call('POST', `${mon}/alertPolicies`, policy)
+    console.log(`created  ${policy.displayName}`)
+  } catch (error) {
+    // Log-based alerts also need the "Logs Configuration Writer" role.
+    console.log(`FAILED   ${policy.displayName}: ${error.message.slice(0, 140)}`)
+  }
 }
 console.log(`\nAlerts go to: ${emails.join(', ')}`)
