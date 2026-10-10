@@ -64,6 +64,8 @@ spec line approved before code (process rules).
 
 ## Raised, not decided
 
+- **M20 — clear the assistant's replies from a member's chat** (user, 8 Oct 2026, later). A bot can delete its own Teams message only by its id, and today no ids are kept; reading chat history needs Chat.Read.All (rejected for privacy). Idea: keep the **id** of every reply the assistant sends (id, member, date — never the text), and add a "Clear today's bot replies" action on the admin page that deletes them through the bot's own connection. Open: who may use it (admin only?), how long ids are kept, whether cards are included.
+
 - **M19 — second update on the same story the same day: append, not replace** (user, 8 Oct 2026, to discuss later). Today a second message about SCRUM-33 on the same day **replaces** that row's comment (`mergeRows`: the tracker holds the latest state). The user wants the new words **appended** to the day's comment, possibly with a card asking the member whether to capture it when it is the second or later update that day. Open: always append, or ask; how status changes combine (e.g. In Progress → Completed); what the summary shows. Also relevant: M4's hand-over is off after the live double write; turning it back on must not be able to append twice.
 
 - **Backup Scrum Master.** While the Scrum Master is away, blocker alerts and notices go only to them. Option: a backup who receives the same alerts and can manage the team. **Parked 8 Oct: the user will discuss it with their manager.**
