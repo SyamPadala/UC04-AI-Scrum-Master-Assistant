@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026; amendment of 30 Sep 2026 (10l) approved 30 Sep 2026; 10m, 10n approved 5 Oct 2026; 10o, 10p, 10q approved 8 Oct 2026 |
+| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026; amendment of 30 Sep 2026 (10l) approved 30 Sep 2026; 10m, 10n approved 5 Oct 2026; 10o, 10p, 10q approved 8 Oct 2026; 10r proposed 10 Oct 2026, awaiting approval |
 | **Delivers** | NFR Configuration; supports FR-08 (stakeholder list), FR-10 (per-team settings) |
 | **Assumptions** | A9 (configuration via a web admin panel, amended 24 Sep 2026) |
 | **Depends on** | SPEC-001 |
@@ -288,6 +288,12 @@ Dev team tab. Not an FR of its own: it serves FR-10 and the Configuration NFR.*
     *"Your team's tracker hasn't been set up yet…"* and the team cannot be
     switched to Running until one is chosen. Alpha keeps its current list.
 
+10r. *Added 10 Oct 2026 — proposed, awaiting approval (records M18a, built
+     8 Oct).* **Friendly errors.** When an admin action fails, the page shows
+     a plain message and a short reference, never the raw technical error.
+     The details go to the log under the same reference, so a problem the
+     admin reports can be found.
+
 **Migration.** Scrum Team Alpha has its Scrum Master (Syam) on the roster. On
 deploy his stored chat is copied to `scrumMasters/`, and he is removed from
 Alpha's roster; he has no tracker rows or sprint stories today.
@@ -304,6 +310,7 @@ Alpha's roster; he has no tracker rows or sprint stories today.
 13. `setup` is removed; typing it replies with the admin page link.
 14. `help`, `status`, `pause`, `resume` and `run` stay in chat — quick actions
     a Scrum Master may want without leaving Teams.
+
 
 ## Interface
 

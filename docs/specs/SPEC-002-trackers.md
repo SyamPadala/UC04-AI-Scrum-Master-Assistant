@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval |
 | **Delivers** | FR-04 |
 | **Assumptions** | A7 (destinations: SharePoint list, Excel Online, Jira comment) |
 | **Depends on** | SPEC-001 |
@@ -104,6 +104,27 @@ This is also where the update *lives*. We deliberately keep no copy of it.
       member + work item.
 6. The `mock` tracker writes to a local JSON file and is fully functional, so
    the whole daily cycle runs with no Microsoft or Jira account.
+
+### As built — differences from the draft above (recorded 10 Oct 2026)
+
+- **Excel Online is not built.** FR-04 and A7 name three destinations; two are
+  built (SharePoint list, Jira comment) plus `mock`. This is an open PRD gap,
+  not a decision to drop it — it needs the user's call (build it, or record a
+  change to A7).
+- A fourth kind, `unset`, means the team has no tracker yet. Such a team cannot
+  be switched to Running (SPEC-008 10q, M11).
+- **4c is replaced by SPEC-008 10q (M11, 8 Oct 2026).** Two teams no longer
+  share a list: each team picks its own list from its own Teams team's
+  SharePoint site, so Scrum Team Beta cannot open Alpha's list. The per-member
+  filter stays as a second guard.
+- The Jira tracker uses the team's own Jira project (SPEC-008 10p, M10); a team
+  with no Jira project writes every update as a general update.
+- `Member.jiraAccountId` is now set by the admin page when a member is added
+  (SPEC-008 10n); `scripts/link-jira.mjs` remains for repairs.
+- The SharePoint "Upsert" line under Interface (filter on AssignedTo + Date,
+  delete, rewrite) describes the pre-26 Sep design; 2a–2f are what is built.
+- Still open (M6): narrowing the Graph app from every SharePoint site to only
+  the teams' sites (Sites.Selected) waits on the user's decision.
 
 ## Interface
 

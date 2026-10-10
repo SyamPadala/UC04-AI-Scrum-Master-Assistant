@@ -35,6 +35,16 @@ How work moves in this project. Binding.
 10. POC-Plan Section 6 is the traceability matrix and stays current. When a
     spec is verified, its evidence goes there.
 11. Commits reference the spec id: `SPEC-003: add follow-up grace period job`.
+    Rules 1 and 11 are checked on the developer's machine by a git hook
+    (`.githooks/commit-msg`, SPEC-001 item 15): a commit that changes code
+    must name an Approved spec. Never bypass it (`--no-verify`).
+11a. **Every change gets a spec item, including internal ones.** Secrets,
+    alerts, refactors and clean-ups get one line in the right spec ("no
+    change for users") and are approved like any other item. A plan document
+    (such as the maturity plan) is not a spec.
+11b. **A change of plan updates the spec in the same commit.** If built code
+    is switched off or works differently from its spec, the spec is amended in
+    that commit and the user is told. Added 10 Oct 2026 after the SDD check.
 
 ## Honest reporting
 

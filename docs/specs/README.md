@@ -1,20 +1,26 @@
 # Specs
 
 Spec-Driven Development for UC-04. Rules in `../rules/process-rules.md`.
-No production code for a feature until its spec is `Approved`.
+No production code for a feature until its spec is `Approved`. A local git
+hook enforces it (SPEC-001 item 15): switch it on once per clone with
+`git config core.hooksPath .githooks`.
+
+**Status line rule.** A spec's Status cell starts with `Approved` only when
+the whole spec, base text included, is approved. New items are listed after
+it as approved or awaiting approval.
 
 ## Index
 
-| Spec | Feature | Delivers | Status |
+| Spec | Feature | Delivers | Status (10 Oct 2026) |
 |---|---|---|---|
-| SPEC-001 | Foundation, config store and scheduler | FR-10, NFR Reliability | Draft |
-| SPEC-002 | Tracker abstraction and destinations | FR-04 | Draft |
-| SPEC-003 | Stand-up reminder and follow-up | FR-01, FR-05 | Draft |
-| SPEC-004 | Update intake and Agent 1 extraction | FR-02, FR-03, NFR Latency | Draft |
-| SPEC-005 | Blocker detection and escalation | FR-06 | Draft |
-| SPEC-006 | Sprint summary (Agent 2) and distribution | FR-07, FR-08 | Draft |
-| SPEC-007 | Participation tracking | FR-09 | Draft |
-| SPEC-008 | Admin panel (web) | NFR Configuration | Approved |
+| SPEC-001 | Foundation, config store and scheduler | FR-10, NFR Reliability | Draft — as-built notes and items 9–15 ready for approval (10 Oct) |
+| SPEC-002 | Tracker abstraction and destinations | FR-04 | Draft — as-built notes ready for approval (10 Oct); Excel not built |
+| SPEC-003 | Stand-up reminder and follow-up | FR-01, FR-05 | Draft — as-built notes ready for approval (10 Oct); items 9–10 approved |
+| SPEC-004 | Update intake and Agent 1 extraction | FR-02, FR-03, NFR Latency | Approved (items to 42); item 41a awaiting approval |
+| SPEC-005 | Blocker detection and escalation | FR-06 | Draft — as-built notes ready for approval (10 Oct); items 2a–2b approved |
+| SPEC-006 | Sprint summary (Agent 2) and distribution | FR-07, FR-08 | Draft — as-built notes ready for approval (10 Oct) |
+| SPEC-007 | Participation tracking | FR-09 | Draft — as-built notes ready for approval (10 Oct) |
+| SPEC-008 | Admin panel (web) | NFR Configuration | Approved (items to 10q); 10r awaiting approval |
 
 ## FR coverage
 

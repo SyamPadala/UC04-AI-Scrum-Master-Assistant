@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — amendment of 29 Sep 2026 (item 2a) approved 29 Sep 2026; item 2b approved 8 Oct 2026 |
+| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval; amendment of 29 Sep 2026 (item 2a) approved 29 Sep 2026; item 2b approved 8 Oct 2026 |
 | **Delivers** | FR-06 |
 | **Assumptions** | A1 (alert sent as part of update processing, target < 30 s), A8 (story resolution) |
 | **Depends on** | SPEC-004 |
@@ -47,6 +47,18 @@ affects. They don't have to wait for the end-of-day summary to find out.
 7. If the Scrum Master cannot be reached, the failure is recorded and the update
    is still filed. A failed alert never loses the update.
 8. Under `DRY_RUN`, the alert is logged rather than sent.
+
+### As built — differences from the draft above (recorded 10 Oct 2026)
+
+- **A blocker that fits no story now asks the member first** (SPEC-004 item 40,
+  approved 5 Oct 2026). If the member has open stories, they get a card asking
+  which story it blocks; the alert goes out after they press Submit or None of
+  these. **If the member never answers the card, no alert is sent.** A member
+  with no open story is still alerted at once (2a). Worth reviewing against
+  FR-06's "immediately": raised, not decided.
+- The card is built in code (`src/cards/blockerAlert.ts`), not a JSON file.
+- 2b's result codes: `sent`, `noBlockers`, `alreadyAlerted`, `noScrumMaster`,
+  `appNotInstalled`; callers act on the code.
 
 ## Interface
 

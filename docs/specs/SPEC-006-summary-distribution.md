@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval |
 | **Delivers** | FR-07, FR-08 |
 | **Assumptions** | A4 (daily at configured end-of-day, text format), A5 (at-risk definition), A6 (velocity and completion), A10 (no trend chart) |
 | **Depends on** | SPEC-001, SPEC-002, SPEC-005, SPEC-007 |
@@ -60,6 +60,22 @@ then posts it to the stakeholder channel and emails it out.
     fails explicitly and no summary is sent. The failure is recorded and the
     Scrum Master is notified so they can send one manually. A program-generated
     summary posing as the model's would make the output untraceable.
+
+### As built — differences from the draft above (recorded 10 Oct 2026)
+
+- **Agent 2 has no tools (KNOWN-DEBT #9).** Code gathers today's updates,
+  sprint data, active blockers and participation and passes them in the
+  prompt. Reasons: one model call instead of up to five, and the figures
+  (completion, velocity, at-risk dates) are worked out in code where they can
+  be checked against Jira. Agent 2 still holds no write or send tool. *This
+  note replaces item 3's tool table once approved.*
+- Prompts are TypeScript modules (`src/agents/prompts/`), not `.md` files
+  (KNOWN-DEBT #10).
+- Sprint data comes from the team's own Jira project (SPEC-008 10p). A team
+  with no Jira project gets a summary of updates, blockers and participation
+  with no sprint figures, as for "no active sprint".
+- `pm` is not a per-team setting: Jira is the only source (Azure DevOps is out
+  of scope, CLAUDE.md).
 
 ## Interface
 

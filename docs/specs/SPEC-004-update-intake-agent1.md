@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026; item 39 approved 4 Oct 2026; item 40 approved 5 Oct 2026; item 41, 42 approved 8 Oct 2026 |
+| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026; item 39 approved 4 Oct 2026; item 40 approved 5 Oct 2026; item 41, 42 approved 8 Oct 2026; item 41a proposed 10 Oct 2026, awaiting approval |
 | **Delivers** | FR-02, FR-03, NFR Latency |
 | **Assumptions** | A8 (story resolution), A11 (messages combined per member per day) |
 | **Depends on** | SPEC-001, SPEC-002 |
@@ -435,6 +435,16 @@ keep item 19 — issue #5.)*
     possible, the update is processed in the turn as before. If processing
     fails, the line is replaced with the usual failure reply. The member's
     words travel only inside the service and are never stored.
+
+    41a. *Added 10 Oct 2026 — proposed, awaiting approval (records a change
+    made 8 Oct).* **The hand-over is off for now.** In the first live test,
+    Cloud Run took about 7.6 s to accept the hand-over; the turn gave up at
+    5 s, processed the update itself, and the update was written twice. So the
+    hand-over runs only when `HANDOFF_ENABLED=true` (default off). With it
+    off, the member still gets *"Got it, working on it…"* at once, and it is
+    still replaced by the result, but the work happens inside the Teams turn,
+    so the risk of Teams resending a slow message is back. Turning it on again
+    needs a fix that tells "slow" from "refused", approved as its own item.
 
 42. *Added 8 Oct 2026 (approved by the user, maturity plan M12).* **No story
     of their own, or not linked to Jira → context match, then general.** When

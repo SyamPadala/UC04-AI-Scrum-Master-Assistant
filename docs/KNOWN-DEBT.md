@@ -4,22 +4,20 @@ Deviations from `docs/rules/coding-rules.md` and `process-rules.md`, recorded
 deliberately, to be fixed when the user decides. Not a backlog of ideas — every
 item is a rule the repo already binds itself to.
 
-**Last reviewed:** 4 Oct 2026 (item 2 narrowed to the Teams adapter).
+**Last reviewed:** 10 Oct 2026 (SDD check: items 4 and 12 closed, 2, 3 and 8 narrowed).
 
 ## Open
 
 | # | Rule | What was done instead | Where |
 |---|---|---|---|
 | 1 | 11 — external payloads parsed through a schema at the boundary | Teams activities and Graph responses are still cast and trusted. Jira and both LLM providers *are* parsed through Zod. | `bot/handler.ts`, `graph/client.ts`, `trackers/sharepoint.ts` |
-| 2 | 20 — retry with backoff on 429 and 5xx, honour `Retry-After` | The Teams adapter still has no retries. Graph is closed (see below); Jira and the LLM providers use `util/retry.ts`. | `bot/adapter.ts` |
-| 3 | 9 — no module-level singletons holding live clients | The Firestore client and the Teams adapter are still created at module load. The LLM client, the Jira client and the tracker are now injected. | `store/firestore.ts`, `bot/adapter.ts` |
-| 4 | 25 — structured JSON logs with `teamId`, `jobType`, `correlationId` | New code logs structured JSON with `teamId`; there is still no `correlationId`, and the older modules log plain strings. | `jobs/reminder.ts`, `graph/client.ts` |
+| 2 | 20 — retry with backoff on 429 and 5xx, honour `Retry-After` | Proactive Teams sends are retried (M9, SPEC-003 item 10). Replies inside a Teams turn are still sent once. | `bot/handler.ts` |
+| 3 | 9 — no module-level singletons holding live clients | The Teams adapter is still created at module load. The database is now reached through `store()` (M17, Firestore client made on first use); the LLM client, Jira client and tracker are injected. Settings are still read directly in about 20 files (composition root deferred). | `bot/adapter.ts` |
 | 5 | 27 — time every tracker write | Agent calls and the whole update path are timed. Tracker writes on their own are not, so the Latency NFR cannot be split into its parts. | `trackers/sharepoint.ts` |
-| 8 | Process rule 1 — no production code before specs are Approved | SPEC-001..008 are still Draft. Code was written while they remain so, at the user's explicit instruction, on 19 Sep and again on 21 Sep. | — |
+| 8 | Process rule 1 — no production code before specs are Approved | Base texts of SPEC-001, 002, 003, 005, 006 and 007 are still Draft (code written at the user's instruction, 19 and 21 Sep). 10 Oct 2026: as-built notes added to each and sent for approval, with the missing items (SPEC-001 9–15, SPEC-004 41a, SPEC-008 10r). Closes when approved. | `docs/specs/` |
 | 9 | SPEC-006 — Agent 2 reads its facts through four read-only tools | Agent 2 is given no tools. Code gathers the updates, sprint data, blockers and participation and passes them in the prompt. | `jobs/summary.ts`, `agents/summaryBuilder.ts` |
 | 10 | SPEC-004, SPEC-006 — prompts live in `.md` files | Prompts are `.ts` modules exporting strings. | `agents/prompts/` |
 | 11 | Privacy NFR — update content lives only in the tracker | The LLM response cache writes model output to `.llm-cache/` on disk. Git-ignored, forced off on Cloud Run by `scripts/deploy.mjs`. | `llm/cache.ts` |
-| 12 | 24 — secrets come from Secret Manager | Three secrets, soon four with the Gemini key, sit in plain text in the Cloud Run configuration. | Cloud Run config |
 | 13 | Success metric — participation is measured *within the grace period* | Everyone who replied is recorded as `withinGrace: true` without the arrival time ever being checked. A member chased at the cut-off and replying two hours later is recorded as punctual, so the metric cannot be reported. | `jobs/participation.ts` |
 | 14 | FR-09 — participation reflects who reported that day | Who replied is derived from the tracker at the moment the count runs, and tracker rows carry a date but no time. A reply that lands after the count is in the tracker yet recorded as missed, so the tracker, the summary and the participation record can disagree about the same day. | `jobs/participation.ts`, `trackers/sharepoint.ts` |
 | 19 | LLM calls — cost and reliability (review 25 Sep 2026, fix after the demo) | Gemini is only *asked* for JSON in the prompt; `responseMimeType: application/json` with a response schema is not used, so malformed output costs a retry. | `llm/gemini.ts` |
@@ -38,6 +36,8 @@ item is a rule the repo already binds itself to.
 | 16 | FR-07 — the summary lists **active** blockers | A blocker stays in the summary, whatever day it was raised, until the same member reports that item again without one (SPEC-006 4a, `BLOCKER_LOOKBACK_DAYS`). Closed 25 Sep 2026. |
 | 17 | FR-07/FR-08 — the summary is read by stakeholders | Agent 2 returns the sections as validated JSON; code lays them out as an Adaptive Card in the channel and an HTML email. Closed 25 Sep 2026. |
 | 18 | A member's name is their own | A Teams event with no sender name no longer overwrites the stored name. Closed 25 Sep 2026. |
+| 4 | 25 — structured JSON logs with `correlationId` | Every log line of a message, admin request or job carries a correlation id (M16, SPEC-001 item 9). Closed 8 Oct 2026. |
+| 12 | 24 — secrets come from Secret Manager | All six secrets in Secret Manager, readable only by the runtime account; deploy passes references (M5, SPEC-001 item 11). Closed 8 Oct 2026. |
 | 2 (Graph) | 20 — retry with backoff on 429 and 5xx, honour `Retry-After` | Graph calls time out at 15 s and retry twice (2 s, 5 s), honouring `Retry-After`; a create is retried only on 429; the member is told when the tracker is slow (SPEC-002 5a). Closed 1 Oct 2026. The Teams adapter part stays open. |
 
 ## Notes on the open items
@@ -61,6 +61,3 @@ Either is fine; the present state, where they disagree, is not.
 content. It is acceptable for local runs and the eval, which use sample data.
 It must never be switched on for the deployed service — `deploy.mjs` sets
 `LLM_CACHE=false` regardless of what `.env` says.
-
-**Item 12** now matters more than it did: the Gemini API key is a billable
-credential, and anyone with Cloud Run console access can read it.

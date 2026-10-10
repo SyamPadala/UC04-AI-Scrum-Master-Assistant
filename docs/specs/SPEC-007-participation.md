@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval |
 | **Delivers** | FR-09 |
 | **Assumptions** | A3 (habitual non-responder = 2 missed updates, configurable) |
 | **Depends on** | SPEC-001, SPEC-003, SPEC-004 |
@@ -35,6 +35,21 @@ gets noticed early instead of at the retro.
    (SPEC-006) through a read-only tool.
 8. Only metadata is stored — who replied and when, never what they said
    (Privacy NFR).
+
+### As built — differences from the draft above (recorded 10 Oct 2026)
+
+- **Not measured at the cut-off.** The count runs 5 minutes after the
+  summary time and reads who has a tracker row dated today. Everyone who
+  replied is recorded `withinGrace: true` without checking the time, so the
+  PRD's "within the grace period" figure cannot be reported yet
+  (KNOWN-DEBT #13, #14).
+- Responders are matched by display name, not member id.
+- A member with no chat reference is counted as `missed`, not `skipped`.
+- An empty roster gives a rate of 0, not "no roster".
+- `participationTime` is not a setting.
+- Weekends are excluded through working days (SPEC-003 item 9); public
+  holidays are not.
+- Agent 2 gets participation in its prompt, not through a tool (SPEC-006).
 
 ## Interface
 

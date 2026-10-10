@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — item 9 (working days) approved 29 Sep 2026; item 10 (send retry) approved 8 Oct 2026 |
+| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval; item 9 (working days) approved 29 Sep 2026; item 10 (send retry) approved 8 Oct 2026 |
 | **Delivers** | FR-01, FR-05 |
 | **Assumptions** | A2 (cut-off = stand-up time + grace period, default 2 h) |
 | **Depends on** | SPEC-001 |
@@ -47,6 +47,16 @@ chased.
     failing is the same failure as before. Accepted: a 5xx after delivery can
     send a message twice. Checking delivery first was rejected (needs
     Chat.Read.All).
+
+### As built — differences from the draft above (recorded 10 Oct 2026)
+
+- The reminder and follow-up are **plain text messages**, not Adaptive Cards.
+  The text asks the same three questions and says any wording is fine.
+  `standupPrompt.json` and `followupPrompt.json` do not exist.
+- `reminderTone` and `SEND_CONCURRENCY` are not built. Members are messaged one
+  after another; Teams' 429 is handled by item 10's retry.
+- A member whose chat is gone (404) has their stored chat reference cleared, so
+  the admin page shows them as not reachable.
 
 ## Interface
 

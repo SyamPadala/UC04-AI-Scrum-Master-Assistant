@@ -19,18 +19,18 @@ Repository: `https://github.com/SyamPadala/UC04-AI-Scrum-Master-Assistant` (publ
 
 | FR | What it does | Evidence |
 |---|---|---|
-| FR-01 | Sends stand-up reminders on schedule | Fired unattended 19 and 20 Sep, both delivered |
-| FR-02 | Accepts a reply written in plain language | Messages from two accounts recorded |
-| FR-03 | Extracts completed / in progress / blockers | **92.5% on 40 labelled updates**, `eval/last-run.json` |
-| FR-04 | Writes the update to the SharePoint tracker | Rows visible in Daily Status Tracker |
-| FR-05 | Chases only those who have not replied | Correctly sent to nobody when both had replied |
-| FR-06 | DMs the Scrum Master when a blocker is reported | Built and deployed 21 Sep; not yet demonstrated live |
-| FR-07 | Builds the daily consolidated summary | Ran unattended on the server at 21:55 on 21 Sep and built a summary |
-| FR-08 | Posts it to the channel and emails stakeholders | Built and deployed 21 Sep; delivery reached nobody — no stakeholder channel reference stored, no stakeholder emails, `SUMMARY_SENDER_USER_ID` unset |
-| FR-09 | Records participation, flags repeat non-responders | 50% rate recorded; one flag raised, repeat suppressed |
-| FR-10 | Resolves the team from the sender, per-team tracker | Code path built; a second team is not yet configured |
-| NFR Latency | Update received to tracker written | Worst case 7.8 s of a 30 s budget |
-| NFR Configuration | Scrum Master changes settings from inside Teams | `setup` card saved 09:00 -> 01:00, reminder fired at the new time |
+| FR-01 | Sends stand-up reminders on schedule | Fired unattended 19 and 20 Sep, both delivered | Live: reminders sent on schedule (session log 21 Sep; all four jobs seen 1 Oct 22:40) |
+| FR-02 | Accepts a reply written in plain language | Messages from two accounts recorded | Live: varied free-text replies recorded (live tests 30 Sep–1 Oct) |
+| FR-03 | Extracts completed / in progress / blockers | **92.5% on 40 labelled updates**, `eval/last-run.json` | Eval 94.2% on flash, must-pass 9/10 (1 Oct). Later prompt changes (items 38–42) not re-evaluated |
+| FR-04 | Writes the update to the SharePoint tracker | Rows visible in Daily Status Tracker | Live: SharePoint list rows; Jira comment on SCRUM-23 (24 Sep). **Excel not built** (open gap) |
+| FR-05 | Chases only those who have not replied | Correctly sent to nobody when both had replied | Live: follow-up job ran 1 Oct 22:40. Non-responders-only not separately recorded |
+| FR-06 | DMs the Scrum Master when a blocker is reported | Built and deployed 21 Sep; not yet demonstrated live | Live: alert card 21 Sep (sender was also the Scrum Master). Item 40 card not yet tried live |
+| FR-07 | Builds the daily consolidated summary | Ran unattended on the server at 21:55 on 21 Sep and built a summary | Live: summary card posted 25 Sep. Velocity figures not separately checked |
+| FR-08 | Posts it to the channel and emails stakeholders | Built and deployed 21 Sep; delivery reached nobody — no stakeholder channel reference stored, no stakeholder emails, `SUMMARY_SENDER_USER_ID` unset | Live: channel post 23 and 25 Sep. Email: not recorded |
+| FR-09 | Records participation, flags repeat non-responders | 50% rate recorded; one flag raised, repeat suppressed | Job runs (1 Oct). Habitual flag not seen live; "within grace" not measurable (KNOWN-DEBT #13, #14) |
+| FR-10 | Resolves the team from the sender, per-team tracker | Code path built; a second team is not yet configured | Not shown: only Alpha has members; Beta has none |
+| NFR Latency | Update received to tracker written | Worst case 7.8 s of a 30 s budget | Timed per update (`withinLatencyBudget`); no report produced yet |
+| NFR Configuration | Scrum Master changes settings from inside Teams | `setup` card saved 09:00 -> 01:00, reminder fired at the new time | Live: admin page runs schedule, roster, stakeholders, trackers, Jira project |
 
 Also working: `status`, `pause`, `resume`, `help`; merging of a member's rows
 across several messages on the same day (A11, `mergeRows()`); idempotent jobs;
@@ -231,23 +231,23 @@ docs/                 plan, specs, setup guide, demo script
 
 ## 6. Requirement Traceability
 
-| ID | Delivered by | Verified by |
-|---|---|---|
-| FR-01 | `jobs/reminder` + prompt card | Demo: reminders at scheduled time for 2 teams |
-| FR-02 | `bot/` message handler | Demo: varied free-text replies accepted |
-| FR-03 | Agent 1 (structured JSON output) | `eval/` accuracy run (target ≥ 90%) |
-| FR-04 | `trackers/*` (code, always) | Demo: rows/comments visible in SharePoint, Excel, Jira |
-| FR-05 | `jobs/followup` | Demo: follow-up only to non-responders after grace period |
-| FR-06 | Agent 1 detects + resolves story; code sends DM | Demo: Scrum Master DM with member, blocker, story; timing log |
-| FR-07 | Agent 2 with sprint/update/blocker/participation tools | Demo: summary with rollup, blockers, goal status, at-risk, velocity |
-| FR-08 | `graph/` channel post + mail (code) | Demo: summary in Teams channel and inbox |
-| FR-09 | `jobs/participation` | Demo: participation rate + non-responder flag |
-| FR-10 | Firestore team config + `/tick` | Demo: 2 teams, different times and trackers |
-| NFR Reliability | Cloud Scheduler + idempotent jobs + run log | Run log report (partial data by Friday) |
-| NFR Latency | Timing instrumentation; capped tool iterations and timeout | Latency report (< 30 s) |
-| NFR Privacy | Metadata-only store; Claude via Vertex/API | Design review |
-| NFR Accessibility | Adaptive Cards | Demo on Teams desktop + mobile |
-| NFR Configuration | Web admin panel (SPEC-008) | Demo: change schedule, roster and stakeholders on the page |
+| ID | Delivered by | Verified by | Evidence so far (10 Oct 2026) |
+|---|---|---|---|
+| FR-01 | `jobs/reminder` + prompt card | Demo: reminders at scheduled time for 2 teams | Live: reminders sent on schedule (session log 21 Sep; all four jobs seen 1 Oct 22:40) |
+| FR-02 | `bot/` message handler | Demo: varied free-text replies accepted | Live: varied free-text replies recorded (live tests 30 Sep–1 Oct) |
+| FR-03 | Agent 1 (structured JSON output) | `eval/` accuracy run (target ≥ 90%) | Eval 94.2% on flash, must-pass 9/10 (1 Oct). Later prompt changes (items 38–42) not re-evaluated |
+| FR-04 | `trackers/*` (code, always) | Demo: rows/comments visible in SharePoint, Excel, Jira | Live: SharePoint list rows; Jira comment on SCRUM-23 (24 Sep). **Excel not built** (open gap) |
+| FR-05 | `jobs/followup` | Demo: follow-up only to non-responders after grace period | Live: follow-up job ran 1 Oct 22:40. Non-responders-only not separately recorded |
+| FR-06 | Agent 1 detects + resolves story; code sends DM | Demo: Scrum Master DM with member, blocker, story; timing log | Live: alert card 21 Sep (sender was also the Scrum Master). Item 40 card not yet tried live |
+| FR-07 | Agent 2 with sprint/update/blocker/participation tools | Demo: summary with rollup, blockers, goal status, at-risk, velocity | Live: summary card posted 25 Sep. Velocity figures not separately checked |
+| FR-08 | `graph/` channel post + mail (code) | Demo: summary in Teams channel and inbox | Live: channel post 23 and 25 Sep. Email: not recorded |
+| FR-09 | `jobs/participation` | Demo: participation rate + non-responder flag | Job runs (1 Oct). Habitual flag not seen live; "within grace" not measurable (KNOWN-DEBT #13, #14) |
+| FR-10 | Firestore team config + `/tick` | Demo: 2 teams, different times and trackers | Not shown: only Alpha has members; Beta has none |
+| NFR Reliability | Cloud Scheduler + idempotent jobs + run log | Run log report (partial data by Friday) | Run log in place; 99.5% not measured. Send retry (M9) and alerts (M14, partly) added |
+| NFR Latency | Timing instrumentation; capped tool iterations and timeout | Latency report (< 30 s) | Timed per update (`withinLatencyBudget`); no report produced yet |
+| NFR Privacy | Metadata-only store; Claude via Vertex/API | Design review | Architecture review 6 Oct 2026. Gemini paid tier not yet confirmed (M15) |
+| NFR Accessibility | Adaptive Cards | Demo on Teams desktop + mobile | Teams desktop only; mobile not shown |
+| NFR Configuration | Web admin panel (SPEC-008) | Demo: change schedule, roster and stakeholders on the page | Live: admin page runs schedule, roster, stakeholders, trackers, Jira project |
 
 ### Success metrics in the POC
 
