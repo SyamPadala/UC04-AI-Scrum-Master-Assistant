@@ -306,6 +306,12 @@ Dev team tab. Not an FR of its own: it serves FR-10 and the Configuration NFR.*
        AnyBlocker, Updated By). No custom fields for now. A failed create is
        shown on the page with the reason; the team is still created, with no
        tracker, and the admin can retry from the Dev team tab.
+     - **Jira comment chosen** (only for a team with a Jira project): the
+       assistant creates a **"Daily stand-up"** issue in that team's project
+       and stores its key as the team's stand-up issue, where updates with no
+       story (general work, blocker with no work item) are written. A failed
+       create is handled as for the SharePoint list. Replaces LATER L8.
+       *(Added and approved by the user, 16 Oct 2026.)*
      - **Permission:** the Graph app gets **Sites.Manage.All** (create lists
        and columns), so no step happens outside the admin page. This settles
        M6: the app keeps tenant-wide SharePoint access; Sites.Selected is not
