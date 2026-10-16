@@ -8,7 +8,7 @@ waits.
 | # | Item | State | Decision / notes |
 |---|---|---|---|
 | 1 | Approve SPEC-001 (foundation) | **Approved 16 Oct** | Base text, as-built notes, items 9–15 |
-| 2 | Approve SPEC-002 (trackers) | In discussion | See 2a–2g below |
+| 2 | Approve SPEC-002 (trackers) | **Approved 16 Oct** | See 2a–2g below |
 | 3 | Approve SPEC-003 (reminder, follow-up) | Open | |
 | 4 | Approve SPEC-004 item 41a (M4 hand-over off) | Open | |
 | 5 | Approve SPEC-005 (blocker alerts) | Open | |

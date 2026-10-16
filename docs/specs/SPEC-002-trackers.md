@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval; item 2g approved 16 Oct 2026 (not built) |
+| **Status** | Approved 16 Oct 2026 — base text with as-built notes (10 Oct 2026) and items to 5a; item 2g approved 16 Oct 2026 (not built); Excel parked by the user 16 Oct 2026 |
 | **Delivers** | FR-04 |
 | **Assumptions** | A7 (destinations: SharePoint list, Excel Online, Jira comment) |
 | **Depends on** | SPEC-001 |
