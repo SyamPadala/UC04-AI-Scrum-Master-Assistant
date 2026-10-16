@@ -15,7 +15,7 @@ it as approved or awaiting approval.
 |---|---|---|---|
 | SPEC-001 | Foundation, config store and scheduler | FR-10, NFR Reliability | Approved 16 Oct 2026 (with as-built notes and items 9–15) |
 | SPEC-002 | Tracker abstraction and destinations | FR-04 | Approved 16 Oct 2026; 2g not built; Excel parked |
-| SPEC-003 | Stand-up reminder and follow-up | FR-01, FR-05 | Draft — as-built notes ready for approval (10 Oct); items 9–10 approved |
+| SPEC-003 | Stand-up reminder and follow-up | FR-01, FR-05 | Approved 16 Oct 2026; item 11 not built |
 | SPEC-004 | Update intake and Agent 1 extraction | FR-02, FR-03, NFR Latency | Approved (items to 42); item 41a awaiting approval |
 | SPEC-005 | Blocker detection and escalation | FR-06 | Draft — as-built notes ready for approval (10 Oct); items 2a–2b approved |
 | SPEC-006 | Sprint summary (Agent 2) and distribution | FR-07, FR-08 | Draft — as-built notes ready for approval (10 Oct) |

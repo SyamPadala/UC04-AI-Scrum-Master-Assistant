@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval; item 9 (working days) approved 29 Sep 2026; item 10 (send retry) approved 8 Oct 2026; item 11 (parallel sends) approved 16 Oct 2026, not built |
+| **Status** | Approved 16 Oct 2026 — base text with as-built notes (10 Oct 2026); item 9 (working days) approved 29 Sep 2026; item 10 (send retry) approved 8 Oct 2026; item 11 (parallel sends) approved 16 Oct 2026, not built |
 | **Delivers** | FR-01, FR-05 |
 | **Assumptions** | A2 (cut-off = stand-up time + grace period, default 2 h) |
 | **Depends on** | SPEC-001 |
