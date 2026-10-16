@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — base text with as-built notes (10 Oct 2026) and items 9–15 (proposed 10 Oct 2026) ready for approval |
+| **Status** | Approved 16 Oct 2026 — base text with as-built notes (10 Oct 2026) and items 9–15 |
 | **Delivers** | FR-10, NFR Reliability |
 | **Assumptions** | A2 (cut-off = reminder + grace), A4 (per-team end-of-day summary time) |
 | **Depends on** | — |
