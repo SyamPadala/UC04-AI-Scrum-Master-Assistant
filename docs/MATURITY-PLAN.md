@@ -38,7 +38,7 @@ spec line approved before code (process rules).
 | Design review: composition root (stop reading the global settings in 20 files) | **Partly** — Jira, store and tokens now come from factories; settings are still read directly. Full DI touches every module for no user-visible change; deferred |
 | M5 Secret Manager | **Done 8 Oct** — six secrets in Secret Manager, readable only by the service's runtime account; deploy sends references (`CLOUD_RUN_SECRETS=secret-manager`); verified none left as plain settings |
 | M14 alerts | **Partly done 8 Oct** — e-mail channel (admin mailbox), health check and "service not answering" alert live. The three log-based alerts (job failed, update not processed, > 30 s) need *Logs Configuration Writer* on the deploy account, then rerun `scripts/alerts.mjs` |
-| M6 SharePoint Sites.Selected | **Needs a decision** — with it, every new team's SharePoint site must be granted to the app by hand before its tracker list can be chosen |
+| M6 SharePoint Sites.Selected | **Decided 16 Oct 2026: not used** — the app keeps tenant-wide access and gets Sites.Manage.All to create each team's list (SPEC-008 10s). Was: needs a decision — with it, every new team's SharePoint site must be granted to the app by hand before its tracker list can be chosen |
 | M8 separate Jira account | **User step** — create the account, then swap JIRA_EMAIL / JIRA_API_TOKEN |
 | M15 Gemini paid tier | **User check** |
 | Data | Alpha set to Jira project SCRUM; Beta's tracker (was Alpha's list) cleared |

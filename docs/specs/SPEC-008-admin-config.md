@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026; amendment of 30 Sep 2026 (10l) approved 30 Sep 2026; 10m, 10n approved 5 Oct 2026; 10o, 10p, 10q approved 8 Oct 2026; 10r proposed 10 Oct 2026, awaiting approval |
+| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026; amendment of 30 Sep 2026 (10l) approved 30 Sep 2026; 10m, 10n approved 5 Oct 2026; 10o, 10p, 10q approved 8 Oct 2026; 10r proposed 10 Oct 2026, awaiting approval; 10s approved 16 Oct 2026 |
 | **Delivers** | NFR Configuration; supports FR-08 (stakeholder list), FR-10 (per-team settings) |
 | **Assumptions** | A9 (configuration via a web admin panel, amended 24 Sep 2026) |
 | **Depends on** | SPEC-001 |
@@ -293,6 +293,30 @@ Dev team tab. Not an FR of its own: it serves FR-10 and the Configuration NFR.*
      a plain message and a short reference, never the raw technical error.
      The details go to the log under the same reference, so a problem the
      admin reports can be found.
+
+10s. *Added 16 Oct 2026 — approved by the user, 16 Oct 2026 (user decisions,
+     16 Oct 2026).* **Tracker created with the team; readiness runs by
+     itself.**
+     - **New team form (admin only):** the Teams team is **required** (picked
+       from the dropdown), and so is the tracker: SharePoint list or Jira
+       comment.
+     - **SharePoint chosen:** the assistant creates the tracker list on that
+       Teams team's own SharePoint site, with the **fixed** columns SPEC-002
+       writes (Date, WIN, Description, AssignedTo, Comment, Status,
+       AnyBlocker, Updated By). No custom fields for now. A failed create is
+       shown on the page with the reason; the team is still created, with no
+       tracker, and the admin can retry from the Dev team tab.
+     - **Permission:** the Graph app gets **Sites.Manage.All** (create lists
+       and columns), so no step happens outside the admin page. This settles
+       M6: the app keeps tenant-wide SharePoint access; Sites.Selected is not
+       used.
+     - **Readiness (10d) runs by itself** when the team's page opens and when
+       Running is chosen. The team switches to Running only when every check
+       is green; otherwise it stays Paused and the page lists what is red and
+       how to fix it. The Check readiness button stays. No LLM calls.
+       Replaces LATER L14.
+     - Existing teams keep their tracker. A team with none (Scrum Team Beta)
+       gets a **Create tracker list** action on the Dev team tab.
 
 **Migration.** Scrum Team Alpha has its Scrum Master (Syam) on the roster. On
 deploy his stored chat is copied to `scrumMasters/`, and he is removed from
