@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval |
+| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval; item 2g approved 16 Oct 2026 (not built) |
 | **Delivers** | FR-04 |
 | **Assumptions** | A7 (destinations: SharePoint list, Excel Online, Jira comment) |
 | **Depends on** | SPEC-001 |
@@ -71,6 +71,26 @@ This is also where the update *lives*. We deliberately keep no copy of it.
 >     sender still counts as having responded and two people's rows on one
 >     story stay separate. *(Before: AssignedTo was the sender and the comment
 >     said "(assigned to <owner>)" — users found it confusing.)*
+> 2g. *Added 16 Oct 2026 — approved by the user, 16 Oct 2026 (M19). Not
+>     built; waits for the user's go-ahead.* **A second update on the same
+>     story the same day is added, not replaced.** Replaces 2a's "latest update
+>     only" and 2c's "the latest wins" for the same day.
+>     - **Comment:** each update of the day is added on its own line, prefixed
+>       with the time in the team's timezone (`10:05 Started the login API`).
+>       Always automatic, no card. The first update on a later day replaces
+>       the comment as today.
+>     - **Blocker:** the latest message wins (2d unchanged): a later message on
+>       the item with no blocker clears it; a new blocker sets it.
+>     - **Status:** never goes backwards on the same day: In Progress →
+>       Completed is kept, Completed → In Progress keeps Completed. Blocked
+>       follows the blocker. The next day's first update sets it freely.
+>     - **Never twice:** the same Teams message (activity id) is never added
+>       twice, whatever Teams resends. Required before M4's hand-over is
+>       switched back on (SPEC-004 41a).
+>     - **Jira comment tracker:** the same rule — the day's comment on the
+>       story gets the new line instead of being replaced.
+>     - **Summary (SPEC-006):** Agent 2 reads the whole comment and gives one
+>       line per story, as today.
 > 4a. `readToday` returns the rows whose `Date` (last updated) is today.
 >     `openBlockers(teamId)` returns every row whose `AnyBlocker` is set — the
 >     team's current impediments, whatever day they were raised — with the date

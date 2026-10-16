@@ -24,7 +24,7 @@ waits.
 | 15 | Excel Online tracker | **Parked 16 Oct** | User: SharePoint and Jira are enough for now. Not dropped — PRD/A7 still name it |
 | 16 | Voice input, velocity chart | Open | A10 |
 | 17 | `reminderTone`, `SEND_CONCURRENCY` | Open | SPEC-003 as-built |
-| 18 | M19 — same-day second update appends | In discussion | Taken early, from 2f |
+| 18 | M19 — same-day second update appends | **Approved 16 Oct** (SPEC-002 2g), waiting for go-ahead | Always add, timestamped; blocker: latest wins; status never goes backwards same day; never add the same message twice; Jira too; summary reads the whole comment |
 | 19 | M20 — clear the assistant's replies from a chat | Open | |
 | 20 | Backup Scrum Master | Parked | User to discuss with their manager |
 | 21 | POC-Plan §10 open questions (5) | Open | |
