@@ -141,10 +141,10 @@ This is also where the update *lives*. We deliberately keep no copy of it.
   with no Jira project writes every update as a general update.
 - `Member.jiraAccountId` is now set by the admin page when a member is added
   (SPEC-008 10n); `scripts/link-jira.mjs` remains for repairs.
-- The SharePoint "Upsert" line under Interface (filter on AssignedTo + Date,
-  delete, rewrite) describes the pre-26 Sep design; 2a–2f are what is built.
-- Still open (M6): narrowing the Graph app from every SharePoint site to only
-  the teams' sites (Sites.Selected) waits on the user's decision.
+- The SharePoint write line under Interface was corrected 16 Oct 2026; it
+  used to describe the pre-26 Sep design (filter on AssignedTo + Date, delete, rewrite).
+- M6 decided 16 Oct 2026: Sites.Selected is not used; the app keeps
+  tenant-wide access and gets Sites.Manage.All to create each team's list (SPEC-008 10s).
 
 ## Interface
 
@@ -195,7 +195,7 @@ type TrackerConfig =
 | `Status` | Choice | `In Progress` / `Completed` / `Blocked` (list order) |
 | `AnyBlocker` | Multiple lines of text | The blocker, if any |
 
-Upsert: filter on AssignedTo+Date, delete those items, write the new set.
+Write: one item per member + work item, updated in place (2a–2f); nothing is deleted. Same-day updates are appended once 2g is built.
 
 **Excel Online** — one worksheet row per work item, same columns in the same
 order, via the Graph workbook API. Upsert the same way: remove that member's

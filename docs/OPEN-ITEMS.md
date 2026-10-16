@@ -43,7 +43,7 @@ waits.
 | 2c | Each team its own list on its own site | OK |
 | 2d | Jira comment tracker; no Jira project → no Jira tracker | OK, plus: "Daily stand-up" issue created per team (10s; closes L8) |
 | 2e | Member's Jira account linked on add; access restored on re-add | OK. One person, one team; moving = remove then add. Jira access is site-wide, not per project |
-| 2f | Out-of-date "delete and rewrite" line | Wording fix pending; same-day append taken as M19 (item 18) |
+| 2f | Out-of-date "delete and rewrite" line | **Fixed 16 Oct**; same-day append decided as M19 (item 18) |
 | 2g | SharePoint access (M6) | Settled by 10s (item 13) |
 
 ## Decisions recorded as spec items
