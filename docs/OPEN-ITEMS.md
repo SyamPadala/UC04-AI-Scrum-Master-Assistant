@@ -23,7 +23,7 @@ waits.
 | 14 | Live tests in Teams: M4, M12, item 40, M13 | Open | |
 | 15 | Excel Online tracker | **Parked 16 Oct** | User: SharePoint and Jira are enough for now. Not dropped — PRD/A7 still name it |
 | 16 | Voice input, velocity chart | Open | A10 |
-| 17 | `reminderTone`, `SEND_CONCURRENCY` | Open | SPEC-003 as-built |
+| 17 | `reminderTone`, `SEND_CONCURRENCY` | **Decided 16 Oct** | Tone dropped (one standard wording). Parallel members + parallel teams approved as SPEC-003 item 11, waiting for go-ahead |
 | 18 | M19 — same-day second update appends | **Approved 16 Oct** (SPEC-002 2g), waiting for go-ahead | Always add, timestamped; blocker: latest wins; status never goes backwards same day; never add the same message twice; Jira too; summary reads the whole comment |
 | 19 | M20 — clear the assistant's replies from a chat | Open | |
 | 20 | Backup Scrum Master | Parked | User to discuss with their manager |

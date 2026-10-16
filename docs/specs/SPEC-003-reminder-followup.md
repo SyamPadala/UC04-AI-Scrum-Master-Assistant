@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval; item 9 (working days) approved 29 Sep 2026; item 10 (send retry) approved 8 Oct 2026 |
+| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval; item 9 (working days) approved 29 Sep 2026; item 10 (send retry) approved 8 Oct 2026; item 11 (parallel sends) approved 16 Oct 2026, not built |
 | **Delivers** | FR-01, FR-05 |
 | **Assumptions** | A2 (cut-off = stand-up time + grace period, default 2 h) |
 | **Depends on** | SPEC-001 |
@@ -47,14 +47,31 @@ chased.
     failing is the same failure as before. Accepted: a 5xx after delivery can
     send a message twice. Checking delivery first was rejected (needs
     Chat.Read.All).
+11. *Added 16 Oct 2026 (approved by the user, 16 Oct 2026). Not built; waits
+    for the user's go-ahead.* **Parallel sends, parallel teams.** Built for
+    large teams and many teams with the same stand-up time.
+    - **Members:** each job messages up to `SEND_CONCURRENCY` members at the
+      same time (default 4). Applies to every proactive send in item 10.
+    - **Teams:** each `/tick` runs the due jobs of up to `TEAM_CONCURRENCY`
+      teams at the same time (default 4). Jobs of one team still run in order.
+    - Unchanged guarantees: each job is claimed before it runs (rule 19), so
+      parallel teams never double-send; one member's or one team's failure
+      never stops the others (rule 21); item 10's retry applies to every send.
+    - One shared limiter helper does the bounding; jobs do not each write
+      their own (rule 7). Unit tests prove the limit holds and nobody is
+      messaged twice (rule 28).
 
 ### As built — differences from the draft above (recorded 10 Oct 2026)
 
 - The reminder and follow-up are **plain text messages**, not Adaptive Cards.
   The text asks the same three questions and says any wording is fine.
   `standupPrompt.json` and `followupPrompt.json` do not exist.
-- `reminderTone` and `SEND_CONCURRENCY` are not built. Members are messaged one
-  after another; Teams' 429 is handled by item 10's retry.
+- **Plain text kept** (user, 16 Oct 2026): a member replies by typing, so a
+  card adds nothing; plain text reads well on mobile.
+- **`reminderTone` dropped** (user, 16 Oct 2026): one standard wording for
+  every team, nothing to pick. It was a PRD risk mitigation, not an FR.
+- `SEND_CONCURRENCY` is not built yet: members are messaged one after
+  another. Replaced by item 11 (approved 16 Oct 2026, not built).
 - A member whose chat is gone (404) has their stored chat reference cleared, so
   the admin page shows them as not reachable.
 
@@ -72,8 +89,8 @@ runReminder(team: TeamConfig, localDate: string): Promise<ReminderResult>;
 runFollowup(team: TeamConfig, localDate: string): Promise<ReminderResult>;
 ```
 
-Cards in `src/cards/`: `standupPrompt.json`, `followupPrompt.json`. Both are
-text-first and render on Teams desktop and mobile (Accessibility NFR).
+The reminder and follow-up are plain text (see As built), which renders on
+Teams desktop and mobile (Accessibility NFR).
 
 Conversation references are captured by the bot on `conversationUpdate` and
 install events, and stored per member (SPEC-001).
@@ -84,9 +101,9 @@ install events, and stored per member (SPEC-001).
 |---|---|---|---|
 | `standupTime` (per team) | `HH:mm` | `09:00` | When the reminder goes out |
 | `gracePeriodMinutes` (per team) | number | 120 | Follow-up offset (PRD FR-05) |
-| `reminderTone` (per team) | standard / friendly | standard | Wording variant (PRD risk: members ignoring bot) |
 | `DRY_RUN` | boolean | false | Log instead of send |
-| `SEND_CONCURRENCY` | number | 4 | Batched dispatch (PRD risk: Teams rate limits) |
+| `SEND_CONCURRENCY` | number | 4 | Members messaged at the same time (item 11; not built) |
+| `TEAM_CONCURRENCY` | number | 4 | Teams handled at the same time per tick (item 11; not built) |
 
 ## Edge cases
 
