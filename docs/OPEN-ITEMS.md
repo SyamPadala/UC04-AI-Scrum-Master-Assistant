@@ -15,7 +15,7 @@ waits.
 | 6 | Approve SPEC-006 (sprint summary) | **Approved 22 Oct** | Base text with as-built notes, items 11–12 |
 | 7 | Approve SPEC-007 (participation) | Open | |
 | 8 | Approve SPEC-008 item 10r (friendly errors) | Open | |
-| 9 | Commit the commit check (SPEC-001 item 15) | Open | Files written, hook switched on locally, not committed |
+| 9 | Commit the commit check (SPEC-001 item 15) | **Done 22 Oct** | Committed and pushed; switch on per clone: `git config core.hooksPath .githooks` |
 | 10 | Logs Configuration Writer role → 3 log alerts (M14) | Open — user step | |
 | 11 | Separate Jira account for the assistant (M8) | Open — user step | |
 | 12 | Gemini key on paid tier (M15) | Open — user check | |

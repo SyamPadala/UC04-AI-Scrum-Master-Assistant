@@ -1,0 +1,3 @@
+#!/bin/sh
+# SDD spec check (scripts/check-commit.mjs). Switch on: git config core.hooksPath .githooks
+exec node scripts/check-commit.mjs "$1"
