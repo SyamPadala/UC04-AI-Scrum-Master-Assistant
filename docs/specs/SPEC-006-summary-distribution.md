@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval; items 11–12 (demo feedback) approved 22 Oct 2026 |
+| **Status** | Approved 22 Oct 2026 (base text with as-built notes of 10 Oct 2026); items 11–12 (demo feedback) approved 22 Oct 2026 |
 | **Delivers** | FR-07, FR-08 |
 | **Assumptions** | A4 (daily at configured end-of-day, text format), A5 (at-risk definition), A6 (velocity and completion), A10 (no trend chart) |
 | **Depends on** | SPEC-001, SPEC-002, SPEC-005, SPEC-007 |

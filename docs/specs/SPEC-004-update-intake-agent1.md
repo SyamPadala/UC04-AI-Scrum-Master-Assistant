@@ -550,6 +550,7 @@ Model id comes from config; never hardcoded at a call site (coding rule 18).
 | `AGENT1_MAX_RETRIES` | number | 2 | Retries against the same model before failing |
 | `LLM_PROVIDER` | gemini / anthropic / vertex | gemini | Which provider the adapter uses (A12) |
 | `LLM_MODEL` | string | set in `.env` | Model id for the selected provider |
+| `APPROVAL_REMINDER_MINUTES` | number | 30 | Item 43: minutes before the summary that waiting approvals are chased (all teams) |
 
 The LLM sits behind a provider adapter (`src/llm/`) exposing one interface:
 prompt in, validated structured output out. Providers are interchangeable by
