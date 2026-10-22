@@ -7,6 +7,7 @@ import { sendFollowUps, sendReminders } from './reminder.js'
 import { flagHabitualNonResponders, recordParticipation } from './participation.js'
 import { trackerFor } from '../trackers/factory.js'
 import { runSummary } from './summary.js'
+import { expireApprovals, remindApprovals } from './approval.js'
 import { createLlm } from '../llm/index.js'
 import { pmFor } from '../pm/factory.js'
 import { config } from '../config/env.js'
@@ -22,7 +23,7 @@ export interface TickEntry {
 
 // Order matters: the summary is built before participation is counted, so the
 // figures the summary quotes are the ones that were true when it ran.
-const JOBS: JobType[] = ['reminder', 'followup', 'summary', 'participation']
+const JOBS: JobType[] = ['reminder', 'followup', 'approvals', 'summary', 'participation']
 
 /**
  * One scheduler heartbeat.
@@ -124,8 +125,15 @@ const messageOutcome = (result: { sent: number, failed: number, skipped: number,
 const JOBS_BY_TYPE: Record<JobType, JobRunner> = {
   reminder: async ({ team }) => messageOutcome(await sendReminders(team)),
   followup: async ({ team, today }) => messageOutcome(await sendFollowUps(team, trackerFor(team), today)),
-  summary: async ({ team, today, llm, pm }) => {
+  approvals: async ({ team, today }) => messageOutcome(await remindApprovals(team, today)),
+  summary: async ({ team, today, llm, pm, persist }) => {
     const result = await runSummary(team, today, { llm, pm, tracker: trackerFor(team) })
+    // SPEC-004 item 43: the scheduled summary closes the day, so what is still
+    // waiting for the Scrum Master expires. A manual run closes nothing.
+    if (persist) {
+      await expireApprovals(team, today).catch((error: unknown) =>
+        console.error(JSON.stringify({ event: 'approval.expiryFailed', teamId: team.teamId, error: String(error) })))
+    }
     // Reaching one of the two stakeholder routes is a real outcome, not a
     // failure — SPEC-006 item 8 keeps the half that worked.
     const outcome: RunOutcome =

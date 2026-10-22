@@ -1,6 +1,7 @@
 /** SPEC-001 shared types. */
 
-export type JobType = 'reminder' | 'followup' | 'summary' | 'participation'
+/** 'approvals': the reminder about updates waiting for the Scrum Master (SPEC-004 item 43). */
+export type JobType = 'reminder' | 'followup' | 'approvals' | 'summary' | 'participation'
 
 export interface Member {
   /** Entra object id — this person's identity in Microsoft 365 and Teams. */
@@ -158,4 +159,24 @@ export interface ConfigChange {
   changedBy: string
   changedAt: Date
   fields: Array<{ field: string, from: unknown, to: unknown }>
+}
+
+/**
+ * SPEC-004 item 43: an update on someone else's story, waiting for the Scrum
+ * Master. Metadata only — who, which story, when. What the member said rides
+ * in the Scrum Master's card, never here (Privacy NFR).
+ */
+export interface ApprovalRequest {
+  teamId: string
+  localDate: string
+  memberId: string
+  memberName: string
+  key: string
+  /** The story's owner in Jira, for the reminder line. */
+  owner: string
+  /** Matches the card that asked, so an old card can't decide a newer request. */
+  requestId: string
+  state: 'waiting' | 'approved' | 'rejected' | 'expired'
+  requestedAt: Date
+  decidedAt?: Date
 }

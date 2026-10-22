@@ -15,6 +15,16 @@ export interface Story {
   updated: Date
   /** User Story and Acceptance Criteria text from the description (SPEC-004 item 32); null when empty. */
   about?: string | null
+  /** SPEC-004 item 44: the parent story's key when this is a sub-task; absent or null for a story. */
+  parentKey?: string | null
+}
+
+/**
+ * The work item's title as the tracker shows it (SPEC-004 item 44): a
+ * sub-task names its parent, "Build form (sub-task of SCRUM-25)".
+ */
+export function trackerTitle (story: Pick<Story, 'title' | 'parentKey'>): string {
+  return story.parentKey == null ? story.title : `${story.title} (sub-task of ${story.parentKey})`
 }
 
 export interface SprintData {

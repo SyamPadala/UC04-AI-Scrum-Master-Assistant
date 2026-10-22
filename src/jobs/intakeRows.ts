@@ -1,4 +1,4 @@
-import type { Story } from '../pm/types.js'
+import { trackerTitle, type Story } from '../pm/types.js'
 import type { RowStatus, TrackerRow } from '../trackers/types.js'
 import type { ExtractionOutput } from '../agents/schema.js'
 import { ChoiceItem, MAX_CHOICES, Refusal } from './intakeTypes.js'
@@ -13,8 +13,10 @@ import { ChoiceItem, MAX_CHOICES, Refusal } from './intakeTypes.js'
 export function toTrackerRows (
   output: Pick<ExtractionOutput, 'completed' | 'inProgress' | 'blockers'>, memberName: string, stories: Map<string, Story>
 ): TrackerRow[] {
-  const titleOf = (key: string | null): string | null =>
-    key === null ? null : stories.get(key)?.title ?? null
+  const titleOf = (key: string | null): string | null => {
+    const story = key === null ? undefined : stories.get(key)
+    return story === undefined ? null : trackerTitle(story)
+  }
 
   const rows: TrackerRow[] = [
     ...output.completed.map((item): TrackerRow => ({

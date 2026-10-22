@@ -1,4 +1,4 @@
-import type { BotTeam, ConfigChange, JobType, NonResponderFlag, ParticipationRecord, RunOutcome, ScrumMaster, TeamConfig } from '../types.js'
+import type { ApprovalRequest, BotTeam, ConfigChange, JobType, NonResponderFlag, ParticipationRecord, RunOutcome, ScrumMaster, TeamConfig } from '../types.js'
 
 /**
  * The database contract (M17, design review 8 Oct 2026).
@@ -63,6 +63,17 @@ export interface Store {
   releaseBlockerAlert: (teamId: string, memberId: string, localDate: string, blockerHash: string) => Promise<void>
   claimDailyNotice: (teamId: string, localDate: string, kind: string) => Promise<ClaimOutcome>
   releaseDailyNotice: (teamId: string, localDate: string, kind: string) => Promise<void>
+  /**
+   * SPEC-004 item 43: records an update waiting for the Scrum Master.
+   * 'already' when one for this member and story is still waiting today; a
+   * decided one is replaced, so a later update can ask again.
+   */
+  requestApproval: (request: ApprovalRequest) => Promise<ClaimOutcome>
+  /** Decides a waiting request once. 'already' when it was decided before or the card is out of date. */
+  decideApproval: (teamId: string, localDate: string, memberId: string, key: string, requestId: string, state: 'approved' | 'rejected' | 'expired') => Promise<{ outcome: 'decided' | 'already' | 'missing', current?: ApprovalRequest }>
+  waitingApprovals: (teamId: string, localDate: string) => Promise<ApprovalRequest[]>
+  /** The Scrum Master was never asked (send failed), so the request is forgotten. */
+  releaseApproval: (teamId: string, localDate: string, memberId: string, key: string) => Promise<void>
   saveChannelRef: (teamId: string, reference: string) => Promise<void>
   clearChannelRef: (teamId: string) => Promise<void>
   saveBotTeam: (team: BotTeam) => Promise<void>

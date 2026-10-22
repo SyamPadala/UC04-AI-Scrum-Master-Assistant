@@ -7,7 +7,8 @@ import { pmFor } from '../pm/factory.js'
 import { TrackerNotSetError } from '../trackers/unset.js'
 import { LlmBudgetError, LlmOfflineError } from '../llm/types.js'
 import { localDate } from '../config/time.js'
-import { teamForMember, teamsRunBy } from '../store/index.js'
+import { getTeam, teamForMember, teamsRunBy } from '../store/index.js'
+import { decideRequest, isApprovalPress, parseApproval } from '../jobs/approval.js'
 import { trackerFor } from '../trackers/factory.js'
 import { processUpdate, StandupClosedError } from '../jobs/updateIntake.js'
 import { handleAdminCommand, parseAdminCommand } from './admin.js'
@@ -77,6 +78,22 @@ export class ScrumAssistant extends ActivityHandler {
       // SPEC-004 14a: Submit or Cancel on the "someone else's story" card
       // arrives as a message with the button's data and no text.
       // SPEC-004 item 38: Submit or None of these on "These stories could fit…".
+      // SPEC-004 item 43: Approve or Reject on the Scrum Master's card. The
+      // Scrum Master is on no roster, so the team comes from the card.
+      const approval = parseApproval(context.activity.value)
+      if (approval !== undefined) {
+        await this.answerPress(context, memberId, (team, today) =>
+          decideRequest(team, memberId, approval, today, { pm: this.pmOf(team), tracker: trackerFor(team) }),
+        async () => await getTeam(approval.teamId))
+        await next()
+        return
+      }
+      if (isApprovalPress(context.activity.value)) {
+        await context.sendActivity(MessageFactory.text("Sorry, I couldn't read that button press, so nothing was decided. Please try again."))
+        await next()
+        return
+      }
+
       const choice = parseStoryChoice(context.activity.value)
       if (choice !== undefined) {
         await this.answerPress(context, memberId, (team, today) =>
@@ -234,11 +251,12 @@ export class ScrumAssistant extends ActivityHandler {
    * with the outcome so its buttons can't be pressed again (item 28).
    */
   private async answerPress (
-    context: TurnContext, memberId: string, record: (team: TeamConfig, today: string) => Promise<string>
+    context: TurnContext, memberId: string, record: (team: TeamConfig, today: string) => Promise<string>,
+    findTeam: () => Promise<TeamConfig | undefined> = async () => await teamForMember(memberId)
   ): Promise<void> {
     let team: TeamConfig | undefined
     try {
-      team = await teamForMember(memberId)
+      team = await findTeam()
     } catch {
       team = undefined
     }

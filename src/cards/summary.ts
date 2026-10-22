@@ -11,6 +11,16 @@ import type { SummaryOutput } from '../agents/schema.js'
 
 export interface Headline { label: string, value: string }
 
+/**
+ * SPEC-006 item 12: today's participation as a count and a percentage,
+ * worked out here so the figure never depends on the model. An empty roster
+ * has no percentage (SPEC-007).
+ */
+export function participationFigure (p: { responded: number, rosterSize: number }): string {
+  if (p.rosterSize === 0) return 'no roster'
+  return `${p.responded} of ${p.rosterSize} (${Math.round((p.responded / p.rosterSize) * 100)}%)`
+}
+
 /** Figures computed by code, never read out of the model's text. */
 export function headline (facts: SummaryFacts): Headline[] {
   const sprint = facts.sprint
@@ -21,7 +31,7 @@ export function headline (facts: SummaryFacts): Headline[] {
     ? ''
     : ` (${Math.round((sprint.completedPoints / sprint.committedPoints) * 100)}%)`
   return [
-    { label: 'Reported', value: `${facts.participation.responded} of ${facts.participation.rosterSize}` },
+    { label: 'Reported', value: participationFigure(facts.participation) },
     { label: 'Points done', value: points + percent },
     { label: 'Blockers', value: String(facts.activeBlockers.length) },
     { label: 'At risk', value: String(facts.atRisk.length) }

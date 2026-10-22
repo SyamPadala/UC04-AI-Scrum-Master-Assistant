@@ -50,7 +50,8 @@ function atRiskItems (
   const staleBefore = now.getTime() - staleDays * 86_400_000
 
   return sprint.items
-    .filter((item) => item.statusCategory !== 'Done')
+    // SPEC-006 item 11: stories only; a sub-task shows up under its story.
+    .filter((item) => item.parentKey == null && item.statusCategory !== 'Done')
     .map((item) => {
       const reasons: string[] = []
       if (blockedKeys.has(item.key)) reasons.push('has an active blocker')
@@ -82,6 +83,12 @@ export async function gatherFacts (
   }
 
   const blockedKeys = new Set(blockers.flatMap((b) => b.workItem === null ? [] : [b.workItem]))
+  // SPEC-006 item 11: an update on a sub-task is shown under its story.
+  const parentOf = new Map((sprint?.items ?? []).flatMap((item) => item.parentKey == null ? [] : [[item.key, item.parentKey] as const]))
+  const shownKey = (win: string | null): string | null => {
+    const parent = win === null ? undefined : parentOf.get(win)
+    return parent === undefined ? win : `${parent} › ${win as string}`
+  }
 
   const responders = new Set(updates.map((update) => update.memberName))
   const missing = team.members
@@ -101,7 +108,7 @@ export async function gatherFacts (
             completedPoints: sprint.completedPoints,
             unpointedCount: sprint.unpointedCount,
             previousVelocities: sprint.previousVelocities,
-            items: sprint.items.map((item) => ({
+            items: sprint.items.filter((item) => item.parentKey == null).map((item) => ({
               key: item.key,
               title: item.title,
               status: item.status,
@@ -114,7 +121,7 @@ export async function gatherFacts (
     updates: updates.filter((update) => update.rows.some((row) => row.win !== null)).map((update) => ({
       member: update.memberName,
       rows: update.rows.filter((row) => row.win !== null).map((row) => ({
-        win: row.win,
+        win: shownKey(row.win),
         status: row.status,
         comment: row.comment,
         blocker: row.anyBlocker

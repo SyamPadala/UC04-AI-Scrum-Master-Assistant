@@ -23,7 +23,7 @@ export class AdminError extends Error {
 
 export interface Actor { oid: string, name: string }
 
-export const JOB_TYPES: JobType[] = ['reminder', 'followup', 'summary', 'participation']
+export const JOB_TYPES: JobType[] = ['reminder', 'followup', 'approvals', 'summary', 'participation']
 
 /** Site-wide Jira work (users, invites); each team's project comes from pmFor (M10). */
 export const jira = jiraSite

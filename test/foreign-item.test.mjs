@@ -22,12 +22,12 @@ const payload = (over = {}) => ({
 })
 
 async function submit (p, options = {}) {
-  const { closed = false, times = 1, alerts = [] } = options
+  const { closed = false, times = 1, alerts = [], asks = [] } = options
   // 'in', not a default: an explicit undefined means "not found in Jira".
   const lookup = 'lookup' in options ? options.lookup : story('j2', 'Pravallika')
   const file = path.join(tmpdir(), `uc04-foreign-${Date.now()}-${Math.random()}.json`)
   const tracker = new MockTracker(file)
-  const deps = { pm: { lookupStory: async () => lookup }, tracker, summaryHasRun: async () => closed, sendBlockerAlert: async (...args) => { alerts.push(args); return { sent: true, suppressed: 0 } } }
+  const deps = { pm: { lookupStory: async () => lookup }, tracker, summaryHasRun: async () => closed, sendBlockerAlert: async (...args) => { alerts.push(args); return { sent: true, suppressed: 0 } }, askScrumMaster: async (...args) => { asks.push(args); return "Your update on SCRUM-25 is waiting for your Scrum Master's approval." } }
   try {
     let reply
     for (let i = 0; i < times; i++) reply = await recordForeignItem(TEAM, 'm1', 'Santhosh', p, '2026-09-29', deps)
@@ -37,19 +37,18 @@ async function submit (p, options = {}) {
   }
 }
 
-test('Submit records under the Jira owner, says who sent it, and keeps the row the sender\'s (SPEC-002 2f)', async () => {
-  const { reply, stored } = await submit(payload())
-  const row = stored[0].rows[0]
-  assert.equal(row.win, 'SCRUM-25')
-  assert.equal(row.assignedTo, 'Pravallika')
-  assert.equal(row.comment, 'finished it')
-  assert.equal(stored[0].memberName, 'Santhosh', 'the sender\'s row, so their participation counts')
-  assert.equal(row.status, 'Completed')
-  assert.equal(reply, 'Recorded SCRUM-25 in the tracker under Pravallika, as updated by you.')
+test("SPEC-004 item 43: Submit on someone else's story asks the Scrum Master and writes nothing", async () => {
+  const asks = []
+  const { reply, stored } = await submit(payload(), { asks })
+  assert.deepEqual(stored, [], 'nothing is written until the Scrum Master approves')
+  assert.equal(asks.length, 1)
+  assert.equal(asks[0][2].key, 'SCRUM-25')
+  assert.deepEqual(asks[0][3], { status: 'Completed', comment: 'finished it', blocker: null })
+  assert.match(reply, /waiting for your Scrum Master's approval/)
 })
 
-test('Submit pressed twice records one row', async () => {
-  const { stored } = await submit(payload(), { times: 2 })
+test('Submit on her own story pressed twice records one row', async () => {
+  const { stored } = await submit(payload(), { times: 2, lookup: story('j1', 'Santhosh') })
   assert.equal(stored[0].rows.length, 1)
 })
 
@@ -92,18 +91,18 @@ test('SPEC-005 2a: a blocker on a named story shows no open-items line', () => {
   assert.doesNotMatch(texts, /open items/)
 })
 
-test('item 14b: Submit on a blocked item alerts the Scrum Master with the story; Cancel alerts nothing', async () => {
+test("item 43 (replaces 14b): a blocker on someone else's story goes on the Scrum Master's card; on her own story it is alerted", async () => {
   const blocked = { ...ITEM, status: 'Blocked', comment: null, blocker: 'waiting for the LB config' }
   const alerts = []
-  await submit(payload({ item: blocked }), { alerts })
+  const asks = []
+  await submit(payload({ item: blocked }), { alerts, asks })
+  assert.equal(alerts.length, 0, 'the approval card is the alert')
+  assert.equal(asks[0][3].blocker, 'waiting for the LB config')
+  await submit(payload({ item: blocked }), { alerts, lookup: story('j1', 'Santhosh') })
   assert.equal(alerts.length, 1)
   assert.deepEqual(alerts[0][4], [{ description: 'waiting for the LB config', storyRef: 'SCRUM-25' }])
-  assert.equal(alerts[0][5].get('SCRUM-25').title, 'Build Core Architecture')
   const cancelled = []
   await submit(payload({ choice: 'cancel', item: blocked }), { alerts: cancelled })
   assert.equal(cancelled.length, 0)
-  const plain = []
-  await submit(payload(), { alerts: plain })
-  assert.equal(plain.length, 0, 'no blocker, no alert')
 })
 

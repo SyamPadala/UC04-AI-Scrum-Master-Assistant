@@ -1,4 +1,5 @@
 import type { JobType, TeamConfig } from '../types.js'
+import { config } from '../config/env.js'
 
 /** The team's local 'HH:mm' at this instant. */
 export function localTime (at: Date, timeZone: string): string {
@@ -29,6 +30,8 @@ export function scheduledMinutes (team: TeamConfig, jobType: JobType): number {
     case 'reminder': return toMinutes(team.standupTime)
     // A2: the cut-off is the reminder time plus the grace period.
     case 'followup': return toMinutes(team.standupTime) + team.gracePeriodMinutes
+    // SPEC-004 item 43: waiting approvals are chased before the summary closes them.
+    case 'approvals': return Math.max(0, toMinutes(team.summaryTime) - config.approvals.reminderMinutes)
     case 'summary': return toMinutes(team.summaryTime)
     // Participation is counted once the day's summary has gone out.
     case 'participation': return toMinutes(team.summaryTime) + 5

@@ -10,6 +10,8 @@ import { STORY_CHOICE_ACTION, type StoryChoicePayload } from '../cards/storyChoi
 import { generalRow, mergeRows, StandupClosedError } from './updateIntake.js'
 import { summaryHasRun } from '../store/index.js'
 import { scrumMasterKnows, sendBlockerAlert } from './blockerAlert.js'
+import { askScrumMaster } from './approval.js'
+import { trackerTitle } from '../pm/types.js'
 
 /**
  * Submit or Cancel on the "someone else's story" card (SPEC-004 item 14a).
@@ -77,6 +79,7 @@ export async function recordChoice (
     tracker: Tracker
     summaryHasRun?: (teamId: string, localDate: string) => Promise<boolean>
     sendBlockerAlert?: typeof sendBlockerAlert
+    askScrumMaster?: typeof askScrumMaster
   }
 ): Promise<string> {
   if (choice.memberId !== senderId || choice.teamId !== team.teamId) {
@@ -152,6 +155,7 @@ export async function recordForeignItem (
     /** Injected in tests; the store is the real source. */
     summaryHasRun?: (teamId: string, localDate: string) => Promise<boolean>
     sendBlockerAlert?: typeof sendBlockerAlert
+    askScrumMaster?: typeof askScrumMaster
   }
 ): Promise<string> {
   const { key } = payload.item
@@ -170,15 +174,19 @@ export async function recordForeignItem (
 
   const member = team.members.find((m) => m.memberId === senderId)
   const theirs = story.assigneeAccountId === (member?.jiraAccountId ?? '')
-  // SPEC-002 2f: Assigned To is the story's owner, as in Jira; Updated By is the
-  // sender, so the comment holds only their words. The row is still the sender's,
-  // so their participation counts and nobody's row is overwritten.
-  const owner = story.assignee ?? payload.item.owner
   const said = payload.item.comment ?? ''
+  // SPEC-004 item 43: someone else's story waits for the Scrum Master's
+  // approval; nothing is written now. Their card is also the blocker alert.
+  if (!theirs) {
+    return await (deps.askScrumMaster ?? askScrumMaster)(
+      team, { memberId: senderId, memberName: senderName }, story,
+      { status: payload.item.status, comment: said === '' ? null : said, blocker: payload.item.blocker }, today
+    )
+  }
   const row: TrackerRow = {
     win: key,
-    description: story.title,
-    assignedTo: theirs ? senderName : owner,
+    description: trackerTitle(story),
+    assignedTo: senderName,
     comment: said === '' ? null : said,
     status: payload.item.status,
     anyBlocker: payload.item.blocker
@@ -198,6 +206,7 @@ export async function recordForeignItem (
   console.log(JSON.stringify({ event: 'foreignItem.recorded', teamId: team.teamId, memberId: senderId, key, theirs }))
 
   // Item 14b: the blocker was held at intake; it is news only once submitted.
+  // (Someone else's story never gets here: item 43 asks the Scrum Master.)
   // A failed alert never undoes the row that was just written.
   if (payload.item.blocker !== null) {
     try {
@@ -211,7 +220,5 @@ export async function recordForeignItem (
     }
   }
 
-  return theirs
-    ? `Recorded ${key} in the tracker.`
-    : `Recorded ${key} in the tracker under ${owner}, as updated by you.`
+  return `Recorded ${key} in the tracker.`
 }

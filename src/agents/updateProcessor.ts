@@ -1,5 +1,5 @@
 import type { LlmClient } from '../llm/types.js'
-import type { PmClient, Story } from '../pm/types.js'
+import { trackerTitle, type PmClient, type Story } from '../pm/types.js'
 import { UPDATE_PROCESSOR_SYSTEM, updateProcessorUser } from './prompts/updateProcessor.js'
 import { createStoryToolExecutor, storyTools } from './tools/stories.js'
 import { parseExtraction, type ExtractionInput, type ExtractionOutput } from './schema.js'
@@ -205,7 +205,8 @@ export async function extractUpdate (
       input.memberName, text,
       candidates.map((story) => ({
         key: story.key,
-        title: story.title,
+        // SPEC-004 item 44: a sub-task is offered like a story, its parent named.
+        title: trackerTitle(story),
         status: story.status,
         owner: story.assignee,
         mine: openItems.includes(story),

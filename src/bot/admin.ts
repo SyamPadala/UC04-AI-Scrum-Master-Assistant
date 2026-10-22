@@ -13,7 +13,7 @@ export type AdminCommand = 'setup' | 'status' | 'pause' | 'resume' | 'help' | 'r
 
 const COMMANDS: AdminCommand[] = ['setup', 'status', 'pause', 'resume', 'help']
 
-const JOB_TYPES: JobType[] = ['reminder', 'followup', 'summary', 'participation']
+const JOB_TYPES: JobType[] = ['reminder', 'followup', 'approvals', 'summary', 'participation']
 
 /** Recognises an admin command, or returns undefined if this is an ordinary message. */
 export function parseAdminCommand (text: string): AdminCommand | undefined {
@@ -100,7 +100,7 @@ export async function handleAdminCommand (command: AdminCommand, context: TurnCo
       'I record your stand-up update — just tell me what you worked on.\n\n' +
       'The Scrum Master can also use: **setup** for the admin page link, **status** to see ' +
       'what ran today, **pause** / **resume** to stop and restart the daily messages, ' +
-      'and **run reminder** (or followup, summary, participation) to trigger one now — ' +
+      'and **run reminder** (or followup, approvals, summary, participation) to trigger one now — ' +
       'a manual run for testing, which leaves the scheduled day untouched.'
     ))
     return

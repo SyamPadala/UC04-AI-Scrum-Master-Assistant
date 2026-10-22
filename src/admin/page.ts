@@ -227,6 +227,7 @@ ${ADMIN_STYLES}
           <div class="jobs">
             <div class="job"><div class="ic">${icon('bell')}</div><b>Reminder</b><span>Stand-up prompt to every member</span><button class="btn" data-job="reminder">${icon('play')} Run</button></div>
             <div class="job"><div class="ic">${icon('repeat')}</div><b>Follow-up</b><span>Chase members who have not replied</span><button class="btn" data-job="followup">${icon('play')} Run</button></div>
+            <div class="job"><div class="ic">${icon('clock')}</div><b>Approvals reminder</b><span>Chase updates waiting for the Scrum Master's approval</span><button class="btn" data-job="approvals">${icon('play')} Run</button></div>
             <div class="job"><div class="ic">${icon('file')}</div><b>Summary</b><span>Build the summary and send it to stakeholders</span><button class="btn" data-job="summary">${icon('play')} Run</button></div>
             <div class="job"><div class="ic">${icon('chart')}</div><b>Participation</b><span>Count today's replies, flag non-responders</span><button class="btn" data-job="participation">${icon('play')} Run</button></div>
           </div>

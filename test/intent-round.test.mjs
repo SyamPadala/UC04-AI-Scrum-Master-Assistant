@@ -152,26 +152,28 @@ async function press (data, item = {}) {
   const file = path.join(tmpdir(), `uc04-choice-${Date.now()}-${Math.random()}.json`)
   const tracker = new MockTracker(file)
   const alerts = []
+  const asks = []
   try {
     const card = storyChoiceCard({ ...CHOICE, ...item }, 'team-1', '2026-09-30', 'm1')
     const payload = parseStoryChoice(data(card))
     const reply = await recordChoice(TEAM, 'm1', 'sailaja', payload, '2026-09-30', {
       pm: { lookupStory: async (key) => CHOICE_STORIES[key], getMemberOpenItems: async () => [CHOICE_STORIES['SCRUM-34']] },
       tracker, summaryHasRun: async () => false,
-      sendBlockerAlert: async (...args) => { alerts.push(args); return { sent: true, suppressed: 0 } }
+      sendBlockerAlert: async (...args) => { alerts.push(args); return { sent: true, suppressed: 0 } },
+      askScrumMaster: async (...args) => { asks.push(args); return 'waiting for approval' }
     })
-    return { reply, stored: await tracker.readToday('team-1', '2026-09-30'), alerts }
+    return { reply, stored: await tracker.readToday('team-1', '2026-09-30'), alerts, asks }
   } finally { await rm(file, { force: true }) }
 }
 const rowPick = (i) => (card) => card.body.filter((b) => b.type === 'ColumnSet')[i].columns[1].items[0].actions[0].data
 const nonePick = (card) => { const d = { ...card.actions[0].data }; delete d.pick; return d } // Teams drops null fields
 
-test("item 38: Submit on someone else's story records it at once, with its owner", async () => {
-  const { reply, stored, alerts } = await press(rowPick(1))
-  assert.equal(stored[0].rows[0].win, 'SCRUM-32')
-  assert.equal(stored[0].rows[0].assignedTo, 'Pravallika')
-  assert.equal(stored[0].rows[0].comment, 'added the circuit breaker and the backoff retries', 'the comment never names the sender — Updated By does')
-  assert.match(reply, /Recorded SCRUM-32 in the tracker under Pravallika/)
+test("item 38 + 43: Submit on someone else's story goes to the Scrum Master for approval", async () => {
+  const { reply, stored, alerts, asks } = await press(rowPick(1))
+  assert.deepEqual(stored, [], 'nothing written until approved')
+  assert.equal(asks[0][2].key, 'SCRUM-32')
+  assert.equal(asks[0][3].comment, 'added the circuit breaker and the backoff retries')
+  assert.equal(reply, 'waiting for approval')
   assert.equal(alerts.length, 0, 'no blocker, no alert')
 })
 
@@ -181,12 +183,12 @@ test('item 38: Submit on her own story records it plainly', async () => {
   assert.equal(reply, 'Recorded SCRUM-34 in the tracker.')
 })
 
-test('item 38: a blocker — Submit writes the Blocked row then alerts with the story; None alerts with no story', async () => {
+test("item 38 + 43: a blocker — Submit puts it on the Scrum Master's approval card; None alerts with no story", async () => {
   const blocked = { words: 'waiting on Key Vault', status: 'Blocked', blocker: 'waiting on Key Vault' }
   const submitted = await press(rowPick(1), blocked)
-  assert.equal(submitted.stored[0].rows[0].status, 'Blocked')
-  assert.equal(submitted.stored[0].rows[0].comment, null, 'the blocker is not repeated as the comment')
-  assert.deepEqual(submitted.alerts[0][4], [{ description: 'waiting on Key Vault', storyRef: 'SCRUM-32' }])
+  assert.deepEqual(submitted.stored, [])
+  assert.deepEqual(submitted.asks[0][3], { status: 'Blocked', comment: null, blocker: 'waiting on Key Vault' }, 'the blocker is not repeated as the comment')
+  assert.equal(submitted.alerts.length, 0, 'the approval card is the alert')
 
   const none = await press(nonePick, blocked)
   assert.deepEqual(none.stored, [])

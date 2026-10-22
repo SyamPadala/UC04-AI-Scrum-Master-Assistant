@@ -135,7 +135,7 @@ export const ADMIN_STYLES = `  :root {
   .choice[aria-checked="true"] .dot { border: 5px solid var(--brand); }
 
   /* Run now */
-  .jobs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .jobs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
   .job { border: 1px solid var(--line); border-radius: 14px; padding: 18px; background: var(--surface); display: flex; flex-direction: column; gap: 10px;
     transition: border-color .15s, transform .15s, box-shadow .15s; }
   .job:hover { border-color: var(--brand); transform: translateY(-2px); box-shadow: var(--shadow); }

@@ -38,7 +38,11 @@ const issueSchema = z.object({
     assignee: z.object({
       displayName: z.string().nullish(),
       accountId: z.string().nullish()
-    }).nullish()
+    }).nullish(),
+    // SPEC-004 item 44. A story's parent can be its epic, so only the issue
+    // type says whether this is a sub-task.
+    issuetype: z.looseObject({ subtask: z.boolean().nullish() }).nullish(),
+    parent: z.looseObject({ key: z.string() }).nullish()
   })
 })
 
@@ -145,13 +149,14 @@ export class JiraClient implements PmClient {
       assigneeAccountId: raw.fields.assignee?.accountId ?? null,
       url: `${this.options.baseUrl}/browse/${raw.key}`,
       updated: parseDate(raw.fields.updated) ?? new Date(0),
-      about: storyAbout(fields.description)
+      about: storyAbout(fields.description),
+      parentKey: raw.fields.issuetype?.subtask === true ? raw.fields.parent?.key ?? null : null
     }
   }
 
   private get issueFields (): string {
     // description: what the story is about, for Agent 1 (SPEC-004 item 32).
-    const base = ['summary', 'status', 'assignee', 'updated', 'description']
+    const base = ['summary', 'status', 'assignee', 'updated', 'description', 'issuetype', 'parent']
     if (this.options.storyPointsField !== '') base.push(this.options.storyPointsField)
     return base.join(',')
   }
@@ -203,7 +208,8 @@ export class JiraClient implements PmClient {
     for (const sprint of recent) {
       const issues = await this.sprintIssues(sprint.id)
       velocities.push(issues
-        .filter((issue) => issue.statusCategory === 'Done')
+        // SPEC-006 item 11: stories only, as Jira's sprint report counts.
+        .filter((issue) => issue.parentKey == null && issue.statusCategory === 'Done')
         .reduce((total, issue) => total + (issue.points ?? 0), 0))
     }
     return velocities
@@ -222,7 +228,10 @@ export class JiraClient implements PmClient {
     const items = await this.sprintIssues(sprint.id)
     // Unpointed issues are excluded from the arithmetic and counted separately.
     // Treating an absent estimate as zero silently understates completion (A6).
-    const pointed = items.filter((issue) => issue.points !== null)
+    // SPEC-006 item 11: the figures count stories only, as Jira's sprint report
+    // does; sub-tasks stay in `items` so an update on one can name its story.
+    const stories = items.filter((issue) => issue.parentKey == null)
+    const pointed = stories.filter((issue) => issue.points !== null)
 
     return {
       sprintName: sprint.name,
@@ -233,7 +242,7 @@ export class JiraClient implements PmClient {
       completedPoints: pointed
         .filter((issue) => issue.statusCategory === 'Done')
         .reduce((total, issue) => total + (issue.points ?? 0), 0),
-      unpointedCount: items.length - pointed.length,
+      unpointedCount: stories.length - pointed.length,
       previousVelocities: await this.previousVelocities(),
       items
     }

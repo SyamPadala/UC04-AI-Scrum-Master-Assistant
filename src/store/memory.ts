@@ -1,5 +1,5 @@
 import type {
-  BotTeam, ConfigChange, JobType, NonResponderFlag, ParticipationRecord, RunLog, ScrumMaster, TeamConfig
+  ApprovalRequest, BotTeam, ConfigChange, JobType, NonResponderFlag, ParticipationRecord, RunLog, ScrumMaster, TeamConfig
 } from '../types.js'
 import type { ClaimOutcome, Store } from './types.js'
 
@@ -11,7 +11,8 @@ import type { ClaimOutcome, Store } from './types.js'
 
 const copy = <T>(value: T): T => structuredClone(value)
 const runId = (teamId: string, localDate: string, jobType: JobType): string => `${teamId}_${localDate}_${jobType}`
-const flagId = (teamId: string, memberId: string, missedDates: string[]): string => `${teamId}_${memberId}_${missedDates[0]}`
+const approvalId = (teamId: string, localDate: string, memberId: string, key: string): string => `${teamId}_${localDate}_${memberId}_${key}`
+const flagId =(teamId: string, memberId: string, missedDates: string[]): string => `${teamId}_${memberId}_${missedDates[0]}`
 
 export function memoryStore (): Store {
   const teams = new Map<string, TeamConfig>()
@@ -25,6 +26,7 @@ export function memoryStore (): Store {
   const usage = new Map<string, Record<string, number>>()
   const claims = new Set<string>()
   const botTeamList = new Map<string, BotTeam>()
+  const approvals = new Map<string, ApprovalRequest>()
 
   const all = (): TeamConfig[] => [...teams.values()].map(copy)
   const claim = (key: string): ClaimOutcome => {
@@ -123,7 +125,7 @@ export function memoryStore (): Store {
       return true
     },
     runsForDate: async (teamId, localDate) => {
-      const jobTypes: JobType[] = ['reminder', 'followup', 'summary', 'participation']
+      const jobTypes: JobType[] = ['reminder', 'followup', 'approvals', 'summary', 'participation']
       return jobTypes.filter((jobType) => runs.has(runId(teamId, localDate, jobType))).map((jobType) => {
         const latest = runLogs
           .filter((log) => log.teamId === teamId && log.localDate === localDate && log.jobType === jobType && log.trigger !== 'manual')
@@ -167,6 +169,23 @@ export function memoryStore (): Store {
     releaseBlockerAlert: async (teamId, memberId, localDate, blockerHash) => { claims.delete(`alert_${teamId}_${memberId}_${localDate}_${blockerHash}`) },
     claimDailyNotice: async (teamId, localDate, kind) => claim(`notice_${teamId}_${localDate}_${kind}`),
     releaseDailyNotice: async (teamId, localDate, kind) => { claims.delete(`notice_${teamId}_${localDate}_${kind}`) },
+    requestApproval: async (request) => {
+      const id = approvalId(request.teamId, request.localDate, request.memberId, request.key)
+      if (approvals.get(id)?.state === 'waiting') return 'already'
+      approvals.set(id, copy(request))
+      return 'claimed'
+    },
+    decideApproval: async (teamId, localDate, memberId, key, requestId, state) => {
+      const current = approvals.get(approvalId(teamId, localDate, memberId, key))
+      if (current === undefined) return { outcome: 'missing' }
+      if (current.state !== 'waiting' || current.requestId !== requestId) return { outcome: 'already', current: copy(current) }
+      current.state = state
+      current.decidedAt = new Date()
+      return { outcome: 'decided', current: copy(current) }
+    },
+    waitingApprovals: async (teamId, localDate) => [...approvals.values()]
+      .filter((a) => a.teamId === teamId && a.localDate === localDate && a.state === 'waiting').map(copy),
+    releaseApproval: async (teamId, localDate, memberId, key) => { approvals.delete(approvalId(teamId, localDate, memberId, key)) },
     saveChannelRef: async (teamId, reference) => { channelRefs.set(teamId, reference) },
     clearChannelRef: async (teamId) => { channelRefs.set(teamId, '') },
     saveBotTeam: async (team) => { botTeamList.set(team.teamThreadId, copy(team)) },

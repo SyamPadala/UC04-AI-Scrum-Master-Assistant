@@ -1,7 +1,7 @@
 import { Firestore } from '@google-cloud/firestore'
 import { config } from '../config/env.js'
 import type {
-  BotTeam, ConfigChange, JobType, NonResponderFlag, ParticipationRecord, RunLog, RunOutcome, ScrumMaster, TeamConfig
+  ApprovalRequest, BotTeam, ConfigChange, JobType, NonResponderFlag, ParticipationRecord, RunLog, RunOutcome, ScrumMaster, TeamConfig
 } from '../types.js'
 import type { ClaimOutcome, Store } from './types.js'
 
@@ -334,7 +334,7 @@ export async function reopenStandup (teamId: string, localDate: string, by: stri
 export async function runsForDate (
   teamId: string, localDate: string
 ): Promise<Array<{ jobType: string, outcome: string, detail?: string }>> {
-  const jobTypes: JobType[] = ['reminder', 'followup', 'summary', 'participation']
+  const jobTypes: JobType[] = ['reminder', 'followup', 'approvals', 'summary', 'participation']
   const refs = jobTypes.map((jobType) => db().collection('runs').doc(runId(teamId, localDate, jobType)))
   const docs = await db().getAll(...refs)
   const claimed = docs.filter((doc) => doc.exists).map((doc) => doc.data() as { jobType: JobType })
@@ -525,6 +525,65 @@ export async function releaseDailyNotice (teamId: string, localDate: string, kin
   await db().collection('notices').doc(`${teamId}_${localDate}_${kind}`).delete()
 }
 
+// ------------------------------------------------- approvals (SPEC-004 item 43)
+
+const approvalDoc = (teamId: string, localDate: string, memberId: string, key: string): FirebaseFirestore.DocumentReference =>
+  db().collection('approvals').doc(`${teamId}_${localDate}_${memberId}_${key}`)
+
+function toApproval (data: FirebaseFirestore.DocumentData): ApprovalRequest {
+  const date = (value: unknown): Date | undefined =>
+    value === undefined || value === null ? undefined : typeof (value as { toDate?: unknown }).toDate === 'function' ? (value as { toDate: () => Date }).toDate() : new Date(value as string)
+  const decidedAt = date(data.decidedAt)
+  return {
+    teamId: data.teamId, localDate: data.localDate, memberId: data.memberId, memberName: data.memberName,
+    key: data.key, owner: data.owner, requestId: data.requestId, state: data.state,
+    requestedAt: date(data.requestedAt) ?? new Date(0),
+    ...(decidedAt === undefined ? {} : { decidedAt })
+  }
+}
+
+/** Who, which story and when only — never what the member said (Privacy NFR). */
+export async function requestApproval (request: ApprovalRequest): Promise<ClaimOutcome> {
+  const ref = approvalDoc(request.teamId, request.localDate, request.memberId, request.key)
+  try {
+    return await db().runTransaction(async (tx) => {
+      const doc = await tx.get(ref)
+      if (doc.exists && doc.data()?.state === 'waiting') return 'already'
+      tx.set(ref, { ...request })
+      return 'claimed'
+    })
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'store.approvalRequestFailed', error: String(error) }))
+    return 'error'
+  }
+}
+
+export async function decideApproval (
+  teamId: string, localDate: string, memberId: string, key: string, requestId: string, state: 'approved' | 'rejected' | 'expired'
+): Promise<{ outcome: 'decided' | 'already' | 'missing', current?: ApprovalRequest }> {
+  const ref = approvalDoc(teamId, localDate, memberId, key)
+  // A transaction, so two presses at once decide it once.
+  return await db().runTransaction(async (tx) => {
+    const doc = await tx.get(ref)
+    if (!doc.exists) return { outcome: 'missing' as const }
+    const current = toApproval(doc.data() as FirebaseFirestore.DocumentData)
+    if (current.state !== 'waiting' || current.requestId !== requestId) return { outcome: 'already' as const, current }
+    const decidedAt = new Date()
+    tx.update(ref, { state, decidedAt })
+    return { outcome: 'decided' as const, current: { ...current, state, decidedAt } }
+  })
+}
+
+export async function waitingApprovals (teamId: string, localDate: string): Promise<ApprovalRequest[]> {
+  const docs = await db().collection('approvals')
+    .where('teamId', '==', teamId).where('localDate', '==', localDate).where('state', '==', 'waiting').get()
+  return docs.docs.map((doc) => toApproval(doc.data()))
+}
+
+export async function releaseApproval (teamId: string, localDate: string, memberId: string, key: string): Promise<void> {
+  await approvalDoc(teamId, localDate, memberId, key).delete()
+}
+
 /**
  * Remembers the channel the app was installed into, so the summary can be
  * posted there later (FR-08).
@@ -602,6 +661,10 @@ export const firestoreStore: Store = {
   releaseBlockerAlert,
   claimDailyNotice,
   releaseDailyNotice,
+  requestApproval,
+  decideApproval,
+  waitingApprovals,
+  releaseApproval,
   saveChannelRef,
   clearChannelRef,
   saveBotTeam,

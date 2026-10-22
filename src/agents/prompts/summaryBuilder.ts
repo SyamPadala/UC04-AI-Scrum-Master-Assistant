@@ -5,6 +5,8 @@
  * and so it is compiled into `dist/` rather than being a loose file that exists
  * locally and not on Cloud Run.
  */
+import { participationFigure } from '../../cards/summary.js'
+
 export const SUMMARY_BUILDER_SYSTEM = `You write the end-of-day stand-up summary that a Scrum Master would otherwise write by hand. Stakeholders read it. They were not in the stand-up and will not read the tracker.
 
 Reply with one JSON object and nothing else, in exactly this shape:
@@ -15,10 +17,10 @@ Reply with one JSON object and nothing else, in exactly this shape:
   "progress": "<completed points against committed points, as a figure and a percentage, and whether that is on track for the sprint goal>",
   "atRisk": [ { "workItem": "<key>", "reason": "<why, one line>" } ],
   "velocity": "<this sprint's completed points next to the previous sprints given>",
-  "participation": "<how many reported out of the roster, and who did not>"
+  "participation": "<how many reported out of the roster, with the percentage exactly as given, and who did not>"
 }
 
-- "updates": one entry per person who reported, in the order given. Each line starts with the work item key when there is one, then its status and what they said. One line per item, no more than about fifteen words.
+- "updates": one entry per person who reported, in the order given. Each line starts with the work item key when there is one, then its status and what they said. A sub-task is given as "SCRUM-25 › SCRUM-41" (story › sub-task): start the line with exactly that. One line per item, no more than about fifteen words.
 - "blockers": every active blocker given to you, whatever day it was raised. An empty array when there are none.
 - "atRisk": only the at-risk items given to you. An empty array when there are none.
 
@@ -91,7 +93,8 @@ export function summaryBuilderUser (facts: SummaryFacts): string {
   }
 
   lines.push(
-    `Participation: ${facts.participation.responded} of ${facts.participation.rosterSize} reported`,
+    // SPEC-006 item 12: the percentage is worked out here, not by the model.
+    `Participation: ${participationFigure(facts.participation)}${facts.participation.rosterSize === 0 ? '' : ' reported'}`,
     facts.participation.missing.length === 0
       ? 'Nobody is missing.'
       : `Did not report: ${facts.participation.missing.join(', ')}`,

@@ -39,7 +39,7 @@ test('prose instead of JSON fails the call', () => {
 })
 
 test('headline figures come from the facts, not the model', () => {
-  assert.deepEqual(headline(facts).map((h) => h.value), ['3 of 4', '12/30 (40%)', '1', '1'])
+  assert.deepEqual(headline(facts).map((h) => h.value), ['3 of 4 (75%)', '12/30 (40%)', '1', '1'])
 })
 
 test('no sprint means the points figure is shown as not available', () => {

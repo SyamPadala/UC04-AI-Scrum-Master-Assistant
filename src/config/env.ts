@@ -200,6 +200,11 @@ export const config = {
   blocker: {
     /** Suppress a repeat alert for the same blocker on the same day (SPEC-005). */
     dedupe: optional('BLOCKER_ALERT_DEDUPE', 'true') === 'true'
+  },
+
+  approvals: {
+    /** SPEC-004 item 43: minutes before the summary that waiting approvals are chased. One value for all teams. */
+    reminderMinutes: numeric('APPROVAL_REMINDER_MINUTES', 30)
   }
 } as const
 
