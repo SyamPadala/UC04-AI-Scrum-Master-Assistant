@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026; item 39 approved 4 Oct 2026; item 40 approved 5 Oct 2026; item 41, 42 approved 8 Oct 2026; item 41a approved 16 Oct 2026 |
+| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026; item 39 approved 4 Oct 2026; item 40 approved 5 Oct 2026; item 41, 42 approved 8 Oct 2026; item 41a approved 16 Oct 2026; items 43–44 (demo feedback) approved 22 Oct 2026 |
 | **Delivers** | FR-02, FR-03, NFR Latency |
 | **Assumptions** | A8 (story resolution), A11 (messages combined per member per day) |
 | **Depends on** | SPEC-001, SPEC-002 |
@@ -456,6 +456,42 @@ keep item 19 — issue #5.)*
     the member's **General** row (item 39 rules: every part kept, blockers
     alerted at once). Replaces item 20's refusal and item 39's "no card".
     No sprint, or nothing open in it → item 39 as before.
+
+### Amendment 22 Oct 2026 — demo feedback (approved by the user 22 Oct 2026)
+
+43. **An update on someone else's story needs the Scrum Master's approval.**
+    Applies only to a story assigned to another member (not unassigned
+    stories — item 14 stands; not work that fits no story — item 39 stands).
+    Changes what **Submit** on the item 38 card (and item 42's card) does:
+    - **Member presses Submit** → nothing is written yet. The member is told
+      *"Your update on SCRUM-25 is waiting for your Scrum Master's approval."*
+    - **The Scrum Master gets a card:** *"Ravi sent an update on SCRUM-25
+      (Priya's story): '<comment>'. Will be recorded as: <status>."*
+      **[Approve] [Reject]**. A blocker in the update is shown on this card,
+      so the Scrum Master learns of it at once; this card is the blocker
+      alert (replaces 14b's "alerted on Submit").
+    - **Approve** → written under the member's name with "(assigned to
+      <owner>)", as 14a. **Reject** → nothing written. The member is told the
+      result either way. Pressing twice acts once.
+    - **Reminder** 30 minutes before the team's summary time, while anything
+      is still waiting: the Scrum Master gets *"2 updates are waiting for your
+      approval: Ravi → SCRUM-25, Anu → SCRUM-31. They won't be in today's
+      summary unless approved by 17:00."*; each waiting member gets *"Your
+      update on SCRUM-25 is still waiting for your Scrum Master's approval.
+      Please contact them. If it isn't approved by 17:00, it won't be in
+      today's summary."* One setting for all teams (default 30 minutes).
+    - **Not answered by summary time** → the card expires (as cards do today),
+      nothing is written, and the member is told it was not approved in time.
+    - **Privacy:** the update text travels only in the card's button data, as
+      14a. To send the reminder, Firestore holds a waiting record with member,
+      story key, date and time only — never the text.
+    - Reminder sends are idempotent on `teamId + date + jobType`.
+44. **Sub-tasks.** A sub-task in the sprint is offered and matched like a
+    story, and an update on it is recorded **on the sub-task** (its own
+    key). The tracker row names its parent: *"SCRUM-41 Build form (sub-task
+    of SCRUM-25)"*; with the Jira tracker the comment goes on the sub-task.
+    The summary shows it under its story (SPEC-006 item 11). A sub-task being
+    done never changes its parent story.
 
 ## Interface
 

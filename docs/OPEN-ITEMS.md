@@ -11,7 +11,7 @@ waits.
 | 2 | Approve SPEC-002 (trackers) | **Approved 16 Oct** | See 2a–2g below |
 | 3 | Approve SPEC-003 (reminder, follow-up) | **Approved 16 Oct** | Plain text kept; tone dropped; item 11 parallel sends |
 | 4 | Approve SPEC-004 item 41a (M4 hand-over off) | **Approved 16 Oct** | Off for now; turning it on needs its own approved fix |
-| 5 | Approve SPEC-005 (blocker alerts) | Open | |
+| 5 | Approve SPEC-005 (blocker alerts) | Open — discuss later (22 Oct) | Question raised: blocker with no story waits for the member's card answer; no answer → no alert (vs FR-06 "immediately"). Options: A alert at once (recommended), B keep, C alert after a timeout. Also tidy card file name + interface to as-built |
 | 6 | Approve SPEC-006 (sprint summary) | Open | |
 | 7 | Approve SPEC-007 (participation) | Open | |
 | 8 | Approve SPEC-008 item 10r (friendly errors) | Open | |
@@ -52,3 +52,11 @@ waits.
   New team form; the SharePoint list (8 fixed columns) or the Jira "Daily
   stand-up" issue is created by the assistant; Sites.Manage.All; readiness runs
   on page open and on Running, and the team starts only when all green.
+
+## Demo feedback — 22 Oct 2026 (takes priority over the walkthrough)
+
+| # | Feedback | Decision | Spec |
+|---|---|---|---|
+| F1 | Updates on unrelated work items go to the Scrum Master for approval | Only stories assigned to someone else. SM card Approve/Reject; blocker shown on it at once; reminder to SM **and** member 30 min before summary; unanswered → expires at summary time | SPEC-004 item 43 — approved 22 Oct |
+| F2 | Updates on sub-tasks | Recorded on the sub-task; tracker row names the parent; summary shows it under its story; sprint figures count stories only | SPEC-004 item 44, SPEC-006 item 11 — approved 22 Oct |
+| F3 | Participation percentage in the summary | Today only: "3 of 5 reported (60%)" | SPEC-006 item 12 — approved 22 Oct |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval |
+| **Status** | Draft — base text with as-built notes (10 Oct 2026) ready for approval; items 11–12 (demo feedback) approved 22 Oct 2026 |
 | **Delivers** | FR-07, FR-08 |
 | **Assumptions** | A4 (daily at configured end-of-day, text format), A5 (at-risk definition), A6 (velocity and completion), A10 (no trend chart) |
 | **Depends on** | SPEC-001, SPEC-002, SPEC-005, SPEC-007 |
@@ -60,6 +60,18 @@ then posts it to the stakeholder channel and emails it out.
     fails explicitly and no summary is sent. The failure is recorded and the
     Scrum Master is notified so they can send one manually. A program-generated
     summary posing as the model's would make the output untraceable.
+
+### Amendment 22 Oct 2026 — demo feedback (approved by the user 22 Oct 2026)
+
+11. **Sub-tasks are shown under their story and not counted.** Sprint
+    figures (stories done, points, completion, at-risk) count stories only,
+    as Jira's sprint report does. An update on a sub-task appears as detail
+    under its parent: *"SCRUM-25 › SCRUM-41 Build form — done"*. A story is
+    done only when the story itself is closed in Jira.
+12. **Participation percentage.** The participation line shows today's
+    percentage: *"Participation: 3 of 5 reported (60%)"*. Printed by code
+    from the facts, like the other headline figures. Today only, no sprint
+    average. Empty roster → "no roster", not a percentage (SPEC-007).
 
 ### As built — differences from the draft above (recorded 10 Oct 2026)
 
