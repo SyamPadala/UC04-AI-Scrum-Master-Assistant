@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { httpErrorFrom, withRetry } from '../util/retry.js'
-import type { LlmClient, LlmRequest, LlmResponse, ToolExecutor } from './types.js'
+import { LlmAuthError, type LlmClient, type LlmRequest, type LlmResponse, type ToolExecutor } from './types.js'
 
 /**
  * Anthropic Messages API.
@@ -123,6 +123,7 @@ export class AnthropicClient implements LlmClient {
           body: JSON.stringify(payload),
           signal: controller.signal
         })
+        if (response.status === 401 || response.status === 403) throw new LlmAuthError(response.status)
         if (!response.ok) throw await httpErrorFrom(response)
         return await response.json() as unknown
       } finally {

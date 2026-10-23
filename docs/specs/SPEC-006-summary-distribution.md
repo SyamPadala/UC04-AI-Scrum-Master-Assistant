@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved 22 Oct 2026 (base text with as-built notes of 10 Oct 2026); items 11–12 (demo feedback) approved 22 Oct 2026 |
+| **Status** | Approved 22 Oct 2026 (base text with as-built notes of 10 Oct 2026); items 11–12 (demo feedback) approved 22 Oct 2026; item 13 approved 23 Oct 2026 |
 | **Delivers** | FR-07, FR-08 |
 | **Assumptions** | A4 (daily at configured end-of-day, text format), A5 (at-risk definition), A6 (velocity and completion), A10 (no trend chart) |
 | **Depends on** | SPEC-001, SPEC-002, SPEC-005, SPEC-007 |
@@ -72,6 +72,13 @@ then posts it to the stakeholder channel and emails it out.
     percentage: *"Participation: 3 of 5 reported (60%)"*. Printed by code
     from the facts, like the other headline figures. Today only, no sprint
     average. Empty roster → "no roster", not a percentage (SPEC-007).
+13. *Added and approved by the user, 23 Oct 2026, after the Gemini key was
+    rejected from 14 Oct and the summary retried every 5 minutes, each time
+    messaging the Scrum Master.* **A rejected AI key stops the summary for
+    the day.** When the provider refuses the key (HTTP 401 or 403), Agent 2
+    does not retry, the day's summary is not attempted again, and the Scrum
+    Master is told once: *"…the AI key was rejected (HTTP 401) — an admin
+    must replace it."* The next working day tries again.
 
 ### As built — differences from the draft above (recorded 10 Oct 2026)
 

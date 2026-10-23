@@ -194,3 +194,24 @@ test('item 43: at summary time what is still waiting expires and the member is t
     assert.match(late, /expired/)
   } finally { await cleanup() }
 })
+
+// ── SPEC-006 item 13: a rejected AI key ─────────────────────────────────
+const { LlmAuthError } = await import('../dist/llm/types.js')
+const { GeminiClient } = await import('../dist/llm/gemini.js')
+const { buildSummaryText } = await import('../dist/agents/summaryBuilder.js')
+
+test('item 13: a 401 from Gemini is a rejected key, and Agent 2 does not retry it', async (t) => {
+  const real = globalThis.fetch
+  t.after(() => { globalThis.fetch = real })
+  let calls = 0
+  globalThis.fetch = async () => { calls++; return new Response('{"error":{"message":"API key not valid"}}', { status: 401 }) }
+  const gemini = new GeminiClient('m', 'k')
+  await assert.rejects(() => gemini.complete({ system: 's', user: 'u', maxOutputTokens: 10, timeoutMs: 1000, label: 't' }), LlmAuthError)
+  assert.equal(calls, 1, 'not retried')
+
+  let attempts = 0
+  const llm = { model: 'm', complete: async () => { attempts++; throw new LlmAuthError(401) } }
+  const facts = { teamName: 'T', localDate: 'd', updates: [], activeBlockers: [], atRisk: [], staleProgressDays: 2, participation: { responded: 0, rosterSize: 1, missing: ['A'] } }
+  await assert.rejects(() => buildSummaryText(facts, llm, { maxRetries: 2, timeoutMs: 1000, maxToolIterations: 1 }), /AI key was rejected .* an admin must replace it/)
+  assert.equal(attempts, 1)
+})

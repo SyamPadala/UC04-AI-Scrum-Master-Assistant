@@ -1,4 +1,4 @@
-import type { LlmClient } from '../llm/types.js'
+import { LlmAuthError, type LlmClient } from '../llm/types.js'
 import { SUMMARY_BUILDER_SYSTEM, summaryBuilderUser, type SummaryFacts } from './prompts/summaryBuilder.js'
 import { parseSummary, type SummaryOutput } from './schema.js'
 
@@ -55,6 +55,8 @@ export async function buildSummaryText (
         attempts: attempt
       }
     } catch (error) {
+      // SPEC-006 item 13: a rejected key fails every attempt the same way.
+      if (error instanceof LlmAuthError) throw error
       lastError = error
       console.warn(JSON.stringify({
         event: 'agent2.attemptFailed',

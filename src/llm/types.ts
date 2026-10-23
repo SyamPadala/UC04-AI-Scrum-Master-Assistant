@@ -59,6 +59,17 @@ export class LlmBudgetError extends Error {
   }
 }
 
+/**
+ * Thrown when the provider refuses the key (HTTP 401/403): revoked, expired or
+ * not allowed. Only a person can fix it, so it is never retried (SPEC-006 item 13).
+ */
+export class LlmAuthError extends Error {
+  constructor (readonly status: number) {
+    super(`the AI key was rejected (HTTP ${status}) — an admin must replace it`)
+    this.name = 'LlmAuthError'
+  }
+}
+
 /** Thrown when live calling is switched off and nothing is recorded for this request. */
 export class LlmOfflineError extends Error {
   constructor (message: string) {

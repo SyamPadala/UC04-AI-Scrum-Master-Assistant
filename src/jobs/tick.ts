@@ -11,7 +11,7 @@ import { expireApprovals, remindApprovals } from './approval.js'
 import { createLlm } from '../llm/index.js'
 import { pmFor } from '../pm/factory.js'
 import { config } from '../config/env.js'
-import { LlmBudgetError, LlmOfflineError, type LlmClient } from '../llm/types.js'
+import { LlmAuthError, LlmBudgetError, LlmOfflineError, type LlmClient } from '../llm/types.js'
 import type { PmClient } from '../pm/types.js'
 
 export interface TickEntry {
@@ -87,7 +87,8 @@ async function runClaimedJob (
     // A spent budget or a switched-off model will fail identically on the
     // next tick. Releasing the claim would retry it every five minutes
     // until midnight — 288 attempts at a problem only a person can fix.
-    const willRecur = error instanceof LlmBudgetError || error instanceof LlmOfflineError
+    // SPEC-006 item 13: so does a rejected AI key — one failure and one notice a day.
+    const willRecur = error instanceof LlmBudgetError || error instanceof LlmOfflineError || error instanceof LlmAuthError
     if (!willRecur) await releaseRun(team.teamId, today, jobType)
     console.error(JSON.stringify({ event: 'job.finished', teamId: team.teamId, jobType, localDate: today, outcome: 'failed', willRecur }))
 
