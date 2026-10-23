@@ -730,6 +730,7 @@ export function adminScript (icon: (name: string) => string): string {
 
   $('team').addEventListener('change', (event) => {
     teamId = event.target.value
+    rememberTeam(teamId)
     $('team-name').textContent = event.target.selectedOptions[0].textContent
     load().catch((e) => toast(e.message, true))
   })
@@ -738,6 +739,15 @@ export function adminScript (icon: (name: string) => string): string {
     await fetch('/admin/logout', { method: 'POST', headers: { 'x-admin-request': '1' } })
     location.href = '/admin/login'
   })
+
+  // SPEC-008 10t: remembered in this browser only. Storage can be blocked
+  // (private window), so every read and write is allowed to fail quietly.
+  function lastTeam () {
+    try { return localStorage.getItem('scrumAssistant.team') } catch { return null }
+  }
+  function rememberTeam (id) {
+    try { localStorage.setItem('scrumAssistant.team', id) } catch {}
+  }
 
   async function loadTeams (selectId) {
     const { teams, isAdmin } = await api('GET', '/teams')
@@ -755,10 +765,12 @@ export function adminScript (icon: (name: string) => string): string {
     pick.replaceChildren(...teams.map((t) => new Option(t.name, t.teamId)))
     pick.hidden = teams.length < 2
     $('team-name').hidden = teams.length > 1
-    const chosen = teams.find((t) => t.teamId === (selectId ?? teamId)) ?? teams[0]
+    // SPEC-008 10t: the team last picked in this browser, else the first.
+    const chosen = teams.find((t) => t.teamId === (selectId ?? teamId ?? lastTeam())) ?? teams[0]
     pick.value = chosen.teamId
     $('team-name').textContent = chosen.name
     teamId = chosen.teamId
+    rememberTeam(teamId)
     return load()
   }
 

@@ -32,6 +32,8 @@ export async function teamsFor (actor: Actor): Promise<Array<{ teamId: string, n
   return (await allTeams())
     .filter((team) => mayManage(team, actor.oid, config.admin.userIds))
     .map((team) => ({ teamId: team.teamId, name: team.name }))
+    // SPEC-008 10t: alphabetical, so the default is predictable.
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
 }
 
 /** Loads a team the actor may manage, or refuses. */

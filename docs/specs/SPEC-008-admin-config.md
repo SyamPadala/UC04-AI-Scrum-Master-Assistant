@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026; amendment of 30 Sep 2026 (10l) approved 30 Sep 2026; 10m, 10n approved 5 Oct 2026; 10o, 10p, 10q approved 8 Oct 2026; 10r proposed 10 Oct 2026, awaiting approval; 10s approved 16 Oct 2026 |
+| **Status** | Approved (24 Sep 2026); amendment of 28 Sep 2026 (10d–10e) approved 28 Sep 2026; amendment of 29 Sep 2026 (10f–10k, roles) approved 29 Sep 2026; amendment of 30 Sep 2026 (10l) approved 30 Sep 2026; 10m, 10n approved 5 Oct 2026; 10o, 10p, 10q approved 8 Oct 2026; 10r proposed 10 Oct 2026, awaiting approval; 10s approved 16 Oct 2026; 10t approved 23 Oct 2026 |
 | **Delivers** | NFR Configuration; supports FR-08 (stakeholder list), FR-10 (per-team settings) |
 | **Assumptions** | A9 (configuration via a web admin panel, amended 24 Sep 2026) |
 | **Depends on** | SPEC-001 |
@@ -323,6 +323,11 @@ Dev team tab. Not an FR of its own: it serves FR-10 and the Configuration NFR.*
        Replaces LATER L14.
      - Existing teams keep their tracker. A team with none (Scrum Team Beta)
        gets a **Create tracker list** action on the Dev team tab.
+10t. *Added and approved by the user, 23 Oct 2026.* **Which team the page
+     opens on.** Teams are listed alphabetically by name. The page opens on
+     the team last picked in this browser; when there is none (or it is gone
+     or no longer allowed), on the first team in the list. Remembered in the
+     browser only, never on the server.
 
 **Migration.** Scrum Team Alpha has its Scrum Master (Syam) on the roster. On
 deploy his stored chat is copied to `scrumMasters/`, and he is removed from

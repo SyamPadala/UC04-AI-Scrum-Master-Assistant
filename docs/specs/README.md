@@ -20,7 +20,7 @@ it as approved or awaiting approval.
 | SPEC-005 | Blocker detection and escalation | FR-06 | Draft — as-built notes ready for approval (10 Oct); items 2a–2b approved |
 | SPEC-006 | Sprint summary (Agent 2) and distribution | FR-07, FR-08 | Approved 22 Oct 2026 (with as-built notes and items 11–12) |
 | SPEC-007 | Participation tracking | FR-09 | Draft — as-built notes ready for approval (10 Oct) |
-| SPEC-008 | Admin panel (web) | NFR Configuration | Approved (items to 10q, and 10s); 10r awaiting approval |
+| SPEC-008 | Admin panel (web) | NFR Configuration | Approved (items to 10q, 10s, 10t); 10r awaiting approval |
 
 ## FR coverage
 
