@@ -180,12 +180,33 @@ export class JiraClient implements PmClient {
     }
   }
 
-  private async sprintIssues (sprintId: number): Promise<Story[]> {
+  private async sprintIssues (sprintId: number, withSubtasks = true): Promise<Story[]> {
     const issues = await this.get(
       `/rest/agile/1.0/sprint/${sprintId}/issue?fields=${this.issueFields}&maxResults=100`,
       searchSchema, `sprint ${sprintId} issues`
     )
-    return issues.issues.map((raw) => this.toStory(raw))
+    const stories = issues.issues.map((raw) => this.toStory(raw))
+    if (!withSubtasks) return stories
+    // SPEC-004 item 44: Jira's sprint list leaves sub-tasks out (seen 23 Oct
+    // 2026, SCRUM-40), so they are asked for by parent.
+    const known = new Set(stories.map((story) => story.key))
+    const subtasks = (await this.subtasksOf(stories.filter((story) => story.parentKey == null).map((story) => story.key)))
+      .filter((story) => !known.has(story.key))
+    return [...stories, ...subtasks]
+  }
+
+  private async subtasksOf (parents: string[]): Promise<Story[]> {
+    if (parents.length === 0) return []
+    const body = await withRetry(async () => {
+      const response = await fetch(`${this.options.baseUrl}/rest/api/3/search/jql`, {
+        method: 'POST',
+        headers: { authorization: this.authHeader, accept: 'application/json', 'content-type': 'application/json' },
+        body: JSON.stringify({ jql: `parent in (${parents.join(',')})`, fields: this.issueFields.split(','), maxResults: 100 })
+      })
+      if (!response.ok) throw await httpErrorFrom(response)
+      return await response.json() as unknown
+    }, { label: 'sub-tasks' })
+    return searchSchema.parse(body).issues.map((raw) => this.toStory(raw)).filter((story) => story.parentKey != null)
   }
 
   /**
@@ -206,7 +227,7 @@ export class JiraClient implements PmClient {
 
     const velocities: number[] = []
     for (const sprint of recent) {
-      const issues = await this.sprintIssues(sprint.id)
+      const issues = await this.sprintIssues(sprint.id, false)
       velocities.push(issues
         // SPEC-006 item 11: stories only, as Jira's sprint report counts.
         .filter((issue) => issue.parentKey == null && issue.statusCategory === 'Done')
