@@ -79,6 +79,9 @@ then posts it to the stakeholder channel and emails it out.
     does not retry, the day's summary is not attempted again, and the Scrum
     Master is told once: *"…the AI key was rejected (HTTP 401) — an admin
     must replace it."* The next working day tries again.
+    *Fix, 23 Oct 2026 (during the demo):* Agent 2's answer limit raised from
+    2,500 to 8,192 tokens — Gemini counts its thinking against it, and the
+    JSON was cut off. No change for users.
 
 ### As built — differences from the draft above (recorded 10 Oct 2026)
 

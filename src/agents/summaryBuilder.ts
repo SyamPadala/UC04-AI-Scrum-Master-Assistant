@@ -35,7 +35,8 @@ export async function buildSummaryText (
   const request = {
     system: SUMMARY_BUILDER_SYSTEM,
     user: summaryBuilderUser(facts),
-    maxOutputTokens: 2500,
+    // Gemini counts its thinking against this limit; 2500 cut the JSON off (23 Oct 2026).
+    maxOutputTokens: 8192,
     timeoutMs: options.timeoutMs,
     label: 'agent2'
   }
