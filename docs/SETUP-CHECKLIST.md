@@ -298,6 +298,14 @@ down the project (IAM & Admin → Settings), then close the billing account
       propose GitHub Actions, Cloud Build triggers or any deploy-on-push
       arrangement.
 
+      **Changed a key in `.env`? Copy it to the vault first (13 Nov 2026).**
+      The live app reads its secrets (Jira token, Gemini key, bot and Graph
+      passwords, admin and tick secrets) from Secret Manager, not from `.env`.
+      A deploy alone does **not** carry a new key over. Run, in order:
+      `node scripts/secrets.mjs` then `node scripts/deploy.mjs`.
+      *Seen 12 Nov:* a new Jira token sat only in `.env`; the live app kept
+      the old one and Jira refused the admin page's calls (403/502).
+
 ## E. Fill the gaps already open in `.env`
 
 Checked 17 Sep 2026 — these keys exist but are still **empty**:
