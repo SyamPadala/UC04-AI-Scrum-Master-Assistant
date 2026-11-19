@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026; item 39 approved 4 Oct 2026; item 40 approved 5 Oct 2026; item 41, 42 approved 8 Oct 2026; item 41a approved 16 Oct 2026; items 43–44 (demo feedback) approved 22 Oct 2026 |
+| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026; item 39 approved 4 Oct 2026; item 40 approved 5 Oct 2026; item 41, 42 approved 8 Oct 2026; item 41a approved 16 Oct 2026; items 43–44 (demo feedback) approved 22 Oct 2026; items 45–47 (general updates for everyone) approved 19 Nov 2026 |
 | **Delivers** | FR-02, FR-03, NFR Latency |
 | **Assumptions** | A8 (story resolution), A11 (messages combined per member per day) |
 | **Depends on** | SPEC-001, SPEC-002 |
@@ -493,6 +493,58 @@ keep item 19 — issue #5.)*
     The summary shows it under its story (SPEC-006 item 11). A sub-task being
     done never changes its parent story.
 
+### Amendment 19 Nov 2026 — general updates for everyone (approved by the user 19 Nov 2026)
+
+*Why:* live test 19 Nov 2026. Gowtham (has open stories) sent a general
+update and got *"I couldn't tell which work item that is about… name the
+item"* — no buttons, nothing saved, counted as not responded. Had he got the
+item 38 card, **None of these** would also have saved nothing. Members with
+no story already get a General row (item 39), so the same words were kept for
+one person and thrown away for another. User, 19 Nov 2026: *"in real time few
+people can give general updates as well, it's not fair to push them back."*
+
+45. **The card gets "Save as general update" next to "None of these".**
+    Applies to every card a member gets about her own update: item 38 (which
+    story), item 40 (which story is this blocking) and item 42 (context match).
+    - **Save as general update** → the update goes into her **General** row
+      by item 39's rules (`WIN` empty, Description *General*, every part
+      kept, Status *In Progress*, or *Blocked* with `AnyBlocker` set). She
+      counts as **responded**. Reply: *"Saved as a general update:
+      '<her words>'."*
+    - **A blocker** saved this way alerts the Scrum Master at once as a
+      blocker with no story (SPEC-005 2a) — what item 40's None of these did
+      until now.
+    - **None of these** → nothing is saved, no alert, she stays a
+      non-responder (e.g. sent by mistake). *(Item 40: replaces "None of
+      these → General row"; that now belongs to Save as general update.)*
+    - Card rules unchanged (as 14a/38): data in the buttons, pressed twice
+      saves once, expired or closed card saves nothing, one reply per press
+      (item 28). An unanswered card saves nothing.
+    - The Scrum Master's approval (item 43) does not apply: a General row is
+      always the sender's own.
+
+46. **A vague update gets the card instead of "name the item".** When the
+    model reads the message as an update but finds no piece of work in it
+    (*"working on my tasks"*, *"same as yesterday"* — today's 5b reply):
+    - **Member has an open story** → the item 38 card with her own open
+      stories (at most 5, key order), headed *"Which of your stories is
+      '<her words>' about?"*, plus **Save as general update** and **None of
+      these** (item 45). *Will be recorded as:* In Progress.
+    - **Member has no open story, or no active sprint** → straight into her
+      General row (item 39), no card — there is nothing to choose from.
+    - **Unchanged:** "not an update" (item 15) and "nothing to report" (item
+      16) still save nothing.
+    - *Replaces 5b's "asked which work item they mean" and the text reply
+      with the SCRUM-21 example.*
+
+47. **The Scrum Master sees who gave only a general update** (user choice B,
+    19 Nov 2026). The admin page's **Today** section (SPEC-008 item 9) lists
+    the team's members whose only rows today are General: *"General update
+    only today: Gowtham, Sai Krishna."* Names only — read from today's tracker
+    rows when the page opens, never stored in Firestore (Privacy NFR). They
+    still count as responded. Same rule for everyone, including members with
+    no story (item 39). Not in the stakeholder summary (item 39c stands).
+
 ## Interface
 
 ```ts
@@ -621,3 +673,6 @@ Counting participation (SPEC-007). Voice input (A10, not built).
 | 20 | No eval case ends with a wrong work item written | Eval report reviewed case by case | Eval report |
 | 21 | Item 39: no sprint, no story, or only Done stories → one General row, responded, no card; a blocker also alerts; a member with an open story is unchanged | Unit tests on the intake with a fake PM client; live as Sai Krishna (no story) | Test output; tracker row; Teams screenshot |
 | 22 | Item 39(c): General rows, and blockers on them, do not appear in the summary | Unit test on the summary facts | Test output |
+| 23 | Item 45: Save as general update → General row, responded, blocker alerted; None of these → nothing, no alert; twice saves once | Unit tests on the card handler; live as Gowtham | Test output; tracker row; Teams screenshot |
+| 24 | Item 46: vague update from a member with an open story gets the card; from a member with none, a General row; "not an update" and "nothing to report" unchanged | Unit tests on the intake with a fake model | Test output |
+| 25 | Item 47: admin page Today lists general-only members by name; nothing new written to Firestore | Unit test on the Today data; live page check | Test output; screenshot |

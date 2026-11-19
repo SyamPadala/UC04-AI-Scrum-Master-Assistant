@@ -134,8 +134,8 @@ test('item 38: the card lists her own story first, each row with Submit, and Non
     '**SCRUM-31** Ingress Gateway — not assigned to you (Vardhan)'
   ])
   assert.deepEqual(rows.map((r) => r.columns[1].items[0].actions[0].data.pick), ['SCRUM-34', 'SCRUM-32', 'SCRUM-31'])
-  assert.deepEqual(card.actions.map((a) => a.title), ['None of these'])
-  assert.equal(card.actions[0].data.action, STORY_CHOICE_ACTION)
+  assert.deepEqual(card.actions.map((a) => a.title), ['Save as general update', 'None of these'])
+  assert.equal(card.actions[1].data.action, STORY_CHOICE_ACTION)
 })
 
 test('item 38: only her own stories (vague words) asks "Which of your stories is this?"; a blocker shows as Blocked', () => {
@@ -166,7 +166,8 @@ async function press (data, item = {}) {
   } finally { await rm(file, { force: true }) }
 }
 const rowPick = (i) => (card) => card.body.filter((b) => b.type === 'ColumnSet')[i].columns[1].items[0].actions[0].data
-const nonePick = (card) => { const d = { ...card.actions[0].data }; delete d.pick; return d } // Teams drops null fields
+const nonePick = (card) => { const d = { ...card.actions[1].data }; delete d.pick; return d } // Teams drops null fields
+const generalPick = (card) => card.actions[0].data // item 45
 
 test("item 38 + 43: Submit on someone else's story goes to the Scrum Master for approval", async () => {
   const { reply, stored, alerts, asks } = await press(rowPick(1))
@@ -183,7 +184,7 @@ test('item 38: Submit on her own story records it plainly', async () => {
   assert.equal(reply, 'Recorded SCRUM-34 in the tracker.')
 })
 
-test("item 38 + 43: a blocker — Submit puts it on the Scrum Master's approval card; None alerts with no story", async () => {
+test("item 38 + 43: a blocker — Submit puts it on the Scrum Master's approval card; None (item 45) saves and alerts nothing", async () => {
   const blocked = { words: 'waiting on Key Vault', status: 'Blocked', blocker: 'waiting on Key Vault' }
   const submitted = await press(rowPick(1), blocked)
   assert.deepEqual(submitted.stored, [])
@@ -192,9 +193,8 @@ test("item 38 + 43: a blocker — Submit puts it on the Scrum Master's approval 
 
   const none = await press(nonePick, blocked)
   assert.deepEqual(none.stored, [])
-  assert.deepEqual(none.alerts[0][4], [{ description: 'waiting on Key Vault', storyRef: null }])
-  assert.deepEqual(none.alerts[0][7].map((i) => i.key), ['SCRUM-34'], 'her open items are listed (SPEC-005 2a)')
-  assert.match(none.reply, /Scrum Master has been told about the blocker/)
+  assert.equal(none.alerts.length, 0)
+  assert.equal(none.reply, 'Not recorded.')
 })
 
 test('item 40: a blocker that named no story — the card asks which story it is blocking', () => {
@@ -214,13 +214,13 @@ test('item 40: Submit puts the blocker on that story and alerts with it', async 
   assert.equal(reply, 'Recorded SCRUM-34 in the tracker.')
 })
 
-test('item 40: None of these files it as a General row (Blocked), then alerts with no story', async () => {
+test('item 40 + 45: Save as general update files it as a General row (Blocked), then alerts with no story', async () => {
   const blocked = { words: 'DB access not working', status: 'Blocked', blocker: 'DB access not working', noStory: true, options: [CHOICE.options[0]] }
-  const { reply, stored, alerts } = await press(nonePick, blocked)
+  const { reply, stored, alerts } = await press(generalPick, blocked)
   assert.equal(stored[0].rows.length, 1)
   assert.deepEqual(stored[0].rows[0], { win: null, description: null, assignedTo: 'sailaja', comment: null, status: 'Blocked', anyBlocker: 'DB access not working' })
   assert.deepEqual(alerts[0][4], [{ description: 'DB access not working', storyRef: null }])
-  assert.equal(reply, 'Saved as a general update. ⚠ Blocker: "DB access not working". Your Scrum Master has been told.')
+  assert.equal(reply, 'Saved as a general update.\n\n⚠ Blocker: "DB access not working". Your Scrum Master has been told.')
 })
 
 test('item 38: None of these on work records nothing and alerts nobody', async () => {

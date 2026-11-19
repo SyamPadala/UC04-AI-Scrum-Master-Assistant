@@ -10,12 +10,14 @@ import { allTeams, configChangesFor, getChannelRef, llmUsageForDates, recordConf
 import { checkSchedule, isValidTimezone, mayAdminister, normaliseEmail, overlapProblem } from './validate.js'
 import { Actor, AdminError, GraphUser, JOB_TYPES, applyChange, checkTeamsTeam, installForScrumMaster, jira, lookUpUser, teamsFor } from './common.js'
 import { setJiraProject } from './integrations.js'
+import { trackerFor } from '../trackers/factory.js'
+import { generalOnly } from '../jobs/intakeRows.js'
 
 export async function teamView (team: TeamConfig, actor: Actor): Promise<unknown> {
   const today = localDate(new Date(), team.timezone)
   const client = jira()
 
-  const [runs, channelRef, changes, jiraUsers, emails, scrumMaster, standup] = await Promise.all([
+  const [runs, channelRef, changes, jiraUsers, emails, scrumMaster, standup, generalToday] = await Promise.all([
     runsForDate(team.teamId, today),
     getChannelRef(team.teamId),
     configChangesFor(team.teamId),
@@ -29,7 +31,15 @@ export async function teamView (team: TeamConfig, actor: Actor): Promise<unknown
     Promise.all(team.members.map(async (member) => member.email ??
       (await lookUpUser(member.memberId).catch(() => undefined))?.mail ?? null)),
     scrumMasterOf(team),
-    standupState(team.teamId, today)
+    standupState(team.teamId, today),
+    // SPEC-004 item 47: who gave only a general update today. Names only, read
+    // from the tracker now and never stored. Null when the tracker can't be read.
+    team.tracker.kind === 'unset'
+      ? Promise.resolve(null)
+      : trackerFor(team).readToday(team.teamId, today).then(generalOnly).catch((error: unknown) => {
+        console.error(JSON.stringify({ event: 'admin.generalOnlyFailed', teamId: team.teamId, error: String(error) }))
+        return null
+      })
   ])
 
   return {
@@ -45,7 +55,8 @@ export async function teamView (team: TeamConfig, actor: Actor): Promise<unknown
       closed: standup.closed,
       closedAt: standup.closedAt?.toISOString() ?? null,
       reopenedAt: standup.reopenedAt?.toISOString() ?? null,
-      reopenedBy: standup.reopenedBy
+      reopenedBy: standup.reopenedBy,
+      generalOnly: generalToday
     },
     scrumMaster: scrumMaster === undefined
       ? null

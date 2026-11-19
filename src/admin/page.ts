@@ -218,7 +218,7 @@ ${ADMIN_STYLES}
 
     <section id="tab-run">
       <div class="card">
-        <div class="card-head"><div><h2>Today's stand-up</h2><p id="standup-state">Checking…</p></div>
+        <div class="card-head"><div><h2>Today's stand-up</h2><p id="standup-state">Checking…</p><p id="general-only" hidden></p></div>
           <button class="btn" id="reopen-btn" hidden>${icon('repeat')} Reopen stand-up</button></div>
       </div>
       <div class="card">

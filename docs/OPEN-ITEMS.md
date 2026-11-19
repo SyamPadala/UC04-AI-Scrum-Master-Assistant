@@ -11,7 +11,7 @@ waits.
 | 2 | Approve SPEC-002 (trackers) | **Approved 16 Oct** | See 2a–2g below |
 | 3 | Approve SPEC-003 (reminder, follow-up) | **Approved 16 Oct** | Plain text kept; tone dropped; item 11 parallel sends |
 | 4 | Approve SPEC-004 item 41a (M4 hand-over off) | **Approved 16 Oct** | Off for now; turning it on needs its own approved fix |
-| 5 | Approve SPEC-005 (blocker alerts) | Open — discuss later (22 Oct) | Question raised: blocker with no story waits for the member's card answer; no answer → no alert (vs FR-06 "immediately"). Options: A alert at once (recommended), B keep, C alert after a timeout. Also tidy card file name + interface to as-built |
+| 5 | Approve SPEC-005 (blocker alerts) | **Decided 18 Nov: option B, keep** | User: FR-06 counts as done — own-story, unassigned-story and no-story blockers alert at once; a blocker on a choice card alerts after the member answers. Spec approval itself still open. Original question: blocker with no story waits for the member's card answer; no answer → no alert (vs FR-06 "immediately"). Options: A alert at once (recommended), B keep, C alert after a timeout. Also tidy card file name + interface to as-built |
 | 6 | Approve SPEC-006 (sprint summary) | **Approved 22 Oct** | Base text with as-built notes, items 11–12 |
 | 7 | Approve SPEC-007 (participation) | Open | |
 | 8 | Approve SPEC-008 item 10r (friendly errors) | Open | |
@@ -33,6 +33,7 @@ waits.
 | 24 | KNOWN-DEBT open items (13) | Open | |
 | 25 | Out-of-date docs | Open | SETUP-CHECKLIST ticks, POC-Plan §9, AI Journal, §6 traceability |
 | 26 | Build SPEC-008 10s | **Approved, waiting for go-ahead** | |
+| 27 | SPEC-004 items 45–47 — general updates for everyone | **Built and deployed 19 Nov** (207 tests pass) — live test in Teams pending; not committed | From Gowtham's live test: card gets "Save as general update" + "None of these"; vague updates get the card; admin page Today lists general-only members (choice B) |
 
 ## 2 — SPEC-002, point by point
 

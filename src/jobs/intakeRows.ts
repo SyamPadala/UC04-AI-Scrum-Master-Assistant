@@ -97,6 +97,16 @@ export function generalRow (
 }
 
 /**
+ * SPEC-004 item 47: members whose only rows today are General, by name, for
+ * the admin page. Read from the tracker each time; nothing is stored.
+ */
+export function generalOnly (updates: Array<{ memberName: string, rows: TrackerRow[] }>): string[] {
+  return updates
+    .filter((update) => update.rows.length > 0 && update.rows.every((row) => row.win === null))
+    .map((update) => update.memberName)
+}
+
+/**
  * Adds a later message to what the member already said today (A11).
  *
  * The PRD assumption is that a member's messages are *combined* into one

@@ -25,6 +25,8 @@ const choiceSchema = z.object({
   action: z.literal(STORY_CHOICE_ACTION),
   // Teams leaves a null field out, so a missing pick is "None of these".
   pick: z.string().min(1).nullish().transform((v) => v ?? null),
+  // Item 45: "Save as general update". Absent on None of these.
+  general: z.boolean().nullish().transform((v) => v === true ? true as const : undefined),
   teamId: z.string().min(1),
   localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   memberId: z.string().min(1),
@@ -61,12 +63,12 @@ export function parseStoryChoice (value: unknown): StoryChoicePayload | undefine
 }
 
 /**
- * SPEC-004 item 38: the member pressed Submit on one story, or None of these.
- * Submit records at once — the card said whose story it is — through the same
- * path as 14a (Jira re-read, "(assigned to …)", merged rows, alert on a
- * blocker). None records nothing, but a blocker still reaches the Scrum
- * Master, as one with no story. Item 40: None on a blocker that named no story
- * files it as her General row first.
+ * SPEC-004 item 38: the member pressed Submit on one story, Save as general
+ * update, or None of these. Submit records at once — the card said whose story
+ * it is — through the same path as 14a (Jira re-read, "(assigned to …)",
+ * merged rows, alert on a blocker). Item 45: Save as general update files it
+ * as her General row (item 39) and alerts a blocker as one with no story;
+ * None of these records nothing and alerts nobody.
  */
 export async function recordChoice (
   team: TeamConfig,
@@ -98,24 +100,29 @@ export async function recordChoice (
     }, today, deps)
   }
 
-  if (blocker === null) return 'Not recorded.'
+  // Item 45: None of these saves nothing and alerts nobody — work or blocker.
+  if (choice.general !== true) return 'Not recorded.'
   if (choice.localDate !== today) return 'This card has expired. Please send the update again.'
+  if (await (deps.summaryHasRun ?? summaryHasRun)(team.teamId, today)) throw new StandupClosedError(today)
 
-  // Item 40: a blocker that named no story, and she says it is none of hers —
-  // it goes into her General row (item 39), then the usual no-story alert.
-  let filed = false
-  if (choice.item.noStory === true) {
-    if (await (deps.summaryHasRun ?? summaryHasRun)(team.teamId, today)) throw new StandupClosedError(today)
-    const row = generalRow({ completed: [], inProgress: [], blockers: [{ description: blocker, storyRef: null, reason: null, alternatives: [] }] }, senderName)
-    const existing = (await deps.tracker.readToday(team.teamId, today)).find((u) => u.memberName === senderName)?.rows ?? []
-    await deps.tracker.write({
-      teamId: team.teamId, memberId: senderId, memberName: senderName, localDate: today,
-      rows: mergeRows(existing, [row]), rawText: '', capturedAt: new Date()
-    })
-    console.log(JSON.stringify({ event: 'storyChoice.general', teamId: team.teamId, memberId: senderId }))
-    filed = true
-  }
+  // Her General row (item 39 rules). A blocker-only item's words are the
+  // blocker, so they are not repeated as the comment.
+  const said = blocker !== null && words === blocker ? [] : [{ storyRef: null, comment: words, reason: null, alternatives: [] }]
+  const row = generalRow({
+    completed: status === 'Completed' ? said : [],
+    inProgress: status === 'Completed' ? [] : said,
+    blockers: blocker === null ? [] : [{ description: blocker, storyRef: null, reason: null, alternatives: [] }]
+  }, senderName)
+  const existing = (await deps.tracker.readToday(team.teamId, today)).find((u) => u.memberName === senderName)?.rows ?? []
+  await deps.tracker.write({
+    teamId: team.teamId, memberId: senderId, memberName: senderName, localDate: today,
+    rows: mergeRows(existing, [row]), rawText: '', capturedAt: new Date()
+  })
+  console.log(JSON.stringify({ event: 'storyChoice.general', teamId: team.teamId, memberId: senderId, blocker: blocker !== null }))
+  const saved = row.comment === null ? 'Saved as a general update.' : `Saved as a general update: "${row.comment}"`
+  if (blocker === null) return saved
 
+  // A blocker on no story: the Scrum Master hears at once (SPEC-005 2a).
   const member = team.members.find((m) => m.memberId === senderId)
   const openItems = member?.jiraAccountId === undefined || member.jiraAccountId === ''
     ? []
@@ -125,18 +132,12 @@ export async function recordChoice (
       team, senderId, senderName, today, [{ description: blocker, storyRef: null }], new Map(), new Date(),
       openItems.map((item) => ({ key: item.key, title: item.title, url: item.url }))
     )
-    if (scrumMasterKnows(alert)) {
-      return filed
-        ? `Saved as a general update. ⚠ Blocker: "${blocker}". Your Scrum Master has been told.`
-        : 'Not recorded in the tracker. Your Scrum Master has been told about the blocker.'
-    }
+    if (scrumMasterKnows(alert)) return `${saved}\n\n⚠ Blocker: "${blocker}". Your Scrum Master has been told.`
     console.log(JSON.stringify({ event: 'storyChoice.alertNotSent', teamId: team.teamId, reason: alert.reason }))
   } catch (error) {
     console.error(JSON.stringify({ event: 'blockerAlert.failed', teamId: team.teamId, memberId: senderId, error: String(error) }))
   }
-  return filed
-    ? `Saved as a general update. ⚠ Blocker: "${blocker}". It is in the tracker, but I couldn't reach your Scrum Master about it.`
-    : "Not recorded, and I couldn't reach your Scrum Master about the blocker. Please tell them directly."
+  return `${saved}\n\n⚠ Blocker: "${blocker}". It is in the tracker, but I couldn't reach your Scrum Master about it.`
 }
 
 function safeJson (text: string): unknown {

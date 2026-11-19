@@ -117,9 +117,21 @@ export async function processUpdate (
     confidence: output.confidence
   }
 
-  // Items 15, 16 and 5b: a message with nothing in it is never filed. The
-  // model's label decides only which reply the member gets.
-  const saidSomething = output.completed.length + output.inProgress.length + output.blockers.length > 0
+  // Item 46 (replaces 5b's "name the item"): an update with no piece of work
+  // in it ("working on my tasks") is taken as one piece of work on no story.
+  // The rules below then do the rest: with open stories of her own she gets
+  // the card (her stories, Save as general update, None of these); with none,
+  // or no sprint, it goes into her General row.
+  let saidSomething = output.completed.length + output.inProgress.length + output.blockers.length > 0
+  const vague = !saidSomething && output.kind !== 'not_update' && output.kind !== 'nothing' && text.trim() !== ''
+  if (vague) {
+    output.inProgress = [{ storyRef: null, comment: vagueWords(text), reason: null, alternatives: [] }]
+    saidSomething = true
+    console.log(JSON.stringify({ event: 'update.vague', teamId: team.teamId, memberId, confidence: output.confidence }))
+  }
+
+  // Items 15 and 16: "not an update" and "nothing to report" are never filed.
+  // The model's label decides only which reply the member gets.
   if (!saidSomething) {
     const outcome: IntakeOutcome = output.kind === 'not_update'
       ? 'notUpdate'
@@ -216,6 +228,7 @@ export async function processUpdate (
       added: incoming.length
     })
     alertable = verified.alertNow
+    if (vague) for (const choice of result.choices) choice.vague = true
   }
 
   // FR-06 is triggered from the validated extraction, after anything that was
@@ -256,6 +269,13 @@ export async function processUpdate (
     withinLatencyBudget: result.totalMs <= 30_000
   }))
   return result
+}
+
+/** Item 46: a vague message is kept whole, within what a card's button data can carry. */
+const VAGUE_MAX_CHARS = 500
+function vagueWords (text: string): string {
+  const words = text.trim().replace(/\s+/g, ' ')
+  return words.length <= VAGUE_MAX_CHARS ? words : `${words.slice(0, VAGUE_MAX_CHARS - 1)}…`
 }
 
 // Split by responsibility (design review, 8 Oct 2026); callers keep importing from here.

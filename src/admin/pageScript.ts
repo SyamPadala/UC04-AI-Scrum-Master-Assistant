@@ -122,6 +122,10 @@ export function adminScript (icon: (name: string) => string): string {
         ? 'Closed at ' + (s.closedAt ? time(s.closedAt) : 'summary time') + ' (summary sent). Late updates are refused.'
         : 'Open. It closes when the scheduled summary is sent at ' + view.schedule.summaryTime + '.'
     $('reopen-btn').hidden = !s.closed
+    // SPEC-004 item 47: members who sent only a general update today.
+    const g = $('general-only')
+    g.hidden = !(s.generalOnly && s.generalOnly.length > 0)
+    g.textContent = g.hidden ? '' : 'General update only today: ' + s.generalOnly.join(', ') + '.'
   }
 
   // SPEC-008 10f/10j: the Scrum Master is shown apart from the roster; only an

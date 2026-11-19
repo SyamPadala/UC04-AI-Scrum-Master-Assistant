@@ -225,10 +225,10 @@ test('item 40: a blocker with no work item asks which of her stories it blocks; 
   assert.match(reply, /Which story is "my laptop is broken" blocking\? Please choose below\./)
 })
 
-test('a missing kind is read as an update, which with nothing in it asks which item', async () => {
+test('a missing kind is read as an update, which with nothing in it asks which item (item 46: on the card)', async () => {
   const { result } = await run({ completed: [], inProgress: [], blockers: [], confidence: 'low' })
-  assert.equal(result.outcome, 'notUnderstood')
-  assert.equal(result.understood, false)
+  assert.equal(result.outcome, 'nothingRecorded')
+  assert.equal(result.choices[0].vague, true)
 })
 
 test("item 14b: a blocker on someone else's story is held for the card, not alerted at intake", async () => {

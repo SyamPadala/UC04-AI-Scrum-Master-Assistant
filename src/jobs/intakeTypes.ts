@@ -28,8 +28,10 @@ export interface ChoiceItem {
   status: RowStatus
   blocker: string | null
   options: Array<{ key: string, title: string, owner: string | null, mine: boolean }>
-  /** Item 40: a blocker that fit no story; None of these files it as a General row. */
+  /** Item 40: a blocker that fit no story; the card asks which story it blocks. */
   noStory?: boolean
+  /** Item 46: a vague update ("working on my tasks"); the card offers only her own stories. */
+  vague?: boolean
 }
 
 /** At most this many stories on one choice card (item 38). */

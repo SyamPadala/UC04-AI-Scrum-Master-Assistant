@@ -16,8 +16,10 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
     case 'nothing':
       return 'Nothing recorded. A stand-up update needs at least one work item, so this isn\'t counted as a response.'
     case 'notUnderstood':
+      // Item 46 sends a vague update to the card or the General row, so this is
+      // only reached by an empty message. No example key: projects differ.
       return "I couldn't tell which work item that is about, so I haven't changed anything. " +
-        'Could you name the item? For example: *SCRUM-21 is unblocked and back in progress*.'
+        'Could you say what you worked on, or name the item?'
     default:
       break
   }
@@ -73,7 +75,9 @@ export function intakeReply (result: IntakeResult, memberName: string): string {
   for (const item of result.choices) {
     lines.push(item.noStory === true
       ? `Which story is "${item.words}" blocking? Please choose below.`
-      : `Which story is "${item.words}"? Please choose below.`)
+      : item.vague === true
+        ? `Which of your stories is "${item.words}" about? Please choose below.`
+        : `Which story is "${item.words}"? Please choose below.`)
   }
 
   // A blocker already alerted earlier today is one the Scrum Master has heard.

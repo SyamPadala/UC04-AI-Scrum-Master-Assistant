@@ -45,11 +45,12 @@ async function freshTracker (name) {
   return new MockTracker(file)
 }
 
-test('an unsure empty reading writes nothing and is reported as not understood', async () => {
+test('an unsure empty reading writes nothing and asks which of his stories it is (item 46)', async () => {
   const tracker = await freshTracker('unsure')
   const s = stubs([empty('low')])
   const result = await processUpdate(TEAM, 'm1', 'Syam Padala', 'sorted it', '2026-09-25', deps(s, tracker))
-  assert.equal(result.understood, false)
+  assert.equal(result.choices.length, 1)
+  assert.equal(result.choices[0].vague, true)
   assert.deepEqual(await tracker.readToday('team-1', '2026-09-25'), [])
 })
 
@@ -58,7 +59,7 @@ test('an empty reading after an earlier update keeps the earlier rows and asks',
   const s = stubs([{ completed: [{ storyRef: 'SCRUM-6', comment: 'done' }], inProgress: [], blockers: [], confidence: 'high' }, empty('high')])
   await processUpdate(TEAM, 'm1', 'Syam Padala', 'SCRUM-6 done', '2026-09-25', deps(s, tracker))
   const second = await processUpdate(TEAM, 'm1', 'Syam Padala', 'Risk score issue got resolved', '2026-09-25', deps(s, tracker))
-  assert.equal(second.understood, false)
+  assert.equal(second.choices[0].vague, true, 'item 46: asked on a card')
   const rows = (await tracker.readToday('team-1', '2026-09-25'))[0].rows
   assert.deepEqual(rows.map((r) => r.win), ['SCRUM-6'])
 })
