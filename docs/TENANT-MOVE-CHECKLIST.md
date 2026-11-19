@@ -8,7 +8,7 @@ a **new tenant**.
 Manager), Gemini, Jira, the live web address.
 **Redone:** everything on the Microsoft side.
 
-**Status (16 Nov 2026): ON HOLD.** The user creates the new tenant first; then
+**Status (18 Nov 2026): MOVED.** New tenant `Indsyam.onmicrosoft.com` is live; see "Notes 18 Nov" at the end. The rest of this paragraph is the original plan.
 we go through this list together, one item at a time. Nothing is done yet.
 Section A was meant for today. If it is missed, the old data may still be
 reachable for a short grace period after expiry.
@@ -28,44 +28,44 @@ Record values in `.env` only. Never put them in this file or in chat.
 
 ## B. New tenant
 
-- [ ] B1. Sign up for Microsoft 365 Business Basic free trial with a **new
+- [x] B1. Sign up for Microsoft 365 Business Basic free trial with a **new
       email** and a new tenant name.
-- [ ] B2. Admin account created, sign-in security (MFA) set up.
-- [ ] B3. **Reminder in your phone: cancel the trial by ~12 Dec 2026** or it
+- [x] B2. Admin account created, sign-in security (MFA) set up.
+- [ ] B3. **Reminder in your phone: cancel the trial by 15 Dec 2026** (trial ends 18 Dec) or it
       starts charging. (Google Cloud credit also ends 17 Dec 2026.)
-- [ ] B4. Record: tenant ID and tenant domain → `M365_TENANT_ID`,
+- [x] B4. Record: tenant ID and tenant domain → `M365_TENANT_ID`,
       `M365_TENANT_DOMAIN`.
-- [ ] B5. Record: the admin's object ID → `ADMIN_USER_IDS` and
+- [x] B5. Record: the admin's object ID → `ADMIN_USER_IDS` and
       `SUMMARY_SENDER_USER_ID` (the summary email is sent from this mailbox).
 
 ## C. Teams settings
 
-- [ ] C1. Teams admin centre → Setup policies → Global: allow uploading
+- [x] C1. Teams admin centre → Setup policies → Global: allow uploading
       custom apps.
 - [ ] C2. Teams admin centre → Manage apps → Org-wide app settings: custom
       apps allowed.
 
 ## D. Users
 
-- [ ] D1. Create the test users in admin.microsoft.com (not the Teams admin
+- [x] D1. Create the test users in admin.microsoft.com (not the Teams admin
       centre). Business Basic licence each, no forced password change.
-- [ ] D2. Sign in to Teams once as each user. A user who has never opened
+- [x] D2. Sign in to Teams once as each user. A user who has never opened
       Teams cannot be messaged.
 
 ## E. Bot registration (new bot)
 
-- [ ] E1. Teams Developer Portal (signed in as the new admin) → new bot
+- [x] E1. Teams Developer Portal (signed in as the new admin) → new bot
       "Scrum Assistant".
-- [ ] E2. Messaging address: `https://scrum-assistant-lxz5k662sa-el.a.run.app/api/messages`.
-- [ ] E3. Record: bot ID and password → `BOT_APP_ID`, `BOT_APP_PASSWORD`.
-- [ ] E4. Entra → App registrations → the bot's app → Application permission
+- [x] E2. Messaging address: `https://scrum-assistant-lxz5k662sa-el.a.run.app/api/messages`.
+- [x] E3. Record: bot ID and password → `BOT_APP_ID`, `BOT_APP_PASSWORD`.
+- [x] E4. Entra → App registrations → the bot's app → Application permission
       **TeamsAppInstallation.ReadWriteForUser.All** → Grant admin consent.
       (Lets the admin page install the app for each member.)
 
 ## F. Graph app (new app registration, single tenant)
 
-- [ ] F1. Entra → App registrations → New, single tenant.
-- [ ] F2. Application permissions, then **Grant admin consent**:
+- [x] F1. Entra → App registrations → New, single tenant.
+- [x] F2. Application permissions, then **Grant admin consent**:
       - Sites.ReadWrite.All
       - Files.ReadWrite.All
       - Mail.Send
@@ -74,86 +74,86 @@ Record values in `.env` only. Never put them in this file or in chat.
       - TeamMember.ReadWrite.All
       - AppCatalog.Read.All
       - *(Later, only once SPEC-008 10s is built: Sites.Manage.All.)*
-- [ ] F3. Delegated: openid, profile, User.Read (admin page sign-in).
-- [ ] F4. Authentication → Web redirect URI:
+- [x] F3. Delegated: openid, profile, User.Read (admin page sign-in).
+- [x] F4. Authentication → Web redirect URI:
       `https://scrum-assistant-lxz5k662sa-el.a.run.app/admin/auth/callback`
 - [ ] F5. New client secret. Record: `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`.
       Note the secret's expiry date.
 
 ## G. App package (Claude does this)
 
-- [ ] G1. Put the new bot ID into the Teams app manifest (both the app id and
+- [x] G1. Put the new bot ID into the Teams app manifest (both the app id and
       the bot id) and rebuild the zip.
-- [ ] G2. You upload the zip in the Teams admin centre → Manage apps →
+- [x] G2. You upload the zip in the Teams admin centre → Manage apps →
       Upload. It must be in the **organisation's catalogue**, not just
       side-loaded, or the automatic install fails.
 
 ## H. Teams teams, channel and tracker
 
-- [ ] H1. Teams team "Scrum Team Alpha". The owner is the admin.
-- [ ] H2. A **separate** Teams team "Stakeholder" with the channel
+- [x] H1. Teams team "Scrum Team Alpha". The owner is the admin.
+- [x] H2. A **separate** Teams team "Stakeholder" with the channel
       "Stakeholder Channel" (decided 24 Sep: never inside the dev team).
-- [ ] H3. On Scrum Team Alpha's own SharePoint site, create the list "Daily
+- [x] H3. On Scrum Team Alpha's own SharePoint site, create the list "Daily
       Status Tracker" with these columns, typed with **no spaces** and never
       renamed afterwards: Date, WIN, Description, AssignedTo, Comment,
       Status (Choice: In Progress / Completed / Blocked), AnyBlocker,
       UpdatedBy.
-- [ ] H4. Record: `TEAMS_TEAM_ID`, `STAKEHOLDER_CHANNEL_ID`,
+- [x] H4. Record: `TEAMS_TEAM_ID`, `STAKEHOLDER_CHANNEL_ID`,
       `SHAREPOINT_SITE_ID`, `SHAREPOINT_LIST_ID` (Claude can look these up
       once the Graph app works).
-- [ ] H5. Excel (`EXCEL_*`): parked, leave as is.
+- [x] H5. Excel (`EXCEL_*`): parked, leave as is.
 - [ ] H6. Optional: a second Teams team plus its own tracker list, to show FR-10.
 
 ## I. Put it live (you run the commands)
 
-- [ ] I1. Update `.env` with the 12 keys: `M365_TENANT_ID`,
+- [x] I1. Update `.env` with the 12 keys: `M365_TENANT_ID`,
       `M365_TENANT_DOMAIN`, `BOT_APP_ID`, `BOT_APP_PASSWORD`,
       `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `TEAMS_TEAM_ID`,
       `STAKEHOLDER_CHANNEL_ID`, `SHAREPOINT_SITE_ID`, `SHAREPOINT_LIST_ID`,
       `SUMMARY_SENDER_USER_ID`, `ADMIN_USER_IDS`.
-- [ ] I2. `node scripts/secrets.mjs` (copies the new bot and Graph passwords
+- [x] I2. `node scripts/secrets.mjs` (copies the new bot and Graph passwords
       to the vault).
-- [ ] I3. `node scripts/deploy.mjs`.
-- [ ] I4. Check `/health` and sign in to `/admin` as the new admin.
+- [x] I3. `node scripts/deploy.mjs`.
+- [x] I4. Check `/health` and sign in to `/admin` as the new admin.
 
 ## J. Old team records — update them in place (decided 16 Nov 2026)
 
 The existing teams are kept and re-pointed at the new tenant from the admin
 page, not deleted. Do it in this order:
 
-- [ ] J1. Set each team to **not Running** first, so no reminders go to the
+- [x] J1. Set each team to **not Running** first, so no reminders go to the
       old members while you work.
-- [ ] J2. Remove each old member. Removing a member also does their
+- [x] J2. Remove each old member. Removing a member also does their
       offboarding. Two steps will fail because the old tenant is gone (Teams
       team, app uninstall) and the member lands on the "Leaving" list. Tick
       those as done. Their **Jira access is really removed** at this point;
       it comes back when the Jira account is linked to the new member in K3.
       Old members must be removed **before** K3, because a Jira account can't
       be linked to two people.
-- [ ] J3. Old participation history stays in the database under the old
+- [x] J3. Old participation history stays in the database under the old
       people. It is harmless: nobody on the team matches it.
 
 ## K. Re-point each team (admin page)
 
-- [ ] K1. Existing team → change its linked Teams team to the new one →
+- [x] K1. Existing team → change its linked Teams team to the new one →
       choose the new tracker list.
-- [ ] K2. Add members (the app installs for each automatically) and the Scrum
+- [x] K2. Add members (the app installs for each automatically) and the Scrum
       Master.
-- [ ] K3. Jira: link each member to their Jira account again. The Jira
+- [x] K3. Jira: link each member to their Jira account again. The Jira
       accounts stay; only the Microsoft side of the link is new.
-- [ ] K4. Schedule, timezone, stakeholder channel and stakeholder emails.
-- [ ] K5. Add the app to the "Stakeholder" Teams team so the bot can post
+- [x] K4. Schedule, timezone, stakeholder channel and stakeholder emails.
+- [x] K5. Add the app to the "Stakeholder" Teams team so the bot can post
       the summary there.
 - [ ] K6. Readiness panel all green → Running.
 
 ## L. Prove it works (every FR on the new tenant)
 
-- [ ] L1. Admin page sign-in (NFR Config).
+- [x] L1. Admin page sign-in (NFR Config).
 - [ ] L2. Reminder arrives (FR-01) → reply in words → written to the tracker
       (FR-02, FR-03, FR-04).
 - [ ] L3. No reply → follow-up (FR-05).
 - [ ] L4. Blocker → Scrum Master alert (FR-06).
-- [ ] L5. Summary → stakeholder channel and email (FR-07, FR-08).
+- [x] L5. Summary → stakeholder channel and email (FR-07, FR-08).
 - [ ] L6. Participation flag (FR-09).
 - [ ] L7. Second team runs separately (FR-10).
 
@@ -176,3 +176,20 @@ being copied.
       trial's cancel date.
 - [ ] M3. POC-Plan and the demo script: tenant name and user names.
 - [ ] M4. Claude's memory notes.
+
+---
+
+## Notes 18 Nov 2026 (move done)
+
+- New tenant `Indsyam.onmicrosoft.com`, trial ends 18 Dec: **cancel by 15 Dec** (B3 reminder still to set).
+- Members (Scrum Team Alpha): Gowtham, AJINKYA, SaiKrishna, VARDHAN, SAILAJA, Ganesh. Scrum Master: syam.r.padala.
+  Stakeholder emails: mujahid, Jyothirmayi, Anurag, Gowtham. Stakeholder channel connected (shows as "Stakeholder › General").
+- Jira project for the team: **REQ** (REQ Sprint 2). Members were linked to **newly invited** Jira accounts, but the sprint
+  stories are assigned to their older accounts (Gowtham Palla, vardhan, sailaja kagita, Bora ganesh): reassign or re-link.
+- Readiness said "No active sprint" after switching to REQ although REQ Sprint 2 is active: re-check.
+- Graph consent failed at first ("no subscription or service principal for Microsoft Graph"). Fixed with the direct
+  admin-consent link `https://login.microsoftonline.com/<tenant>/adminconsent?client_id=<graph app id>`.
+- Sites.Manage.All was never granted; the tracker list was created by hand (8 columns, checked).
+- Still open: C2 org-wide custom apps switch (was greyed; upload worked anyway), Scrum Team Beta still points at the
+  old tenant (no members), admin page member-email hint still says `@SyamPadala` (needs a spec item), N and M sections.
+- Tested live: reminder, member updates, story card, manual summary to channel + email.

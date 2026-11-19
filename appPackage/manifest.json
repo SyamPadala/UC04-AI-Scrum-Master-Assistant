@@ -2,7 +2,7 @@
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
   "manifestVersion": "1.17",
   "version": "0.1.0",
-  "id": "7683510c-5d82-41cf-bc22-9e02a4f49254",
+  "id": "d8067c95-5e62-45fc-874a-634aac3228d9",
   "developer": {
     "name": "Syam Padala",
     "websiteUrl": "https://github.com/SyamPadala/UC04-AI-Scrum-Master-Assistant",
@@ -24,7 +24,7 @@
   "accentColor": "#2A6DB5",
   "bots": [
     {
-      "botId": "7683510c-5d82-41cf-bc22-9e02a4f49254",
+      "botId": "d8067c95-5e62-45fc-874a-634aac3228d9",
       "scopes": [
         "personal",
         "team"
