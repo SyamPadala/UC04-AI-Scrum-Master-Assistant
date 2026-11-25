@@ -19,13 +19,12 @@
   },
   {
     "id": "e02",
-    "note": "no keys, but both descriptions name open sprint items (A8)",
+    "note": "no keys, but both descriptions name open sprint items (A8); webhook validation is one part of SCRUM-20, so In Progress (item 48)",
     "text": "Wrapped up the webhook validation work. Moving on to the risk scoring rules today. Nothing blocking me.",
     "expect": {
-      "completed": [
-        "SCRUM-20"
-      ],
+      "completed": [],
       "inProgress": [
+        "SCRUM-20",
         "SCRUM-21"
       ],
       "blockers": [],

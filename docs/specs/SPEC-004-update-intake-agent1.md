@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026; item 39 approved 4 Oct 2026; item 40 approved 5 Oct 2026; item 41, 42 approved 8 Oct 2026; item 41a approved 16 Oct 2026; items 43–44 (demo feedback) approved 22 Oct 2026; items 45–47 (general updates for everyone) approved 19 Nov 2026 |
+| **Status** | Approved — amendment of 28 Sep 2026 (items 11–20) approved 28 Sep 2026; amendment of 29 Sep 2026 (items 14, 14a) approved 29 Sep 2026; amendment of 29 Sep 2026 (items 21–26) approved 29 Sep 2026; items 27–30 approved 29 Sep 2026; item 14b approved 30 Sep 2026; amendment of 30 Sep 2026 night (items 31–37) approved 30 Sep 2026; item 38 approved 1 Oct 2026; item 39 approved 4 Oct 2026; item 40 approved 5 Oct 2026; item 41, 42 approved 8 Oct 2026; item 41a approved 16 Oct 2026; items 43–44 (demo feedback) approved 22 Oct 2026; items 45–47 (general updates for everyone) approved 19 Nov 2026; item 48 (one part done is not the story done) approved 24 Nov 2026 |
 | **Delivers** | FR-02, FR-03, NFR Latency |
 | **Assumptions** | A8 (story resolution), A11 (messages combined per member per day) |
 | **Depends on** | SPEC-001, SPEC-002 |
@@ -545,6 +545,55 @@ people can give general updates as well, it's not fair to push them back."*
     still count as responded. Same rule for everyone, including members with
     no story (item 39). Not in the stakeholder summary (item 39c stands).
 
+### Amendment 24 Nov 2026 — one part done is not the story done (approved by the user 24 Nov 2026)
+
+*Why:* eval run 24 Nov 2026 (69 live calls, 95.7%). Must-pass case e61,
+*"Got the vendor's signed results verified against the shared secret"*, was
+matched to the right story (SCRUM-20) but recorded **Completed**. That work is
+one of SCRUM-20's three acceptance criteria; the story is not done. The prompt
+already says *"a finished step with more to come puts it in inProgress"*, but
+its examples are stages (code → test → deploy), not parts of a story, so the
+model read "got … verified" as finished. The eval labels also disagreed:
+e02, *"Wrapped up the webhook validation work"* — the same part of the same
+story — was labelled Completed. User decision, 24 Nov 2026: **one part done is
+In Progress.** Reason: the tracker and the stakeholder summary must never show
+a story as done while parts of it remain.
+
+48. **Completed means the story is done, not one part of it.**
+    - **Completed** only when the member's words say the work item itself is
+      finished: they name the story or its key (*"Finished SCRUM-7"*,
+      *"SCRUM-6 done"*), or describe the whole story (*"The notification
+      service is done"* for SCRUM-22 *Implement Notification Service*).
+    - **In Progress** when the finished work matches **only part** of the
+      story — one acceptance criterion, or one piece of its title or About
+      text — and the story has other parts the message does not say are
+      done. Finishing words (*"wrapped up"*, *"finished"*, *"verified"*,
+      *"done"*) do not change this. Example: *"Got the signed results verified
+      against the shared secret"* → SCRUM-20 In Progress.
+    - **Known effect (accepted):** a member who finishes the **last** part and
+      names only that part is recorded In Progress; the story shows Completed
+      when they say the story is done. The assistant never guesses which
+      parts were finished on earlier days.
+    - **Unchanged:** vague words with no story (*"Finished my task"*, *"Wrapped
+      up the service work"*) are still Completed with no key and the card
+      (item 46 / "Not knowing which story never changes the status");
+      stages (*"code done, testing now"*) are still In Progress (verification
+      16); blockers, matching, alternatives, reason, kind and every card are
+      untouched.
+    - **Change:** prompt wording only — one rule added to Agent 1's status
+      rules, with the e61 example. No code, schema, tracker, card or Firestore
+      change.
+    - **Eval label change:** e02 expected answer moves from Completed SCRUM-20
+      to In Progress SCRUM-20 (same rule as e61). No other label changes.
+    - **Must not break:** before deploying, a full live eval (69 calls — ask
+      the user first) must show accuracy ≥ 90%, e61 passing, all 10
+      must-pass cases passing, and every case that passed on 24 Nov
+      (other than e02, relabelled) still passing — in particular the
+      whole-story Completed cases e01, e06, e10, e15, e17, e20, e21, e25,
+      e28, e33, e37, e38, e40, e48, e50, e51, e55 and the vague ones e56,
+      e58, e59. Any new failure stops the deploy and comes back to the user.
+      `npm test` (207 tests) must still pass.
+
 ## Interface
 
 ```ts
@@ -676,3 +725,4 @@ Counting participation (SPEC-007). Voice input (A10, not built).
 | 23 | Item 45: Save as general update → General row, responded, blocker alerted; None of these → nothing, no alert; twice saves once | Unit tests on the card handler; live as Gowtham | Test output; tracker row; Teams screenshot |
 | 24 | Item 46: vague update from a member with an open story gets the card; from a member with none, a General row; "not an update" and "nothing to report" unchanged | Unit tests on the intake with a fake model | Test output |
 | 25 | Item 47: admin page Today lists general-only members by name; nothing new written to Firestore | Unit test on the Today data; live page check | Test output; screenshot |
+| 26 | Item 48: one part of a story done is In Progress (e61, e02); whole-story and vague Completed cases unchanged; accuracy ≥ 90%; all must-pass cases pass; no case that passed on 24 Nov now fails | Full `eval/` run — **live LLM, 69 calls, ask the user first**; `npm test` | Eval report compared case by case with the 24 Nov run; test output |

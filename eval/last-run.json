@@ -1,20 +1,20 @@
 {
-  "runAt": "2026-10-01T16:56:31.334Z",
+  "runAt": "2026-11-24T10:26:25.387Z",
   "provider": "gemini",
   "model": "gemini-3.5-flash",
   "subset": "full",
   "cases": 69,
-  "accuracy": 94.20289855072464,
+  "accuracy": 95.65217391304348,
   "byField": {
-    "completed": 94.20289855072464,
-    "inProgress": 95.65217391304348,
-    "blockers": 100,
+    "completed": 97.10144927536231,
+    "inProgress": 98.55072463768117,
+    "blockers": 98.55072463768117,
     "kind": 100,
-    "wrongKeyCases": 3,
-    "confidence": 91.30434782608695
+    "wrongKeyCases": 1,
+    "confidence": 92.7536231884058
   },
-  "latencyMeanMs": 6083,
-  "latencyWorstMs": 13401,
+  "latencyMeanMs": 6198,
+  "latencyWorstMs": 16256,
   "billedCalls": 69,
   "results": [
     {
@@ -27,7 +27,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 6947,
+      "ms": 9812,
       "cached": false,
       "note": "plain three-part update, all keys named",
       "got": {
@@ -46,19 +46,17 @@
     },
     {
       "id": "e02",
-      "completed": false,
-      "inProgress": false,
+      "completed": true,
+      "inProgress": true,
       "blockers": true,
       "confidence": true,
       "kind": true,
       "alternatives": true,
-      "wrongKeys": [
-        "inProgress:SCRUM-20"
-      ],
-      "pass": false,
-      "ms": 8816,
+      "wrongKeys": [],
+      "pass": true,
+      "ms": 8560,
       "cached": false,
-      "note": "no keys, but both descriptions name open sprint items (A8)",
+      "note": "no keys, but both descriptions name open sprint items (A8); webhook validation is one part of SCRUM-20, so In Progress (item 48)",
       "got": {
         "kind": "update",
         "alternatives": [],
@@ -80,7 +78,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 2702,
+      "ms": 2187,
       "cached": false,
       "note": "nothing to report",
       "got": {
@@ -101,7 +99,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 2461,
+      "ms": 2858,
       "cached": false,
       "note": "not a status update at all",
       "got": {
@@ -122,7 +120,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5639,
+      "ms": 7909,
       "cached": false,
       "note": "blocker with no work item",
       "got": {
@@ -145,7 +143,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 6647,
+      "ms": 7142,
       "cached": false,
       "note": "two completed items in one sentence",
       "got": {
@@ -169,7 +167,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 6620,
+      "ms": 8001,
       "cached": false,
       "note": "same item both in progress and blocked",
       "got": {
@@ -194,7 +192,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 8476,
+      "ms": 7048,
       "cached": false,
       "note": "invented key that does not exist in Jira",
       "got": {
@@ -217,7 +215,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 9544,
+      "ms": 11181,
       "cached": false,
       "note": "two separate blockers (29 Sep 2026, user decision: stale test data while working on SCRUM-21 marks SCRUM-21 Blocked)",
       "got": {
@@ -243,7 +241,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 3556,
+      "ms": 4055,
       "cached": false,
       "note": "terse, key only",
       "got": {
@@ -266,7 +264,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5004,
+      "ms": 4547,
       "cached": false,
       "note": "lowercase key",
       "got": {
@@ -289,7 +287,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 4504,
+      "ms": 4628,
       "cached": false,
       "note": "future tense only; \"notification templates\" matches SCRUM-22 Notification Service by title (A8) now that open stories are supplied",
       "got": {
@@ -312,7 +310,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5495,
+      "ms": 4779,
       "cached": false,
       "note": "\"the screening service\" is SCRUM-20 by description (A8)",
       "got": {
@@ -335,7 +333,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 8566,
+      "ms": 8378,
       "cached": false,
       "note": "blocker phrased as waiting on a person",
       "got": {
@@ -360,7 +358,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 7140,
+      "ms": 11221,
       "cached": false,
       "note": "long, rambling, three items",
       "got": {
@@ -386,7 +384,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 2949,
+      "ms": 2825,
       "cached": false,
       "note": "greeting only",
       "got": {
@@ -407,7 +405,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5606,
+      "ms": 3586,
       "cached": false,
       "note": "typos and missing punctuation",
       "got": {
@@ -432,7 +430,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 6890,
+      "ms": 8769,
       "cached": false,
       "note": "blocker resolved, so not a blocker",
       "got": {
@@ -455,7 +453,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 2685,
+      "ms": 3913,
       "cached": false,
       "note": "on leave",
       "got": {
@@ -476,7 +474,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 6573,
+      "ms": 4876,
       "cached": false,
       "note": "numbered list format",
       "got": {
@@ -501,7 +499,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5717,
+      "ms": 4995,
       "cached": false,
       "note": "key written with a space",
       "got": {
@@ -526,7 +524,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5329,
+      "ms": 7216,
       "cached": false,
       "note": "blocker on an item not mentioned elsewhere",
       "got": {
@@ -551,7 +549,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 4623,
+      "ms": 5962,
       "cached": false,
       "note": "partial work, not complete",
       "got": {
@@ -574,7 +572,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 3069,
+      "ms": 3166,
       "cached": false,
       "note": "question rather than an update",
       "got": {
@@ -595,17 +593,12 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 10846,
+      "ms": 11163,
       "cached": false,
       "note": "three completed, nothing in progress",
       "got": {
         "kind": "update",
-        "alternatives": [
-          "SCRUM-20",
-          "SCRUM-21",
-          "SCRUM-5",
-          "SCRUM-6"
-        ],
+        "alternatives": [],
         "completed": [
           null,
           "SCRUM-22",
@@ -625,7 +618,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 7622,
+      "ms": 7461,
       "cached": false,
       "note": "blocker described without the word blocked",
       "got": {
@@ -650,7 +643,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5935,
+      "ms": 6075,
       "cached": false,
       "note": "very short with a blocker",
       "got": {
@@ -673,7 +666,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5403,
+      "ms": 5191,
       "cached": false,
       "note": "mixed English and Hindi",
       "got": {
@@ -698,7 +691,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 7683,
+      "ms": 5847,
       "cached": false,
       "note": "reporting someone else's blocker",
       "got": {
@@ -718,12 +711,12 @@
       "completed": true,
       "inProgress": true,
       "blockers": true,
-      "confidence": false,
+      "confidence": true,
       "kind": true,
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 6179,
+      "ms": 6265,
       "cached": false,
       "note": "code review work with no key (relabelled 29 Sep 2026, SPEC-004 item 30: a PR review is an activity, left out; 'my own tickets' is vague)",
       "got": {
@@ -751,7 +744,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 2801,
+      "ms": 4467,
       "cached": false,
       "note": "emoji only",
       "got": {
@@ -772,7 +765,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 6236,
+      "ms": 5438,
       "cached": false,
       "note": "blocker with a dependency on another team",
       "got": {
@@ -797,7 +790,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 6703,
+      "ms": 5842,
       "cached": false,
       "note": "two items, one done one blocked",
       "got": {
@@ -822,7 +815,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 4469,
+      "ms": 5395,
       "cached": false,
       "note": "hedged completion",
       "got": {
@@ -845,7 +838,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5802,
+      "ms": 4369,
       "cached": false,
       "note": "meeting-heavy day",
       "got": {
@@ -868,7 +861,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 9079,
+      "ms": 16256,
       "cached": false,
       "note": "bug found, reported as a blocker",
       "got": {
@@ -887,13 +880,13 @@
       "id": "e37",
       "completed": true,
       "inProgress": true,
-      "blockers": true,
+      "blockers": false,
       "confidence": true,
       "kind": true,
       "alternatives": true,
       "wrongKeys": [],
-      "pass": true,
-      "ms": 8656,
+      "pass": false,
+      "ms": 11395,
       "cached": false,
       "note": "one item completed, another started, blocker on neither",
       "got": {
@@ -905,9 +898,7 @@
         "inProgress": [
           "SCRUM-20"
         ],
-        "blockers": [
-          null
-        ]
+        "blockers": []
       }
     },
     {
@@ -922,7 +913,7 @@
         "inProgress:SCRUM-7"
       ],
       "pass": false,
-      "ms": 10249,
+      "ms": 10625,
       "cached": false,
       "note": "all three sections, explicit labels",
       "got": {
@@ -946,7 +937,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 3262,
+      "ms": 3458,
       "cached": false,
       "note": "key mentioned only as context, no work claimed",
       "got": {
@@ -967,7 +958,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 9527,
+      "ms": 8716,
       "cached": false,
       "note": "two in progress, one blocked, one done",
       "got": {
@@ -995,7 +986,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5738,
+      "ms": 4912,
       "cached": false,
       "note": "blocker resolved, informal name (the 25 Sep miss)",
       "got": {
@@ -1018,7 +1009,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 6133,
+      "ms": 5649,
       "cached": false,
       "note": "blocker resolved, cause named not the item",
       "got": {
@@ -1041,7 +1032,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 4270,
+      "ms": 4519,
       "cached": false,
       "note": "blocker cleared, short",
       "got": {
@@ -1064,7 +1055,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 6413,
+      "ms": 4161,
       "cached": false,
       "note": "resolved without the word blocker",
       "got": {
@@ -1087,7 +1078,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5601,
+      "ms": 4289,
       "cached": false,
       "note": "unblocked, different wording",
       "got": {
@@ -1110,7 +1101,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 2970,
+      "ms": 3497,
       "cached": false,
       "note": "greeting with an open blocker is still not an update",
       "got": {
@@ -1131,7 +1122,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 2443,
+      "ms": 2273,
       "cached": false,
       "note": "nothing to report with an open blocker",
       "got": {
@@ -1152,7 +1143,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 4190,
+      "ms": 4057,
       "cached": false,
       "note": "item 21: lower case key with a space",
       "got": {
@@ -1175,7 +1166,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 4821,
+      "ms": 4525,
       "cached": false,
       "note": "item 21: mixed-case key",
       "got": {
@@ -1198,7 +1189,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5004,
+      "ms": 3370,
       "cached": false,
       "note": "item 21: key without hyphen",
       "got": {
@@ -1221,15 +1212,13 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": false,
-      "ms": 8032,
+      "ms": 8109,
       "cached": false,
       "note": "item 22: another member's story described in words",
       "got": {
         "kind": "update",
         "alternatives": [
-          "SCRUM-30",
-          "SCRUM-31",
-          "SCRUM-32"
+          "SCRUM-30"
         ],
         "completed": [
           null
@@ -1248,15 +1237,12 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 7147,
+      "ms": 4898,
       "cached": false,
       "note": "item 22: another member's story, in progress",
       "got": {
         "kind": "update",
-        "alternatives": [
-          "SCRUM-30",
-          "SCRUM-32"
-        ],
+        "alternatives": [],
         "completed": [],
         "inProgress": [
           "SCRUM-31"
@@ -1274,7 +1260,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5304,
+      "ms": 5186,
       "cached": false,
       "note": "item 25: a finished step is not a finished story",
       "got": {
@@ -1297,7 +1283,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 4388,
+      "ms": 4949,
       "cached": false,
       "note": "item 25: code complete is in progress",
       "got": {
@@ -1320,7 +1306,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 4169,
+      "ms": 3899,
       "cached": false,
       "note": "item 25: the story itself is done",
       "got": {
@@ -1343,7 +1329,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5528,
+      "ms": 8809,
       "cached": false,
       "note": "item 24: two endpoint stories fit — ask, do not guess",
       "got": {
@@ -1369,7 +1355,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 7585,
+      "ms": 3782,
       "cached": false,
       "note": "item 22: an unassigned story described in words",
       "got": {
@@ -1392,7 +1378,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 3138,
+      "ms": 4484,
       "cached": false,
       "note": "item 27: vague words point to no story — ask, do not guess (live test 8, 29 Sep 2026)",
       "got": {
@@ -1420,16 +1406,16 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5632,
+      "ms": 6358,
       "cached": false,
       "note": "item 27: 'service' fits several titles and names none — ask, do not guess",
       "got": {
         "kind": "update",
         "alternatives": [
           "SCRUM-20",
-          "SCRUM-21",
-          "SCRUM-22",
-          "SCRUM-5"
+          "SCRUM-5",
+          "SCRUM-6",
+          "SCRUM-7"
         ],
         "completed": [
           null
@@ -1448,7 +1434,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 4974,
+      "ms": 4981,
       "cached": false,
       "note": "item 31: no title word — guarded transitions are in SCRUM-5's acceptance criteria (own)",
       "tag": "intent",
@@ -1472,7 +1458,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 4775,
+      "ms": 5354,
       "cached": false,
       "note": "item 31: signature against the shared secret is SCRUM-20 (own)",
       "tag": "intent",
@@ -1496,7 +1482,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5520,
+      "ms": 4429,
       "cached": false,
       "note": "item 31: weights/thresholds from config is SCRUM-21 (own); still testing = in progress",
       "tag": "intent",
@@ -1512,30 +1498,27 @@
     },
     {
       "id": "e63",
-      "completed": false,
-      "inProgress": false,
+      "completed": true,
+      "inProgress": true,
       "blockers": true,
       "confidence": true,
       "kind": true,
       "alternatives": true,
-      "wrongKeys": [
-        "completed:SCRUM-30"
-      ],
-      "pass": false,
-      "ms": 13401,
+      "wrongKeys": [],
+      "pass": true,
+      "ms": 13405,
       "cached": false,
       "note": "item 31, live 30 Sep (Sailaja): circuit breaker + backoff are in SCRUM-30's acceptance criteria, someone else's story",
       "tag": "intent",
       "got": {
         "kind": "update",
         "alternatives": [
-          "SCRUM-31",
           "SCRUM-32"
         ],
-        "completed": [
+        "completed": [],
+        "inProgress": [
           "SCRUM-30"
         ],
-        "inProgress": [],
         "blockers": []
       }
     },
@@ -1549,16 +1532,13 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 11535,
+      "ms": 7497,
       "cached": false,
       "note": "item 31: OAuth2/mTLS strategy factories are SCRUM-32 (someone else's)",
       "tag": "intent",
       "got": {
         "kind": "update",
-        "alternatives": [
-          "SCRUM-30",
-          "SCRUM-31"
-        ],
+        "alternatives": [],
         "completed": [],
         "inProgress": [
           "SCRUM-32"
@@ -1576,7 +1556,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 7219,
+      "ms": 6183,
       "cached": false,
       "note": "item 31: 10k requests a minute and P99 are SCRUM-33 (unassigned)",
       "tag": "intent",
@@ -1600,7 +1580,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 9462,
+      "ms": 7169,
       "cached": false,
       "note": "item 35, like Sailaja 5:13: a blocker then new work with no joining word",
       "tag": "run-on",
@@ -1626,7 +1606,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 7582,
+      "ms": 7220,
       "cached": false,
       "note": "item 35, like Sailaja 5:15: joined by a comma only",
       "tag": "run-on",
@@ -1652,7 +1632,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5612,
+      "ms": 8585,
       "cached": false,
       "note": "item 35, like Sailaja 5:17: joined by \"also worked on\"",
       "tag": "run-on",
@@ -1678,7 +1658,7 @@
       "alternatives": true,
       "wrongKeys": [],
       "pass": true,
-      "ms": 5161,
+      "ms": 5535,
       "cached": false,
       "note": "item 34a: retries fit the member's own SCRUM-22 and, less well, SCRUM-30 — own story, no alternatives",
       "tag": "own-first",

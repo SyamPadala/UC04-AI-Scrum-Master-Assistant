@@ -34,6 +34,7 @@ waits.
 | 25 | Out-of-date docs | Open | SETUP-CHECKLIST ticks, POC-Plan §9, AI Journal, §6 traceability |
 | 26 | Build SPEC-008 10s | **Approved, waiting for go-ahead** | |
 | 27 | SPEC-004 items 45–47 — general updates for everyone | **Built and deployed 19 Nov** (207 tests pass) — live test in Teams pending; not committed | From Gowtham's live test: card gets "Save as general update" + "None of these"; vague updates get the card; admin page Today lists general-only members (choice B) |
+| 28 | SPEC-004 item 48 — one part of a story done is In Progress | **Approved + go-ahead 24 Nov**; built 24 Nov (207 tests pass) — live eval 95.7%, must-pass 10/10, e61 fixed; e37 failed once, then **e37 x5 on 25 Nov passed 5/5** (live, noise not regression). Committed 25 Nov; deploy from Cloud Shell pending | Eval 24 Nov: 95.7%, must-pass e61 failed (one acceptance criterion recorded as Completed). User chose "In Progress". Prompt wording only + e02 relabelled; full live eval (69 calls) before deploy; any new failure stops the deploy |
 
 ## 2 — SPEC-002, point by point
 

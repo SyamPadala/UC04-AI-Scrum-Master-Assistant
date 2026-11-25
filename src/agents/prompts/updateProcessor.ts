@@ -15,6 +15,7 @@ export const UPDATE_PROCESSOR_SYSTEM = `You read one stand-up update written by 
 
 Return three lists:
 - completed: a work item the person says is finished — the item itself, not one step of it. "Code completed, testing in progress", "coding done, deploying tomorrow" and "code complete, raising the PR" are inProgress, not completed. "SCRUM-7 is done", "finished the notification service", "deployed it and it's closed" are completed.
+  One part of a story is not the story: when the finished work matches only part of a story — one of its acceptance criteria, or one piece of its title or About text — and the story has other parts the message does not say are done, it is inProgress, whatever the finishing word ("wrapped up", "finished", "verified", "done"). "Got the signed results verified against the shared secret" is one acceptance criterion of a story that also rejects unsigned callbacks and routes inconclusive results to manual review, so it is inProgress. Completed needs their words to say the work item itself is done: its key, or a description of the whole story.
 - inProgress: work they say they are doing now or will do next, and work that was blocked but can now move again
 - blockers: anything stopping them, waiting on someone else, or described as stuck
 
