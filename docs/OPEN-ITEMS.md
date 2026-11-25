@@ -21,7 +21,7 @@ waits.
 | 12 | Gemini key on paid tier (M15) | Open — user check | |
 | 13 | SharePoint access (M6) | **Decided 16 Oct** | Sites.Selected not used; app gets Sites.Manage.All (SPEC-008 10s) |
 | 14 | Live tests in Teams: M4, M12, item 40, M13 | Open | |
-| 15 | Excel Online tracker | **Parked 16 Oct** | User: SharePoint and Jira are enough for now. Not dropped — PRD/A7 still name it |
+| 15 | Excel Online tracker | **Un-parked 25 Nov** — SPEC-002 item 7 **approved + built 25 Nov** (220 tests) — not deployed; live test pending | User 25 Nov: build it, option A (one more choice for every team). Was parked 16 Oct |
 | 16 | Voice input, velocity chart | Open | A10 |
 | 17 | `reminderTone`, `SEND_CONCURRENCY` | **Decided 16 Oct** | Tone dropped (one standard wording). Parallel members + parallel teams approved as SPEC-003 item 11, waiting for go-ahead |
 | 18 | M19 — same-day second update appends | **Approved 16 Oct** (SPEC-002 2g), waiting for go-ahead | Always add, timestamped; blocker: latest wins; status never goes backwards same day; never add the same message twice; Jira too; summary reads the whole comment |

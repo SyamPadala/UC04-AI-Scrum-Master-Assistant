@@ -430,9 +430,10 @@ export function adminScript (icon: (name: string) => string): string {
   }
 
   // Fixed icon markup from the server, never data: safe to set as HTML.
-  const TRACKER_ICONS = { sharepoint: '${icon('db')}', jira: '${icon('file')}' }
+  const TRACKER_ICONS = { sharepoint: '${icon('db')}', excel: '${icon('grid')}', jira: '${icon('file')}' }
   const TRACKER_HINTS = {
     sharepoint: 'One row per work item in the Daily Status Tracker list',
+    excel: 'One row per work item in Daily Status Tracker.xlsx; created if missing',
     jira: 'A comment on each work item; others on the stand-up issue'
   }
 
@@ -534,6 +535,14 @@ export function adminScript (icon: (name: string) => string): string {
     }
     const detail = $('tracker-detail')
     detail.replaceChildren()
+    if (view.trackerWorkbookUrl) {
+      // SPEC-002 7e: open the team's workbook.
+      const link = el('a', 'Open Daily Status Tracker.xlsx')
+      link.href = view.trackerWorkbookUrl
+      link.target = '_blank'
+      link.rel = 'noopener'
+      detail.append(link)
+    }
     if (view.trackerDetail) {
       detail.append('Updates naming no work item go to ')
       const link = el('a', view.trackerDetail.split('/').pop())

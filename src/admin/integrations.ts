@@ -5,6 +5,7 @@ import { graphRequest } from '../graph/client.js'
 import { channelReference, listTeamChannels } from '../bot/channels.js'
 import { allTeams, botTeams, clearChannelRef, recordConfigChange, saveChannelRef, saveTeam } from '../store/index.js'
 import { mayAdminister } from './validate.js'
+import { prepareWorkbook, WORKBOOK_NAME } from '../trackers/excel.js'
 import { Actor, AdminError, GraphGroup, applyChange, checkTeamsTeam, jira, short, teamsFor, teamsTeamOf } from './common.js'
 
 export interface ChannelOption { teamName: string, channelId: string, channelName: string }
@@ -82,6 +83,26 @@ export async function setTracker (team: TeamConfig, raw: { kind?: unknown, listI
     const holder = (await allTeams()).find((t) => t.teamId !== team.teamId && t.tracker.kind === 'sharepoint' && t.tracker.listId === listId)
     if (holder !== undefined) throw new AdminError(409, `That list is already used by ${holder.name}.`)
     tracker = { kind: 'sharepoint', siteId: option.siteId, listId }
+  } else if (raw.kind === 'excel') {
+    // SPEC-002 item 7e: the workbook on the team's own site, created when there is none.
+    const teamsTeam = await teamsTeamOf(team)
+    if (teamsTeam === undefined) throw new AdminError(400, 'Set the Teams team first: the workbook lives on its SharePoint site.')
+    if ('error' in teamsTeam) throw new AdminError(502, teamsTeam.error)
+    let prepared: Awaited<ReturnType<typeof prepareWorkbook>>
+    let siteId: string
+    let driveId: string
+    try {
+      const site = await graphRequest<{ id: string }>('GET', `/groups/${encodeURIComponent(teamsTeam.id)}/sites/root?$select=id`)
+      const drive = await graphRequest<{ id: string }>('GET', `/sites/${site.id}/drive?$select=id`)
+      siteId = site.id
+      driveId = drive.id
+      prepared = await prepareWorkbook(driveId)
+    } catch (error) {
+      throw new AdminError(502, `The Excel workbook could not be set up: ${short(error)}`)
+    }
+    const holder = (await allTeams()).find((t) => t.teamId !== team.teamId && t.tracker.kind === 'excel' && t.tracker.itemId === prepared.itemId)
+    if (holder !== undefined) throw new AdminError(409, `That workbook is already used by ${holder.name}.`)
+    tracker = { kind: 'excel', siteId, driveId, itemId: prepared.itemId, webUrl: prepared.webUrl }
   } else if (raw.kind === 'jira') {
     const key = config.jira.standupIssueKey
     if (team.jira === undefined) throw new AdminError(400, 'Set a Jira project for this team first.')
@@ -92,16 +113,16 @@ export async function setTracker (team: TeamConfig, raw: { kind?: unknown, listI
       throw new AdminError(502, `The Jira stand-up issue ${key} cannot be found.`)
     }
   } else {
-    throw new AdminError(400, 'Choose SharePoint or Jira.')
+    throw new AdminError(400, 'Choose SharePoint, Excel or Jira.')
   }
 
   const changed = await applyChange(team, { tracker }, actor.name)
   if (changed.length === 0) return 'Nothing changed.'
   // Updates already recorded today stay where they were written; the summary
   // reads only the current destination.
-  return tracker.kind === 'jira'
-    ? `Updates will now be added as comments on the Jira work items; those naming no work item go to ${tracker.standupIssueKey}.`
-    : 'Updates will now be written to the SharePoint list.'
+  if (tracker.kind === 'jira') return `Updates will now be added as comments on the Jira work items; those naming no work item go to ${tracker.standupIssueKey}.`
+  if (tracker.kind === 'excel') return `Updates will now be written to ${WORKBOOK_NAME} on the team's site.`
+  return 'Updates will now be written to the SharePoint list.'
 }
 
 /** The tracker's columns (SPEC-002); a list without them cannot hold the rows. */

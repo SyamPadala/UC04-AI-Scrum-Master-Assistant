@@ -244,7 +244,7 @@ export async function offboard (team: TeamConfig, member: Member): Promise<Leave
     }
   }
 
-  const onGroupSite = group !== undefined && team.tracker.kind === 'sharepoint' &&
+  const onGroupSite = group !== undefined && (team.tracker.kind === 'sharepoint' || team.tracker.kind === 'excel') &&
     await graphRequest<{ owner?: { group?: { id?: string } } }>('GET', `/sites/${team.tracker.siteId}/drive?$select=owner`)
       .then((drive) => drive.owner?.group?.id === group.id).catch(() => false)
   items.push(onGroupSite && teamsRemoved

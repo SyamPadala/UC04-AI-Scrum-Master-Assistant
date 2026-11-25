@@ -49,6 +49,8 @@ export interface ScrumMaster {
 
 export type TrackerConfig =
   | { kind: 'sharepoint', siteId: string, listId: string }
+  /** FR-04 destination 2: a workbook on the team's own site (SPEC-002 item 7). */
+  | { kind: 'excel', siteId: string, driveId: string, itemId: string, webUrl: string }
   | { kind: 'mock', path: string }
   /** FR-04 destination 3: comments on the Jira work items (SPEC-002). */
   | { kind: 'jira', projectKey: string, standupIssueKey: string }

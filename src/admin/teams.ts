@@ -92,8 +92,11 @@ export async function teamView (team: TeamConfig, actor: Actor): Promise<unknown
     jira: team.jira ?? null,
     trackerListId: team.tracker.kind === 'sharepoint' ? team.tracker.listId : null,
     trackerDetail: team.tracker.kind === 'jira' ? `${config.jira.baseUrl}/browse/${team.tracker.standupIssueKey}` : null,
+    // SPEC-002 7e: a link to open the team's workbook.
+    trackerWorkbookUrl: team.tracker.kind === 'excel' ? team.tracker.webUrl : null,
     trackerOptions: [
       { kind: 'sharepoint', label: "SharePoint list on the team's own site", available: true },
+      { kind: 'excel', label: "Excel workbook on the team's own site", available: true },
       { kind: 'jira', label: 'Jira — a comment on each work item', available: config.jira.standupIssueKey !== '' && team.jira !== undefined }
     ],
     runs,

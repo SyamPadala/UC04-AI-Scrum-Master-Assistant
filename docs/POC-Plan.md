@@ -22,7 +22,7 @@ Repository: `https://github.com/SyamPadala/UC04-AI-Scrum-Master-Assistant` (publ
 | FR-01 | Sends stand-up reminders on schedule | Fired unattended 19 and 20 Sep, both delivered | Live: reminders sent on schedule (session log 21 Sep; all four jobs seen 1 Oct 22:40) |
 | FR-02 | Accepts a reply written in plain language | Messages from two accounts recorded | Live: varied free-text replies recorded (live tests 30 Sep–1 Oct) |
 | FR-03 | Extracts completed / in progress / blockers | **92.5% on 40 labelled updates**, `eval/last-run.json` | Eval 94.2% on flash, must-pass 9/10 (1 Oct). Later prompt changes (items 38–42) not re-evaluated |
-| FR-04 | Writes the update to the SharePoint tracker | Rows visible in Daily Status Tracker | Live: SharePoint list rows; Jira comment on SCRUM-23 (24 Sep). **Excel not built** (open gap) |
+| FR-04 | Writes the update to the SharePoint tracker | Rows visible in Daily Status Tracker | Live: SharePoint list rows; Jira comment on SCRUM-23 (24 Sep). **Excel built 25 Nov** (SPEC-002 item 7; live test pending) |
 | FR-05 | Chases only those who have not replied | Correctly sent to nobody when both had replied | Live: follow-up job ran 1 Oct 22:40. Non-responders-only not separately recorded |
 | FR-06 | DMs the Scrum Master when a blocker is reported | Built and deployed 21 Sep; not yet demonstrated live | Live: alert card 21 Sep (sender was also the Scrum Master). Item 40 card not yet tried live |
 | FR-07 | Builds the daily consolidated summary | Ran unattended on the server at 21:55 on 21 Sep and built a summary | Live: summary card posted 25 Sep. Velocity figures not separately checked |

@@ -104,3 +104,21 @@ async function retryAfter (attempt: number, method: string, path: string, proble
   await tellOnce()
   await sleep(wait)
 }
+
+/**
+ * Uploads a small file (under 4 MB) in one PUT — SPEC-002 item 7e, the tracker
+ * workbook. `@microsoft.graph.conflictBehavior=fail` in the path makes a second
+ * upload of the same name fail instead of replacing a workbook already in use.
+ */
+export async function graphUpload<T> (path: string, bytes: Uint8Array<ArrayBuffer>, contentType: string): Promise<T> {
+  const token = await getGraphToken()
+  const response = await fetch(`https://graph.microsoft.com/v1.0${path}`, {
+    method: 'PUT',
+    headers: { authorization: `Bearer ${token}`, 'content-type': contentType },
+    body: bytes,
+    signal: AbortSignal.timeout(graphRetry.timeoutMs)
+  })
+  const text = await response.text()
+  if (!response.ok) throw new Error(`Graph PUT ${path.split('?')[0]} failed: ${response.status} ${text.slice(0, 300)}`)
+  return JSON.parse(text) as T
+}

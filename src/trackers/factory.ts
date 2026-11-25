@@ -1,6 +1,7 @@
 import type { TeamConfig } from '../types.js'
 import type { Tracker } from './types.js'
 import { SharePointTracker } from './sharepoint.js'
+import { ExcelTracker } from './excel.js'
 import { MockTracker } from './mock.js'
 import { JiraCommentTracker } from './jira.js'
 import { UnsetTracker } from './unset.js'
@@ -18,6 +19,8 @@ export function trackerFor (team: TeamConfig): Tracker {
   switch (team.tracker.kind) {
     case 'sharepoint':
       return new SharePointTracker(team.tracker.siteId, team.tracker.listId, team.members.map((m) => m.displayName))
+    case 'excel':
+      return new ExcelTracker(team.tracker.driveId, team.tracker.itemId, team.members.map((m) => m.displayName))
     case 'mock':
       return new MockTracker(team.tracker.path)
     case 'jira':

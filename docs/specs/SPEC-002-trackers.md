@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved 16 Oct 2026 — base text with as-built notes (10 Oct 2026) and items to 5a; item 2g approved 16 Oct 2026 (not built); Excel parked by the user 16 Oct 2026 |
+| **Status** | Approved 16 Oct 2026 — base text with as-built notes (10 Oct 2026) and items to 5a; item 2g approved 16 Oct 2026 (not built); Excel parked by the user 16 Oct 2026; item 7 (Excel Online) approved by the user 25 Nov 2026 |
 | **Delivers** | FR-04 |
 | **Assumptions** | A7 (destinations: SharePoint list, Excel Online, Jira comment) |
 | **Depends on** | SPEC-001 |
@@ -124,13 +124,52 @@ This is also where the update *lives*. We deliberately keep no copy of it.
       member + work item.
 6. The `mock` tracker writes to a local JSON file and is fully functional, so
    the whole daily cycle runs with no Microsoft or Jira account.
+7. *Added 25 Nov 2026 — approved by the user, 25 Nov 2026. Un-parks
+   Excel (OPEN-ITEMS 15); user decision 25 Nov 2026: option A — Excel is one
+   more choice open to every team, not a special case for one team.*
+   **Excel Online tracker.**
+   - 7a. **Where.** A workbook **"Daily Status Tracker.xlsx"** in the
+     Documents library of the team's own Teams team site (the same site rule as
+     the SharePoint list, SPEC-008 10q). Inside it, a sheet **"Tracker"** with
+     an Excel table **"DailyStatusTracker"** holding the same 8 columns in the
+     same order: Date, WIN, Description, AssignedTo, Comment, Status,
+     AnyBlocker, UpdatedBy.
+   - 7b. **Same rules as the SharePoint list.** 2a–2f, 4a and 5a apply
+     unchanged: one row per member + work item updated in place, one General
+     row per member, a blocker stays until reported cleared, AssignedTo = Jira
+     owner, UpdatedBy = sender, the member's roster filters the rows, Graph
+     timeout + retries. Earlier comments stay in the file's own version
+     history. 2g (not built) would apply to Excel when it is built.
+   - 7c. **Date** is written as text `YYYY-MM-DD` (the column is formatted as
+     text), so Excel never shifts it by timezone or locale.
+   - 7d. **Nothing is deleted** in the daily cycle. A new row is added at the
+     end of the table; an existing row is changed in place by its position.
+   - 7e. **Admin page.** A third tracker choice, **"Excel workbook on the
+     team's own site"**, open to every team. Choosing it: if the team's site
+     has no tracker workbook, the assistant **creates it** (file, sheet, table,
+     headers) — no step outside the admin page. If the workbook exists and has
+     the table, it is used as is. A workbook missing the table or a column is
+     refused with the reason. One workbook belongs to one team. The same
+     confirm as the other choices: *"Updates already recorded today stay where
+     they are."* No team is switched by this change.
+   - 7f. **Readiness (10d)** — the Tracker check reads the workbook's table:
+     Reachable, or the reason it is not. **Tracker access** (onboarding and
+     offboarding) treats a workbook on the team's own site like the list:
+     Teams team membership is access.
+   - 7g. **Permission:** none new. Files.ReadWrite.All is already granted.
+   - 7h. **Privacy:** unchanged — rows live in the workbook, never in
+     Firestore.
 
 ### As built — differences from the draft above (recorded 10 Oct 2026)
 
-- **Excel Online is not built.** FR-04 and A7 name three destinations; two are
-  built (SharePoint list, Jira comment) plus `mock`. This is an open PRD gap,
-  not a decision to drop it — it needs the user's call (build it, or record a
-  change to A7).
+- ~~**Excel Online is not built.**~~ *Built 25 Nov 2026 as item 7* (220 tests
+  pass; not yet deployed or tried live). Built as written; two details found
+  in a live probe of the Graph workbook API that day: a new table has no
+  empty first row, and a cell written with a leading apostrophe is stored as
+  the text after it — so every cell is sent that way (7c), which also keeps a
+  comment starting with "=" from becoming a formula. The SharePoint list's
+  row rules moved to one shared module, so the list and the workbook cannot
+  drift apart; the list's behaviour is unchanged.
 - A fourth kind, `unset`, means the team has no tracker yet. Such a team cannot
   be switched to Running (SPEC-008 10q, M11).
 - **4c is replaced by SPEC-008 10q (M11, 8 Oct 2026).** Two teams no longer
@@ -292,6 +331,7 @@ concern from writing status.
 | 2a | A blocker with no work item is written as its own Blocked row | Unit test | Tracker state |
 | 3 | Update visible in SharePoint list | Live run on sandbox | Screenshot (FR-04) |
 | 4 | Update visible in Excel Online worksheet | Live run on sandbox | Screenshot (FR-04) |
+| 4a | Item 7: Excel passes the same row-rule tests as SharePoint (2a–2f, 4a); workbook created from the admin page; readiness shows it | Unit tests with a fake Graph; live: one team switched to Excel, a member's update, then the summary | Test output; screenshot of the workbook |
 | 5 | Update visible as Jira comment on the right story | Live run on Jira Cloud | Screenshot (FR-04) |
 | 6 | Tracker outage does not lose the member's reply | Fault injection | Log + acknowledgement in Teams |
 | 7 | No update content in Firestore after a full cycle | Inspect collections | Export (Privacy NFR) |

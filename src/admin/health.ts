@@ -102,7 +102,8 @@ export async function onboarding (team: TeamConfig): Promise<{
 
   // The tracker is on the Teams team's own site when that site's library belongs to the group.
   const trackerOnGroupSite = async (): Promise<boolean> => {
-    if (group === undefined || team.tracker.kind !== 'sharepoint') return false
+    // SPEC-002 7f: a workbook on the site counts the same as the list.
+    if (group === undefined || (team.tracker.kind !== 'sharepoint' && team.tracker.kind !== 'excel')) return false
     try {
       const drive = await graphRequest<{ owner?: { group?: { id?: string } } }>('GET', `/sites/${team.tracker.siteId}/drive?$select=owner`)
       return drive.owner?.group?.id === group.id
