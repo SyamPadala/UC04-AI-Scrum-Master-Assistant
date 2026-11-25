@@ -163,7 +163,7 @@ This is also where the update *lives*. We deliberately keep no copy of it.
 ### As built — differences from the draft above (recorded 10 Oct 2026)
 
 - ~~**Excel Online is not built.**~~ *Built 25 Nov 2026 as item 7* (220 tests
-  pass; not yet deployed or tried live). Built as written; two details found
+  pass; deployed 25 Nov 2026, live test pending). Built as written; two details found
   in a live probe of the Graph workbook API that day: a new table has no
   empty first row, and a cell written with a leading apostrophe is stored as
   the text after it — so every cell is sent that way (7c), which also keeps a
